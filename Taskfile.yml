@@ -1,0 +1,47 @@
+version: '3'
+
+tasks:
+  run:
+    desc: Esegue l'app Flutter su Linux desktop
+    cmds:
+      - flutter run -d linux
+
+  run-chrome:
+    desc: Avvia l'app su Chrome per uno smoke test web rapido (usare device toolbar per iPhone 15)
+    cmds:
+      - flutter run -d chrome
+
+  test:
+    desc: Esegue la suite di test Flutter
+    cmds:
+      - flutter test
+
+  analyze:
+    desc: Lancia flutter analyze per individuare problemi statici
+    cmds:
+      - flutter analyze
+
+  clean:
+    desc: Pulisce i build artifacts
+    cmds:
+      - flutter clean
+
+  pub-get:
+    desc: Allinea le dipendenze dichiarate in pubspec.yaml
+    cmds:
+      - flutter pub get
+  import-dog-breeds:
+    desc: Scarica le razze da TheDogAPI e le importa nella tabella Supabase breeds
+    cmds:
+      - dart tool/import_dog_breeds.dart
+
+  run-clean:
+    desc: Pulisce e rilancia l'app con un ambiente vergine
+    cmds:
+      - rm -f ~/.config/com.example.artrosi_cane/shared_preferences.json
+      - rm -f ~/.config/com.example.artrosi_cane/flutter_shared_preferences.json
+      - rm -f ~/.local/share/com.example.artrosi_cane/shared_preferences.json
+      - rm -f ~/.local/share/com.example.artrosi_cane/flutter_shared_preferences.json
+      - rm -rf build .dart_tool
+      - flutter pub get
+      - flutter run -d linux --dart-define=RESET_FLOW=true

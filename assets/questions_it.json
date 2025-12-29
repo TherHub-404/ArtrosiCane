@@ -1,0 +1,47 @@
+[
+  {
+    "id": "q1",
+    "text": "Il tuo cane evita il movimento o rallenta nelle attività quotidiane?",
+    "options": [
+      "A. Nessun cambiamento",
+      "B. Qualche episodio occasionale",
+      "C. Rallenta spesso o evita il movimento"
+    ]
+  },
+  {
+    "id": "q2",
+    "text": "Quando si alza da seduto o sdraiato mostra rigidità o fatica?",
+    "options": [
+      "A. Si alza normalmente",
+      "B. Qualche rigidità al mattino o dopo il riposo",
+      "C. Difficoltà evidenti e costanti nel rialzarsi"
+    ]
+  },
+  {
+    "id": "q3",
+    "text": "Ha cambiato voglia di uscire, muoversi o giocare?",
+    "options": [
+      "A. Comportamento normale",
+      "B. È un po’ meno attivo del solito",
+      "C. Ha ridotto molto attività, gioco e voglia di muoversi"
+    ]
+  },
+  {
+    "id": "q4",
+    "text": "Dopo camminate, scale o movimenti noti disagio (leccamento zampe, cambio postura, evitamento)?",
+    "options": [
+      "A. Mai o quasi mai",
+      "B. A volte dopo attività intensa",
+      "C. Spesso dopo normali attività"
+    ]
+  },
+  {
+    "id": "q5",
+    "text": "Come valuteresti il benessere generale del tuo cane negli ultimi 7 giorni?",
+    "options": [
+      "A. Buono/Ottimo",
+      "B. Un po’ ridotto rispetto al solito",
+      "C. Nettamente ridotto o compromesso"
+    ]
+  }
+]

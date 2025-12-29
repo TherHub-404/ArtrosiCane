@@ -1,0 +1,349 @@
+import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/features/onboarding/domain/entities/breed.dart';
+import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
+import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/theme/app_colors.dart';
+import 'package:artrosi_cane/theme/app_spacing.dart';
+import 'package:artrosi_cane/theme/app_typography.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class DogProfilePage extends ConsumerStatefulWidget {
+  const DogProfilePage({super.key, this.onProfileChanged});
+
+  final Function(DogProfile)? onProfileChanged;
+
+  @override
+  ConsumerState<DogProfilePage> createState() => _DogProfilePageState();
+}
+
+class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticKeepAliveClientMixin {
+  final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+
+  AgeGroup _ageGroup = AgeGroup.adulto;
+  DogSize _size = DogSize.media;
+  double _weightKg = 20;
+  String? _selectedBreedId;
+  String? _selectedBreedName;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_notifyChanges);
+    _ageController.addListener(_notifyChanges);
+  }
+
+  @override
+  void dispose() {
+    _nameController.removeListener(_notifyChanges);
+    _ageController.removeListener(_notifyChanges);
+    _nameController.dispose();
+    _ageController.dispose();
+    super.dispose();
+  }
+
+  void _notifyChanges() {
+    final ageYears = double.tryParse(_ageController.text.replaceAll(',', '.'));
+    final profile = DogProfile(
+      name: _nameController.text.isEmpty ? null : _nameController.text.trim(),
+      ageYears: ageYears,
+      weightKg: _weightKg,
+      breedId: _selectedBreedId,
+      breedName: _selectedBreedName,
+      ageGroup: _ageGroup,
+      size: _size,
+    );
+    widget.onProfileChanged?.call(profile);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxHeight < 700;
+        final verticalGap = isCompact ? AppSpacing.md : AppSpacing.xl;
+
+        return Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: AppSpacing.xl),
+              AppText.h1(
+                'Raccontaci del tuo cane',
+                color: AppColors.primaryBlue,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppText.body(
+                'Queste informazioni ci aiuteranno a personalizzare i consigli per il tuo amico a quattro zampe.',
+                color: AppColors.text.withOpacity(0.6),
+              ),
+              SizedBox(height: verticalGap),
+              
+              // Name Field
+              AppText.body('Come si chiama?', bold: true, color: AppColors.text),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: 'Nome',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
+                ),
+              ),
+              SizedBox(height: verticalGap),
+
+              // Age (years)
+              AppText.body('Età (anni)', bold: true, color: AppColors.text),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  hintText: 'Es. 4.5',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
+                ),
+              ),
+              SizedBox(height: verticalGap),
+
+              // Weight slider
+              AppText.body('Peso: ${_weightKg.toStringAsFixed(1)} kg', bold: true, color: AppColors.text),
+              const SizedBox(height: AppSpacing.sm),
+              Slider(
+                min: 1,
+                max: 80,
+                divisions: 79,
+                value: _weightKg,
+                activeColor: AppColors.ctaApricot,
+                onChanged: (value) {
+                  setState(() => _weightKg = value);
+                  _notifyChanges();
+                },
+              ),
+              SizedBox(height: verticalGap),
+
+              // Breed selector bottom sheet
+              AppText.body('Razza', bold: true, color: AppColors.text),
+              const SizedBox(height: AppSpacing.sm),
+              _BreedPickerField(
+                selectedLabel: _selectedBreedName,
+                onTap: () async {
+                  final breedsAsync = ref.read(breedListProvider);
+                  final breeds = await breedsAsync.when(
+                    data: (list) => list,
+                    loading: () => <Breed>[],
+                    error: (_, __) => <Breed>[],
+                  );
+                  if (!mounted || breeds.isEmpty) return;
+                  final picked = await _showBreedPicker(context, breeds);
+                  if (picked != null) {
+                    setState(() {
+                      _selectedBreedId = picked.id;
+                      _selectedBreedName = picked.nameIt?.isNotEmpty == true ? picked.nameIt : picked.name;
+                    });
+                    _notifyChanges();
+                  }
+                },
+              ),
+              SizedBox(height: verticalGap),
+
+              const Spacer(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _ageGroupLabel(AgeGroup age) {
+    switch (age) {
+      case AgeGroup.cucciolo:
+        return 'Cucciolo';
+      case AgeGroup.adulto:
+        return 'Adulto';
+      case AgeGroup.senior:
+        return 'Senior';
+    }
+  }
+
+  String _sizeLabel(DogSize size) {
+    switch (size) {
+      case DogSize.piccola:
+        return 'Piccola';
+      case DogSize.media:
+        return 'Media';
+      case DogSize.grande:
+        return 'Grande';
+    }
+  }
+
+  Future<Breed?> _showBreedPicker(BuildContext context, List<Breed> breeds) async {
+    return showModalBottomSheet<Breed>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final controller = TextEditingController();
+        final valueNotifier = ValueNotifier<List<Breed>>(breeds);
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: AppSpacing.lg,
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Cerca la razza',
+                style: AppTypography.h1.copyWith(fontSize: 20),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Digita per cercare',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.ctaApricot),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (query) {
+                  final q = query.toLowerCase().trim();
+                  if (q.isEmpty) {
+                    valueNotifier.value = breeds;
+                  } else {
+                    valueNotifier.value = breeds
+                        .where((b) => (b.nameIt ?? '').toLowerCase().contains(q))
+                        .toList();
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.5,
+                child: ValueListenableBuilder<List<Breed>>(
+                  valueListenable: valueNotifier,
+                  builder: (context, filtered, _) {
+                    if (filtered.isEmpty) {
+                      return Center(
+                        child: AppText.body(
+                          'Nessun risultato',
+                          color: AppColors.text.withOpacity(0.6),
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final breed = filtered[index];
+                        final label = breed.nameIt?.isNotEmpty == true ? breed.nameIt! : breed.name;
+                        return ListTile(
+                          title: Text(
+                            label,
+                            style: AppTypography.bodyBold.copyWith(fontSize: 16),
+                          ),
+                          onTap: () => Navigator.of(context).pop(breed),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BreedPickerField extends StatelessWidget {
+  const _BreedPickerField({
+    required this.selectedLabel,
+    required this.onTap,
+  });
+
+  final String? selectedLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderSoft, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                selectedLabel ?? 'Seleziona razza',
+                style: AppTypography.body.copyWith(
+                  color: selectedLabel == null ? AppColors.text.withOpacity(0.6) : AppColors.text,
+                  fontWeight: selectedLabel == null ? FontWeight.w500 : FontWeight.w600,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.ctaApricot),
+          ],
+        ),
+      ),
+    );
+  }
+}
