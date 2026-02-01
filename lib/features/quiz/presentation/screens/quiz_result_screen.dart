@@ -7,6 +7,7 @@ import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 
 class QuizResultScreen extends StatefulWidget {
   const QuizResultScreen({super.key, this.result});
@@ -76,9 +77,10 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                   const SizedBox(height: AppSpacing.xl),
                   
                   // Spinner
-                  const CircularProgressIndicator(
-                    color: AppColors.ctaApricot,
-                    strokeWidth: 3,
+                  Lottie.asset(
+                    'assets/paw.json',
+                    height: 90,
+                    repeat: true,
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   

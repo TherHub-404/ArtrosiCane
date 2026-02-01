@@ -16,13 +16,15 @@ class DogEditSheet extends StatefulWidget {
     required this.initialWeight,
     this.initialImagePath,
     required this.onSave,
+    required this.onDelete,
   });
 
   final String initialName;
   final String initialAge;
   final String initialWeight;
   final String? initialImagePath;
-  final Function(String name, String age, String weight, String? imagePath) onSave;
+  final Future<bool> Function(String name, String age, String weight, String? imagePath) onSave;
+  final VoidCallback onDelete;
 
   @override
   State<DogEditSheet> createState() => _DogEditSheetState();
@@ -122,14 +124,16 @@ class _DogEditSheetState extends State<DogEditSheet> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                widget.onSave(
+              onPressed: () async {
+                final ok = await widget.onSave(
                   _nameController.text,
                   _ageController.text,
                   _weightController.text,
                   _imagePath,
                 );
-                context.pop();
+                if (ok && mounted) {
+                  context.pop();
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
@@ -144,7 +148,23 @@ class _DogEditSheetState extends State<DogEditSheet> {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.md),
+          
+          // Delete Button
+          Center(
+            child: TextButton(
+              onPressed: widget.onDelete,
+              child: const Text(
+                'Elimina profilo',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

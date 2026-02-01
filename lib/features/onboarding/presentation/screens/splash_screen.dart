@@ -6,6 +6,7 @@ import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
@@ -33,8 +34,9 @@ class SplashScreen extends ConsumerWidget {
           loading: () => Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                color: AppColors.primaryBlue,
+              Lottie.asset(
+                'assets/paw.json',
+                width: 140,
               ),
               const SizedBox(height: AppSpacing.md),
               AppText.body(

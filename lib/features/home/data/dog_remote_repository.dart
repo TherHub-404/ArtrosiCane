@@ -105,6 +105,26 @@ class DogRemoteRepository {
 
     await _client.from('dogs').delete().eq('id', dogId).eq('owner_id', userId);
   }
+
+  Future<void> updateDog({
+    required String dogId,
+    required String name,
+    required double ageYears,
+    required double weightKg,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not logged in');
+
+    await _client
+        .from('dogs')
+        .update({
+          'name': name,
+          'age_years': ageYears,
+          'weight_kg': weightKg,
+        })
+        .eq('id', dogId)
+        .eq('owner_id', userId);
+  }
 }
 
 final dogRemoteRepositoryProvider = Provider<DogRemoteRepository>((ref) {

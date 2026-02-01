@@ -6,6 +6,7 @@ import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
+import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,7 +55,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       if (_isLogin) {
         await authRepo.signIn(email: email, password: password);
         await _syncDogProfileToRemote();
-        if (mounted) context.go('/home');
+        if (mounted) context.go('/entry');
       } else {
         final needsEmailConfirm = await authRepo.signUp(
           email: email,
@@ -68,7 +69,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
           );
           if (mounted) setState(() => _isLogin = true);
         } else {
-          if (mounted) context.go('/home');
+          if (mounted) context.go('/entry');
         }
       }
     } on AuthException catch (e) {
@@ -294,23 +295,21 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
 
               // Google Button
               ElevatedButton.icon(
-                onPressed: () => context.go('/home'),
-                icon: const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue),
-                label: const Text(
-                  'CONTINUA CON GOOGLE',
-                  style: TextStyle(
-                    color: AppColors.text,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
+                onPressed: () => context.go('/entry'),
+                icon: Image.asset(
+                  'assets/google_logo.png',
+                  height: 22,
                 ),
+                label: const Text('CONTINUA CON GOOGLE'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
+                  foregroundColor: AppColors.text,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                   elevation: 2, // Reduced elevation
+                  textStyle: AppTypography.bodyBold,
                 ),
               ),
 

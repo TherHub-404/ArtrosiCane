@@ -6,8 +6,8 @@ import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class WalksAdviceScreen extends StatelessWidget {
-  const WalksAdviceScreen({
+class ExerciseAdviceScreen extends StatelessWidget {
+  const ExerciseAdviceScreen({
     super.key,
     required this.grade,
     required this.dogName,
@@ -19,16 +19,16 @@ class WalksAdviceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final category = _riskCategory(grade);
-    final advice = _walkDetails(category);
+    final advice = _exerciseDetails(category);
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.ctaApricot,
       appBar: AppBar(
-        backgroundColor: AppColors.primaryBlue,
+        backgroundColor: AppColors.ctaApricot,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'Passeggiate per $dogName',
+          'Esercizio per $dogName',
           style: AppTypography.bodyBold.copyWith(
             color: Colors.white,
             fontSize: 20,
@@ -52,9 +52,9 @@ class WalksAdviceScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Color.lerp(AppColors.ctaApricot, Colors.white, 0.22)!,
-                      AppColors.ctaApricot,
-                      Color.lerp(AppColors.ctaApricot, Colors.black, 0.10)!,
+                      Color.lerp(AppColors.primaryBlue, Colors.white, 0.22)!,
+                      AppColors.primaryBlue,
+                      Color.lerp(AppColors.primaryBlue, Colors.black, 0.10)!,
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -73,7 +73,7 @@ class WalksAdviceScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Durata',
+                        'Sessione',
                         style: AppTypography.bodyBold.copyWith(
                           fontSize: 12,
                           color: Colors.white.withAlpha(230),
@@ -81,11 +81,12 @@ class WalksAdviceScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        advice.duration,
+                        advice.session,
                         style: AppTypography.bodyBold.copyWith(
                           color: Colors.white,
                           fontSize: 18,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -165,23 +166,25 @@ class WalksAdviceScreen extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 420;
-              final recommendedCard = _buildSurfaceCard(
-                title: 'Superfici consigliate',
-                items: advice.surfaces,
-                accentColor: AppColors.primaryBlue,
-                headerEmoji: '🌿',
-                minHeight: 200,
-                itemTextSize: 13,
-                titleTextSize: 15,
+              final recommendedCard = _buildCard(
+                title: 'Esercizi consigliati',
+                items: advice.recommended,
+                accent: Colors.white,
+                titleColor: AppColors.primaryBlue,
+                chipColor: AppColors.primaryBlue,
+                textColor: AppColors.text,
+                icon: Icons.check_circle_rounded,
+                minHeight: 180,
               );
-              final avoidCard = _buildSurfaceCard(
-                title: 'Superfici da evitare / limitare',
-                items: advice.surfacesLimit,
-                accentColor: Colors.orange.shade800,
-                headerEmoji: '🚫',
-                minHeight: 200,
-                itemTextSize: 13,
-                titleTextSize: 15,
+              final avoidCard = _buildCard(
+                title: 'Esercizi da evitare / limitare',
+                items: advice.avoid,
+                accent: Colors.white,
+                titleColor: AppColors.ctaApricot,
+                chipColor: AppColors.ctaApricot,
+                textColor: AppColors.ctaApricot,
+                icon: Icons.close_rounded,
+                minHeight: 180,
               );
 
               if (isNarrow) {
@@ -206,7 +209,7 @@ class WalksAdviceScreen extends StatelessWidget {
               );
             },
           ),
-          if (advice.note.trim().isNotEmpty) ...[
+          if (advice.note.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             _NotesDisclosure(
               title: 'Note',
@@ -215,151 +218,155 @@ class WalksAdviceScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          _NearbyWalksCtaButton(dogName: dogName, onTap: () {}),
         ],
       ),
     );
   }
 
-  Widget _buildSurfaceCard({
+  Widget _buildCard({
     required String title,
     required List<String> items,
-    required Color accentColor,
-    required String headerEmoji,
+    required Color accent,
+    Color? titleColor,
+    Color? chipColor,
+    Color? textColor,
+    IconData icon = Icons.check_circle,
     double? minHeight,
-    double? itemTextSize,
-    double? titleTextSize,
   }) {
-    final safeItems = items.isEmpty ? const ['Nessuna in particolare'] : items;
-    final itemSize = itemTextSize ?? 14.5;
-    final titleSize = titleTextSize ?? 16;
-
-    final softBg = Color.lerp(accentColor, Colors.white, 0.92)!;
-    final headerBg = Color.lerp(accentColor, Colors.white, 0.78)!;
-    final cardTop = Color.lerp(accentColor, Colors.white, 0.90)!;
-    final cardBottom = Color.lerp(accentColor, Colors.white, 0.97)!;
-    const radius = BorderRadius.all(Radius.circular(20));
-
+    final tColor = titleColor ?? accent;
+    final cColor = chipColor ?? accent;
+    final bodyColor = textColor ?? AppColors.text;
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight ?? 0),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              border: Border.all(color: Colors.white.withAlpha(120)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(22),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-              gradient: LinearGradient(
-                colors: [cardTop, cardBottom],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: accent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: AppTypography.bodyBold.copyWith(
+                color: tColor,
+                fontSize: 16,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            const SizedBox(height: AppSpacing.sm),
+            ...items.map(
+              (text) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: headerBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withAlpha(120)),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        headerEmoji,
-                        style: const TextStyle(fontSize: 18, height: 1),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
+                    Icon(icon, color: cColor, size: 18),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        title,
-                        style: AppTypography.bodyBold.copyWith(
-                          color: accentColor,
-                          fontSize: titleSize,
-                        ),
+                        text,
+                        style: AppTypography.body.copyWith(color: bodyColor),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                ...safeItems.map((raw) {
-                  final label = _cleanSurfaceLabel(raw);
-                  final emoji = _surfaceEmoji(label);
-                  final itemBg = Color.lerp(accentColor, Colors.white, 0.92)!;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: itemBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: accentColor.withAlpha(30)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(210),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: accentColor.withAlpha(28)),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 16, height: 1),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              label,
-                              style: AppTypography.body.copyWith(
-                                color: AppColors.text,
-                                fontWeight: FontWeight.w600,
-                                fontSize: itemSize,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  String _cleanSurfaceLabel(String text) {
-    final noEmoji = text
-        .replaceAll(RegExp(r'\p{Extended_Pictographic}', unicode: true), '')
-        .replaceAll('\uFE0F', '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    return noEmoji.isEmpty ? text.trim() : noEmoji;
+  _RiskCategory _riskCategory(String grade) {
+    final normalized = grade.toLowerCase();
+    if (normalized.contains('grave') || normalized.contains('alto')) return _RiskCategory.severe;
+    if (normalized.contains('lieve') || normalized.contains('medio')) return _RiskCategory.mild;
+    if (normalized.contains('nessun') || normalized.contains('basso')) return _RiskCategory.none;
+    return _RiskCategory.unknown;
+  }
+
+  _ExerciseAdvice _exerciseDetails(_RiskCategory category) {
+    switch (category) {
+      case _RiskCategory.none:
+        return _ExerciseAdvice(
+          title: 'Nessun segno di artrosi',
+          session: '20–30 min',
+          points: [
+            'Obiettivo: forma fisica e tono muscolare',
+            'Alterna attività e riposo',
+          ],
+          recommended: [
+            'Passeggiata a ritmo sostenuto',
+            'Giochi controllati (senza salti)',
+            'Nuoto / acqua bassa',
+          ],
+          avoid: [],
+          accentColor: AppColors.primaryBlue,
+          note: 'Se noti zoppia o rigidità dopo l’attività, riduci intensità e durata.',
+        );
+      case _RiskCategory.mild:
+        return _ExerciseAdvice(
+          title: 'Artrosi lieve',
+          session: '10–20 min',
+          points: [
+            'Obiettivo: movimento regolare a basso impatto',
+            'Meglio più sessioni brevi',
+          ],
+          recommended: [
+            'Camminata al guinzaglio su piano',
+            'Nuoto / idroterapia (se disponibile)',
+            'Esercizi lenti di mobilità',
+          ],
+          avoid: [
+            'Scatti e frenate',
+            'Salti (divano/auto)',
+            'Scale lunghe',
+          ],
+          accentColor: Colors.orange.shade700,
+          note: 'Riscaldamento 3–5 min e chiusura graduale; interrompi se compare dolore.',
+        );
+      case _RiskCategory.severe:
+        return _ExerciseAdvice(
+          title: 'Artrosi avanzata',
+          session: '5–10 min',
+          points: [
+            'Obiettivo: mantenere mobilità senza dolore',
+            'Anche più volte al giorno',
+          ],
+          recommended: [
+            'Camminata lenta su piano',
+            'Esercizi guidati da fisioterapista',
+            'Movimenti dolci in casa',
+          ],
+          avoid: [
+            'Corsa e giochi intensi',
+            'Salti e scale',
+            'Terreni irregolari',
+          ],
+          accentColor: Colors.red.shade700,
+          note: 'Confrontati con il veterinario per un piano personalizzato e sicuro.',
+        );
+      case _RiskCategory.unknown:
+        return _ExerciseAdvice(
+          title: 'Fai il test per consigli mirati',
+          session: '-',
+          points: ['Completa il test artrosi per vedere gli esercizi consigliati.'],
+          recommended: [],
+          avoid: [],
+          accentColor: AppColors.primaryBlue,
+          note: '',
+        );
+    }
   }
 
   String _stripObjectivePrefix(String text) {
@@ -369,205 +376,28 @@ class WalksAdviceScreen extends StatelessWidget {
     }
     return text;
   }
-
-  String _surfaceEmoji(String label) {
-    final normalized = label.toLowerCase();
-    if (normalized.startsWith('nessun')) return '🎉';
-    if (normalized.contains('prato')) return '🌱';
-    if (normalized.contains('asfalto')) return '🛣️';
-    if (normalized.contains('sabbia')) return '🏖️';
-    if (normalized.contains('sterrat')) {
-      if (normalized.contains('irregolar')) return '🪨';
-      return '🥾';
-    }
-    return '🏞️';
-  }
-
-  _RiskCategory _riskCategory(String grade) {
-    final normalized = grade.toLowerCase();
-    if (normalized.contains('grave') || normalized.contains('alto')) {
-      return _RiskCategory.severe;
-    }
-    if (normalized.contains('lieve') || normalized.contains('medio')) {
-      return _RiskCategory.mild;
-    }
-    if (normalized.contains('nessun') || normalized.contains('basso')) {
-      return _RiskCategory.none;
-    }
-    return _RiskCategory.unknown;
-  }
-
-  _WalkAdvice _walkDetails(_RiskCategory category) {
-    switch (category) {
-      case _RiskCategory.none:
-        return _WalkAdvice(
-          title: 'Nessun segno di artrosi',
-          duration: '10–20 min',
-          points: ['Obiettivo: movimento libero e stimolante'],
-          surfaces: [
-            'Prato',
-            'Asfalto',
-            'Sterrato',
-            'Sabbia (con moderazione)',
-          ],
-          surfacesLimit: [],
-          accentColor: AppColors.primaryBlue,
-          note:
-              'Percorsi: campagna, bosco, lungomare; varia terreni e stimoli senza particolari limitazioni.',
-        );
-      case _RiskCategory.mild:
-        return _WalkAdvice(
-          title: 'Artrosi lieve',
-          duration: '10–20 min',
-          points: [
-            'Obiettivo: movimento regolare a basso impatto',
-            'Meglio più passeggiate brevi',
-          ],
-          surfaces: ['Prato (migliore)', 'Sterrato regolare'],
-          surfacesLimit: [
-            'Asfalto (ok se piano e breve)',
-            'Sabbia (affatica le articolazioni)',
-          ],
-          accentColor: Colors.orange.shade700,
-          note: 'Percorsi morbidi e pianeggianti, come boschi o parchi.',
-        );
-      case _RiskCategory.severe:
-        return _WalkAdvice(
-          title: 'Artrosi avanzata',
-          duration: '5–10 min',
-          points: [
-            'Obiettivo: mantenere la mobilità senza dolore',
-            'Anche più volte al giorno',
-          ],
-          surfaces: ['Prato (ideale)'],
-          surfacesLimit: ['Asfalto', 'Sabbia', 'Sterrati irregolari'],
-          accentColor: Colors.red.shade700,
-          note:
-              'Percorsi piatti, prevedibili e morbidi; niente dislivelli o tratti lunghi.',
-        );
-      case _RiskCategory.unknown:
-        return _WalkAdvice(
-          title: 'Fai il test per consigli mirati',
-          duration: '-',
-          points: [
-            'Completa il test artrosi per vedere le passeggiate consigliate.',
-          ],
-          surfaces: [],
-          surfacesLimit: [],
-          accentColor: AppColors.primaryBlue,
-          note: '',
-        );
-    }
-  }
 }
 
-class _NearbyWalksCtaButton extends StatelessWidget {
-  const _NearbyWalksCtaButton({required this.dogName, required this.onTap});
+enum _RiskCategory { none, mild, severe, unknown }
 
-  final String dogName;
-  final VoidCallback onTap;
+class _ExerciseAdvice {
+  _ExerciseAdvice({
+    required this.title,
+    required this.session,
+    required this.points,
+    required this.recommended,
+    required this.avoid,
+    required this.accentColor,
+    required this.note,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    const base = AppColors.ctaApricot;
-    final light = Color.lerp(base, Colors.white, 0.22)!;
-    final dark = Color.lerp(base, Colors.black, 0.10)!;
-    const radius = BorderRadius.all(Radius.circular(18));
-
-    return SizedBox(
-      width: double.infinity,
-      child: Semantics(
-        button: true,
-        label: 'Scopri passeggiate vicine per $dogName',
-        child: Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [light, base, dark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(46),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: InkWell(
-              borderRadius: radius,
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.md,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(56),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withAlpha(71)),
-                      ),
-                      child: const Icon(
-                        Icons.near_me_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Scopri passeggiate vicine',
-                            style: AppTypography.bodyBold.copyWith(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Per $dogName nella tua zona',
-                            style: AppTypography.body.copyWith(
-                              color: Colors.white.withAlpha(235),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(56),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  final String title;
+  final String session;
+  final List<String> points;
+  final List<String> recommended;
+  final List<String> avoid;
+  final Color accentColor;
+  final String note;
 }
 
 class _NotesDisclosure extends StatefulWidget {
@@ -593,8 +423,8 @@ class _NotesDisclosureState extends State<_NotesDisclosure> {
   @override
   Widget build(BuildContext context) {
     const radius = BorderRadius.all(Radius.circular(18));
-    final glassTop = Colors.white.withAlpha(56);
-    final glassBottom = Colors.white.withAlpha(28);
+    final glassTop = widget.accentColor.withAlpha(175);
+    final glassBottom = widget.accentColor.withAlpha(125);
 
     return ClipRRect(
       borderRadius: radius,
@@ -608,7 +438,7 @@ class _NotesDisclosureState extends State<_NotesDisclosure> {
               end: Alignment.bottomRight,
             ),
             borderRadius: radius,
-            border: Border.all(color: Colors.white.withAlpha(77)),
+            border: Border.all(color: Colors.white.withAlpha(92)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(38),
@@ -729,26 +559,4 @@ class _NotesDisclosureState extends State<_NotesDisclosure> {
       ),
     );
   }
-}
-
-enum _RiskCategory { none, mild, severe, unknown }
-
-class _WalkAdvice {
-  _WalkAdvice({
-    required this.title,
-    required this.duration,
-    required this.points,
-    required this.surfaces,
-    required this.surfacesLimit,
-    required this.accentColor,
-    required this.note,
-  });
-
-  final String title;
-  final String duration;
-  final List<String> points;
-  final List<String> surfaces;
-  final List<String> surfacesLimit;
-  final Color accentColor;
-  final String note;
 }

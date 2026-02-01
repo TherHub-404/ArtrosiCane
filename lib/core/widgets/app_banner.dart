@@ -10,6 +10,8 @@ class AppBanner {
       message,
       background: AppColors.primaryBlue,
       icon: Icons.check_circle_rounded,
+      duration: const Duration(seconds: 3),
+      showCloseButton: false,
     );
   }
 
@@ -18,9 +20,12 @@ class AppBanner {
     String message, {
     required Color background,
     required IconData icon,
+    Duration? duration,
+    bool showCloseButton = true,
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearMaterialBanners();
+    
     messenger.showMaterialBanner(
       MaterialBanner(
         elevation: 6,
@@ -34,15 +39,24 @@ class AppBanner {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: messenger.hideCurrentMaterialBanner,
-            child: const Text(
-              'Chiudi',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
+          if (showCloseButton)
+            TextButton(
+              onPressed: messenger.hideCurrentMaterialBanner,
+              child: const Text(
+                'Chiudi',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          else
+            const SizedBox.shrink(),
         ],
       ),
     );
+
+    if (duration != null) {
+      Future.delayed(duration, () {
+        messenger.hideCurrentMaterialBanner();
+      });
+    }
   }
 }

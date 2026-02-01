@@ -1,9 +1,12 @@
+import 'dart:ui';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/home_bottom_bar.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
+import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
+import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -68,45 +71,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     showDialog(context: context, builder: (context) => const AddPetDialog());
   }
 
+  Future<void> _handleLogout() async {
+    Navigator.of(context).pop();
+    try {
+      await ref.read(supabaseClientProvider).auth.signOut();
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.remove('onboardingCompleted');
+      await prefs.remove('dogProfile');
+      await prefs.remove('quizProgress');
+      await prefs.remove('lastResult');
+      if (mounted) context.go('/auth');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout fallito: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final topInset = MediaQuery.of(context).padding.top;
     final speedDialBottomOffset = 90.0 + 40.0 + 16.0 + bottomInset;
+    const appBarHeight = 110.0;
+    final contentTopPadding = appBarHeight + topInset;
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
+      extendBodyBehindAppBar: true,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
+        preferredSize: const Size.fromHeight(110),
         child: ClipPath(
           clipper: _AppBarWaveClipper(),
-          child: AppBar(
-            backgroundColor: AppColors.ctaApricot,
-            elevation: 0,
-            toolbarHeight: 80,
-            leading: Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(
-                  Icons.menu_rounded,
-                  color: AppColors.primaryBlue,
-                  size: 32,
-                ),
-                onPressed: () => Scaffold.of(context).openDrawer(),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.ctaApricot, // Apricot
+                  Color(0xFFFFCC80), // Lighter orange
+                ],
               ),
             ),
-            actions: [
-              Container(
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: const CircleAvatar(
-                  backgroundColor: Colors.white,
-                  radius: 20,
-                  child: Icon(Icons.person, color: AppColors.primaryBlue),
+            child: AppBar(
+              backgroundColor: Colors.transparent, // Important for gradient
+              elevation: 0,
+              toolbarHeight: 80,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(
+                    Icons.menu_rounded,
+                    color: AppColors.primaryBlue,
+                    size: 32,
+                  ),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
                 ),
               ),
-            ],
+              actions: [
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    radius: 20,
+                    child: Icon(Icons.person, color: AppColors.primaryBlue),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -143,18 +187,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.primaryBlue),
+              leading: const Icon(Icons.settings, color: AppColors.primaryBlue),
+              title: const Text('Impostazioni'),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text(
                 'Logout',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryBlue,
-                ),
+                style: TextStyle(color: Colors.red),
               ),
-              onTap: () {
-                context.go('/auth');
-              },
+              onTap: _handleLogout,
             ),
           ],
         ),
@@ -167,22 +210,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         children: [
           // Main Content
           SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              contentTopPadding,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _NewsCarousel(),
-                const SizedBox(height: AppSpacing.xl),
-                const Text(
-                  'My Pets',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Montserrat',
-                    color: AppColors.primaryBlue,
+                const SizedBox(height: AppSpacing.md),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.ctaApricot.withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.pets_rounded, color: AppColors.ctaApricot, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'I tuoi Cani',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'Montserrat',
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   height: 400,
                   child: Consumer(
@@ -194,143 +276,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             return Center(
                               child: GestureDetector(
                                 onTap: _openAddPetDialog,
-                                child: Container(
-                                  padding: const EdgeInsets.all(AppSpacing.lg),
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                    border: Border.all(
-                                      color: AppColors.ctaApricot.withOpacity(
-                                        0.4,
-                                      ),
-                                      width: 1.5,
-                                    ),
+                                child: CustomPaint(
+                                  painter: _DashedBorderPainter(
+                                    color: AppColors.ctaApricot.withOpacity(0.5),
+                                    strokeWidth: 2,
+                                    gap: 6,
+                                    radius: 28,
                                   ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.ctaApricot
-                                              .withOpacity(0.15),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.pets_rounded,
-                                          color: AppColors.ctaApricot,
-                                          size: 32,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppSpacing.md),
-                                      const Text(
-                                        'Nessun cane presente',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.primaryBlue,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Aggiungilo ora con un tap',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.text.withOpacity(
-                                            0.7,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(AppSpacing.lg),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.6),
+                                      borderRadius: BorderRadius.circular(28),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.ctaApricot
+                                                .withOpacity(0.15),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.pets_rounded,
+                                            color: AppColors.ctaApricot,
+                                            size: 32,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(height: AppSpacing.md),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.ctaApricot,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                                        const SizedBox(height: AppSpacing.md),
+                                        const Text(
+                                          'Nessun cane presente',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.primaryBlue,
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Icon(
-                                              Icons.add,
-                                              color: Colors.white,
-                                              size: 18,
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Aggiungilo ora con un tap',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppColors.text.withOpacity(
+                                              0.7,
                                             ),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              'Aggiungi il tuo cane',
-                                              style: TextStyle(
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppSpacing.md),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.ctaApricot,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              Icon(
+                                                Icons.add,
                                                 color: Colors.white,
-                                                fontWeight: FontWeight.bold,
+                                                size: 18,
                                               ),
-                                            ),
-                                          ],
+                                              SizedBox(width: 6),
+                                              Text(
+                                                'Aggiungi il tuo cane',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             );
                           }
-                          return PageView.builder(
-                            clipBehavior: Clip.none,
-                            itemCount:
-                                list.length + 1, // +1 for "Aggiungi Pet" card
-                            controller: PageController(viewportFraction: 0.85),
-                            itemBuilder: (context, index) {
-                              // Last item is "Aggiungi Pet" card
-                              if (index == list.length) {
-                                return Center(child: _buildAddPetCard());
-                              }
-
-                              // Regular pet cards
-                              final dog = list[index];
-                              final riskLabel = _mapRisk(dog.riskLevel);
-                              return Center(
-                                child: PetCard(
-                                  name: dog.name ?? 'Il tuo cane',
-                                  breed: dog.breedName ?? 'Razza non indicata',
-                                  subtitle: null,
-                                  showWarning: riskLabel == null,
-                                  age: dog.ageYears,
-                                  weight: dog.weightKg,
-                                  arthrosisGrade: riskLabel,
-                                  imagePath:
-                                      dog.breedImageUrl ??
-                                      'assets/first-dog.png',
-                                  backgroundColor: Colors.white,
-                                  onTap: () {
-                                    context.push(
-                                      '/dog-dashboard',
-                                      extra: {
-                                        'id': dog.id,
-                                        'name': dog.name,
-                                        'breed': dog.breedName,
-                                        'imagePath': dog.breedImageUrl,
-                                        'age': dog.ageYears,
-                                        'weight': dog.weightKg,
-                                        'arthrosisGrade':
-                                            riskLabel ?? 'Non rilevato',
-                                      },
-                                    );
-                                  },
-                                ),
-                              );
-                            },
+                          return _PetCarousel(
+                            dogs: list,
+                            onAddTap: _openAddPetDialog,
                           );
                         },
                         loading: () => const Center(
@@ -351,38 +386,124 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
 
                 // Consigli Section
-                const SizedBox(height: AppSpacing.xl),
-                const Text(
-                  'Consigli per te',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Montserrat',
-                    color: AppColors.primaryBlue,
+                const SizedBox(height: AppSpacing.lg),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF4E0), // Soft cream/yellow
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome,
+                          color: AppColors.ctaApricot,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CONSIGLI SU MISURA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                              color: AppColors.ctaApricot,
+                            ),
+                          ),
+                          Text(
+                            'Salute e Benessere',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'Montserrat',
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _buildConsigliCard(
-                  title: 'Attività fisica',
-                  subtitle: 'Esercizi consigliati per la settimana',
-                  progress: 0.6,
-                  icon: Icons.directions_run,
+                Consumer(
+                  builder: (context, ref, _) {
+                    final pets = ref.watch(userDogsProvider);
+                    return pets.when(
+                      data: (list) {
+                        if (list.isEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.ctaApricot.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.pets_rounded,
+                                    color: AppColors.ctaApricot,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Text(
+                                    'Aggiungi un cane per ricevere consigli personalizzati.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.text.withOpacity(0.75),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            for (final dog in list) ...[
+                              _buildDogAdviceCard(context, dog),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
+                          ],
+                        );
+                      },
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.ctaApricot,
+                        ),
+                      ),
+                      error: (_, __) => Center(
+                        child: AppText.body(
+                          'Errore nel caricamento dei consigli',
+                          color: Colors.red,
+                          align: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _buildConsigliCard(
-                  title: 'Alimentazione',
-                  subtitle: 'Piano nutrizionale personalizzato',
-                  progress: 0.8,
-                  icon: Icons.restaurant_menu,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _buildConsigliCard(
-                  title: 'Monitoraggio salute',
-                  subtitle: 'Prossimo controllo tra 15 giorni',
-                  progress: 0.4,
-                  icon: Icons.favorite,
-                ),
-                const SizedBox(height: 100),
+                const SizedBox(height: 140), // Extra space for bottom navigation bar
               ],
             ),
           ),
@@ -519,129 +640,693 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildAddPetCard() {
     return GestureDetector(
       onTap: _openAddPetDialog,
-      child: Container(
-        width: 300,
-        height: 380,
-        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.primaryBlue,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      child: CustomPaint(
+        painter: _DashedBorderPainter(
+          color: AppColors.ctaApricot.withOpacity(0.5),
+          strokeWidth: 2,
+          gap: 6,
+          radius: 28,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.ctaApricot.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add,
-                size: 64,
-                color: AppColors.ctaApricot,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'Aggiungi un cane',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.ctaApricot,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-              child: Text(
-                'Tocca per aggiungere un nuovo amico a quattro zampe',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.9),
+        child: Container(
+          width: 300,
+          height: 380,
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8), // Slight transparency for texture
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: AppColors.ctaApricot.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  size: 56,
+                  color: AppColors.ctaApricot,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.lg),
+              const Text(
+                'Aggiungi un cane',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryBlue,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: Text(
+                  'Crea il profilo per il tuo\namico a quattro zampe',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.text.withOpacity(0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildConsigliCard({
-    required String title,
-    required String subtitle,
-    required double progress,
-    required IconData icon,
-  }) {
+  Widget _buildDogAdviceCard(BuildContext context, dynamic dog) {
+    final dogName = dog.name ?? 'Il tuo cane';
+    final riskLabel = _mapRisk(dog.riskLevel);
+    final gradeString = riskLabel ?? (dog.riskLevel ?? '');
+    final imagePath = dog.breedImageUrl ?? dog.imagePath;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: imagePath != null && imagePath.toString().isNotEmpty
+                    ? Image.network(
+                        imagePath.toString(),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.pets_rounded,
+                          color: AppColors.primaryBlue,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.pets_rounded,
+                        color: AppColors.primaryBlue,
+                      ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dogName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    if (riskLabel != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _riskPillColor(riskLabel).withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _riskPillColor(riskLabel).withOpacity(0.6),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          riskLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: _riskPillColor(riskLabel),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.pets_rounded,
+                  color: AppColors.primaryBlue,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _buildAdviceShortcut(
+                  label: 'Passeggiate',
+                  icon: Icons.map_outlined,
+                  color: AppColors.primaryBlue,
+                  onTap: () {
+                    context.push(
+                      '/walks',
+                      extra: {
+                        'grade': gradeString,
+                        'name': dogName,
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _buildAdviceShortcut(
+                  label: 'Esercizi',
+                  icon: Icons.fitness_center,
+                  color: AppColors.ctaApricot,
+                  onTap: () {
+                    context.push(
+                      '/exercise',
+                      extra: {
+                        'grade': gradeString,
+                        'name': dogName,
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.ctaApricot.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: AppColors.ctaApricot, size: 24),
+    );
+  }
+
+  Widget _buildAdviceShortcut({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final soft = Color.lerp(color, Colors.white, 0.82)!;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryBlue,
-                  ),
+          decoration: BoxDecoration(
+            color: soft,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.25)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.text.withOpacity(0.7),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _mapRisk(String? risk) {
+    switch (risk) {
+      case 'alto':
+        return 'Artrosi Grave';
+      case 'medio':
+        return 'Artrosi Lieve';
+      case 'basso':
+        return 'Nessun Livello di artrosi';
+      default:
+        return null;
+    }
+  }
+
+  Color _riskPillColor(String riskLabel) {
+    final normalized = riskLabel.toLowerCase();
+    if (normalized.contains('grave')) return Colors.red.shade500;
+    if (normalized.contains('lieve')) return Colors.orange.shade500;
+    return Colors.green.shade500;
+  }
+}
+
+class _NewsCarousel extends StatefulWidget {
+  const _NewsCarousel();
+
+  @override
+  State<_NewsCarousel> createState() => _NewsCarouselState();
+}
+
+class _NewsCarouselState extends State<_NewsCarousel> {
+  final PageController _controller = PageController();
+  int _currentIndex = 0;
+
+  final List<Map<String, dynamic>> _newsItems = [
+    {
+      "title": "Passeggiate",
+      "subtitle": "Scopri le nostre passeggiate",
+      "textColor": Colors.white,
+      "image": "assets/Marina-di-Bibbiona.jpg",
+      "isFullBackground": true,
+      "buttonText": "Scopri di più",
+    },
+    {
+      "title": "Nuovi snack",
+      "subtitle": "Ricette sane per il tuo cane",
+      "colors": [const Color(0xFFFFE0B2), const Color(0xFFFFCC80)], // Orange Gradient
+      "textColor": const Color(0xFF2D2D2D),
+      "icon": Icons.restaurant_menu,
+      "buttonText": "Leggi ora",
+    },
+    {
+      "title": "Cos'è l'artrosi?",
+      "subtitle": "Segni precoci da non ignorare",
+      "colors": [const Color(0xFFFFFFFF), const Color(0xFFF5F5F5)], // White Gradient
+      "textColor": AppColors.primaryBlue,
+      "icon": Icons.info_outline,
+      "buttonText": "Approfondisci",
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 160, // Increased height to prevent overflow
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Smooth Background Transition
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                double page = 0;
+                if (_controller.hasClients && _controller.position.haveDimensions) {
+                  page = _controller.page ?? 0;
+                } else {
+                  page = _currentIndex.toDouble();
+                }
+
+                return Stack(
+                  children: List.generate(_newsItems.length, (index) {
+                    final double opacity = (1 - (page - index).abs()).clamp(0.0, 1.0);
+                    if (opacity == 0) return const SizedBox.shrink();
+
+                    final item = _newsItems[index];
+                    final bool isFullBackground = item['isFullBackground'] ?? false;
+
+                    return Opacity(
+                      opacity: opacity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: !isFullBackground
+                              ? LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: item['colors'],
+                                )
+                              : null,
+                        ),
+                        child: isFullBackground
+                            ? Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Image.asset(
+                                      item['image'],
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                          colors: [
+                                            Colors.black.withOpacity(0.7),
+                                            Colors.black.withOpacity(0.2),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : null,
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+
+            // Content PageView
+            PageView.builder(
+              controller: _controller,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              itemCount: _newsItems.length,
+              itemBuilder: (context, index) {
+                final item = _newsItems[index];
+                final bool isFullBackground = item['isFullBackground'] ?? false;
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item['title'],
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Montserrat',
+                          color: isFullBackground ? Colors.white : item['textColor'],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item['subtitle'],
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: (isFullBackground ? Colors.white : item['textColor']).withOpacity(0.8),
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          item['buttonText'],
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryBlue, // App's specific blue
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppColors.ctaApricot,
-                    ),
-                    minHeight: 6,
+                );
+              },
+            ),
+
+          // Dots Indicator
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_newsItems.length, (index) {
+                final bool isSelected = _currentIndex == index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: isSelected ? 24 : 8,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.9)
+                        : Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ),
-              ],
+                );
+              }),
             ),
           ),
         ],
+      ),
+    ),
+  );
+}
+}
+
+
+class _AppBarWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    
+    // Height of the control points to create a deeper wave
+    const waveHeight = 25.0;
+
+    path.lineTo(0, size.height - waveHeight);
+
+    // Create a smooth S-curve
+    path.cubicTo(
+      size.width * 0.35, // P1x
+      size.height + 10,  // P1y (Down)
+      size.width * 0.65, // P2x
+      size.height - 40,  // P2y (Up)
+      size.width,        // P3x
+      size.height - 15,  // P3y
+    );
+
+    path.lineTo(size.width, 0);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+
+
+class _PetCarousel extends StatefulWidget {
+  const _PetCarousel({
+    required this.dogs,
+    required this.onAddTap,
+  });
+
+  final List<dynamic> dogs;
+  final VoidCallback onAddTap;
+
+  @override
+  State<_PetCarousel> createState() => _PetCarouselState();
+}
+
+class _PetCarouselState extends State<_PetCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  final double _viewportFraction = 0.8;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: _viewportFraction);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Total items = dogs + 1 (add button)
+    final itemCount = widget.dogs.length + 1;
+
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: itemCount,
+      clipBehavior: Clip.none,
+      onPageChanged: (index) {
+        setState(() {
+          _currentPage = index;
+        });
+      },
+      itemBuilder: (context, index) {
+        // Calculate Scale
+        return AnimatedBuilder(
+          animation: _pageController,
+          builder: (context, child) {
+            double page = _currentPage.toDouble();
+            if (_pageController.position.haveDimensions) {
+              page = _pageController.page!;
+            }
+            // Logic: 1.0 at center, 0.9 at sides
+            // distance from current centered page
+            final distance = (page - index).abs();
+            final scale = (1 - (distance * 0.1)).clamp(0.9, 1.0);
+            
+            // Opacity fade 
+            // final opacity = (1 - (distance * 0.3)).clamp(0.5, 1.0);
+
+            return Transform.scale(
+              scale: scale,
+              alignment: Alignment.center,
+              child: child,
+            );
+          },
+          child: Center(
+            child: _buildItem(context, index),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildItem(BuildContext context, int index) {
+    if (index == widget.dogs.length) {
+      return _buildAddCard();
+    }
+    final dog = widget.dogs[index];
+    final riskLabel = _mapRisk(dog.riskLevel);
+    
+    return PetCard(
+      name: dog.name ?? 'Il tuo cane',
+      breed: dog.breedName ?? 'Razza non indicata',
+      showWarning: riskLabel == null,
+      age: dog.ageYears,
+      weight: dog.weightKg,
+      arthrosisGrade: riskLabel,
+      imagePath: dog.breedImageUrl ?? 'assets/first-dog.png',
+      backgroundColor: Colors.white,
+      onTap: () {
+        context.push(
+          '/dog-dashboard',
+          extra: {
+            'id': dog.id,
+            'name': dog.name,
+            'breed': dog.breedName,
+            'imagePath': dog.breedImageUrl,
+            'age': dog.ageYears,
+            'weight': dog.weightKg,
+            'arthrosisGrade': riskLabel ?? 'Non rilevato',
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAddCard() {
+    return GestureDetector(
+      onTap: widget.onAddTap,
+      child: CustomPaint(
+        painter: _DashedBorderPainter(
+          color: AppColors.ctaApricot.withOpacity(0.5),
+          strokeWidth: 2,
+          gap: 6,
+          radius: 28,
+        ),
+        child: Container(
+          width: 300,
+          height: 380, // Match PetCard height
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: AppColors.ctaApricot.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  size: 56,
+                  color: AppColors.ctaApricot,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text(
+                'Aggiungi un cane',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryBlue,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Crea il profilo per il tuo\namico a quattro zampe',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.text.withOpacity(0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -660,204 +1345,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-class _NewsCarousel extends StatefulWidget {
-  const _NewsCarousel();
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+  final double radius;
+
+  _DashedBorderPainter({
+    required this.color,
+    this.strokeWidth = 2.0,
+    this.gap = 5.0,
+    this.radius = 0.0,
+  });
 
   @override
-  State<_NewsCarousel> createState() => _NewsCarouselState();
-}
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
 
-class _NewsCarouselState extends State<_NewsCarousel> {
-  final PageController _controller = PageController();
-  int _currentIndex = 0;
-
-  final List<Map<String, dynamic>> _newsItems = [
-    {
-      "title": "Cos'è l'artrosi?",
-      "subtitle": "Segni precoci",
-      "color": Colors.white, // White
-      "textColor": AppColors.primaryBlue,
-      "icon": Icons.info_outline,
-      "buttonText": "Scopri di più",
-    },
-    {
-      "title": "Nuovi snack",
-      "subtitle": "Ricette sane",
-      "color": Color(0xFFFFE0B2), // Light Orange (Apricot-ish)
-      "textColor": Color(0xFF2D2D2D),
-      "icon": Icons.restaurant_menu,
-      "buttonText": "Leggi ora",
-    },
-    {
-      "title": "Esercizi",
-      "subtitle": "Movimento",
-      "color": Color(0xFFBBDEFB), // Light Blue
-      "textColor": AppColors.primaryBlue,
-      "icon": Icons.directions_run,
-      "buttonText": "Inizia",
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      height: 130,
-      decoration: BoxDecoration(
-        color: _newsItems[_currentIndex]['color'],
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black12, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _controller,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            itemCount: _newsItems.length,
-            itemBuilder: (context, index) {
-              final item = _newsItems[index];
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            item['title'],
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'Montserrat',
-                              color: item['textColor'],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item['subtitle'],
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: item['textColor'].withOpacity(0.7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            child: Text(
-                              item['buttonText'],
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: item['textColor'],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Icon placeholder to keep spacing, actual icon is static or sliding?
-                    // User said "informazioni devono scorrere". So icon slides too.
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        item['icon'],
-                        size: 32,
-                        color: item['textColor'],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-
-          // Dots Indicator
-          Positioned(
-            bottom: 8,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_newsItems.length, (index) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: _currentIndex == index ? 20 : 8,
-                  height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == index
-                        ? (_newsItems[_currentIndex]['textColor'] as Color)
-                        : Colors.black26,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AppBarWaveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-
-    // Start from top-left
-    path.lineTo(0, size.height - 10);
-
-    // Create wave at the bottom (same curvature as PetCard)
-    path.quadraticBezierTo(
-      size.width * 0.25,
-      size.height, // Control point
-      size.width * 0.5,
-      size.height - 10, // End point
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(radius),
     );
 
-    path.quadraticBezierTo(
-      size.width * 0.75,
-      size.height - 20, // Control point
-      size.width,
-      size.height - 10, // End point
-    );
+    final Path path = Path()..addRRect(rrect);
+    final Path dashPath = Path();
 
-    // Complete the path
-    path.lineTo(size.width, 0);
-    path.close();
+    double distance = 0.0;
+    for (final PathMetric metric in path.computeMetrics()) {
+      while (distance < metric.length) {
+        dashPath.addPath(
+          metric.extractPath(distance, distance + gap),
+          Offset.zero,
+        );
+        distance += gap * 2;
+      }
+    }
 
-    return path;
+    canvas.drawPath(dashPath, paint);
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

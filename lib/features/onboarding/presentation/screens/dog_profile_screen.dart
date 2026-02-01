@@ -19,7 +19,6 @@ class DogProfilePage extends ConsumerStatefulWidget {
 
 class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticKeepAliveClientMixin {
   final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
 
   AgeGroup _ageGroup = AgeGroup.adulto;
   DogSize _size = DogSize.media;
@@ -34,23 +33,30 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticK
   void initState() {
     super.initState();
     _nameController.addListener(_notifyChanges);
-    _ageController.addListener(_notifyChanges);
   }
 
   @override
   void dispose() {
     _nameController.removeListener(_notifyChanges);
-    _ageController.removeListener(_notifyChanges);
     _nameController.dispose();
-    _ageController.dispose();
     super.dispose();
   }
 
+  double _ageYearsForGroup(AgeGroup group) {
+    switch (group) {
+      case AgeGroup.cucciolo:
+        return 0.5;
+      case AgeGroup.adulto:
+        return 4;
+      case AgeGroup.senior:
+        return 9;
+    }
+  }
+
   void _notifyChanges() {
-    final ageYears = double.tryParse(_ageController.text.replaceAll(',', '.'));
     final profile = DogProfile(
       name: _nameController.text.isEmpty ? null : _nameController.text.trim(),
-      ageYears: ageYears,
+      ageYears: _ageYearsForGroup(_ageGroup),
       weightKg: _weightKg,
       breedId: _selectedBreedId,
       breedName: _selectedBreedName,
@@ -86,12 +92,11 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticK
               SizedBox(height: verticalGap),
               
               // Name Field
-              AppText.body('Come si chiama?', bold: true, color: AppColors.text),
-              const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: _nameController,
+                autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Nome',
+                  hintText: '🐶 Come si chiama il tuo cane?',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -106,25 +111,47 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticK
               ),
               SizedBox(height: verticalGap),
 
-              // Age (years)
-              AppText.body('Età (anni)', bold: true, color: AppColors.text),
+              // Age group
+              AppText.body('Età', bold: true, color: AppColors.text),
               const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _ageController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  hintText: 'Es. 4.5',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              Row(
+                children: [
+                  Expanded(
+                    child: _AgeGroupOption(
+                      title: 'Cucciolo',
+                      subtitle: '(0–1)',
+                      selected: _ageGroup == AgeGroup.cucciolo,
+                      onTap: () {
+                        setState(() => _ageGroup = AgeGroup.cucciolo);
+                        _notifyChanges();
+                      },
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.md,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _AgeGroupOption(
+                      title: 'Adulto',
+                      subtitle: '(1–7)',
+                      selected: _ageGroup == AgeGroup.adulto,
+                      onTap: () {
+                        setState(() => _ageGroup = AgeGroup.adulto);
+                        _notifyChanges();
+                      },
+                    ),
                   ),
-                ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _AgeGroupOption(
+                      title: 'Senior',
+                      subtitle: '(7+)',
+                      selected: _ageGroup == AgeGroup.senior,
+                      onTap: () {
+                        setState(() => _ageGroup = AgeGroup.senior);
+                        _notifyChanges();
+                      },
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: verticalGap),
 
@@ -150,12 +177,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticK
               _BreedPickerField(
                 selectedLabel: _selectedBreedName,
                 onTap: () async {
-                  final breedsAsync = ref.read(breedListProvider);
-                  final breeds = await breedsAsync.when(
-                    data: (list) => list,
-                    loading: () => <Breed>[],
-                    error: (_, __) => <Breed>[],
-                  );
+                  final breeds = await ref.read(breedListProvider.future).catchError((_) => <Breed>[]);
                   if (!mounted || breeds.isEmpty) return;
                   final picked = await _showBreedPicker(context, breeds);
                   if (picked != null) {
@@ -297,6 +319,77 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage> with AutomaticK
           ),
         );
       },
+    );
+  }
+}
+
+class _AgeGroupOption extends StatelessWidget {
+  const _AgeGroupOption({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = selected ? AppColors.primaryBlue : Colors.white;
+    final border = selected ? AppColors.primaryBlue : AppColors.borderSoft;
+    final textColor = selected ? Colors.white : AppColors.text;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: border, width: 1.2),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primaryBlue.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodyBold.copyWith(
+                  color: textColor,
+                  fontSize: 13,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: AppTypography.body.copyWith(
+                  color: textColor.withOpacity(0.9),
+                  fontSize: 11,
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

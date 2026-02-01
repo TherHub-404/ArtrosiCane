@@ -40,12 +40,16 @@ class PetCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         decoration: BoxDecoration(
           color: Colors.white,
+          border: Border.all(
+            color: AppColors.ctaApricot.withOpacity(0.18),
+            width: 1,
+          ),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -53,6 +57,25 @@ class PetCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(28),
           child: Stack(
           children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 6,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      AppColors.ctaApricot,
+                      Color(0xFFFFF2E0),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+              ),
+            ),
             // Pet Image (Top half)
             Positioned(
               top: 0,

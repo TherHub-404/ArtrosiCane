@@ -168,20 +168,31 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
   }
 
   Future<void> _openBreedPicker() async {
-    final breedsAsync = ref.read(breedListProvider);
-    final breeds = await breedsAsync.when(
-      data: (list) => list,
-      loading: () => <Breed>[],
-      error: (_, __) => <Breed>[],
-    );
-    if (!mounted || breeds.isEmpty) return;
-    final picked = await _showBreedPicker(context, breeds);
-    if (picked != null) {
-      setState(() {
-        _selectedBreedId = picked.id;
-        _selectedBreedLabel =
-            picked.nameIt?.isNotEmpty == true ? picked.nameIt : picked.name;
-      });
+    try {
+      final breeds = await ref.read(breedListProvider.future);
+      if (!mounted) return;
+
+      if (breeds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nessuna razza disponibile.')),
+        );
+        return;
+      }
+
+      final picked = await _showBreedPicker(context, breeds);
+      if (picked != null) {
+        setState(() {
+          _selectedBreedId = picked.id;
+          _selectedBreedLabel =
+              picked.nameIt?.isNotEmpty == true ? picked.nameIt : picked.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore caricamento razze: $e')),
+        );
+      }
     }
   }
 

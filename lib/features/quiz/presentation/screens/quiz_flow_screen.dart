@@ -700,13 +700,32 @@ class _QuizBottomBar extends StatelessWidget {
             )
           else
             const SizedBox.shrink(),
+          const Spacer(),
           if (!isLast)
-            TextButton.icon(
-              onPressed: onNext,
-              icon: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.ctaApricot),
-              label: const Text('Avanti', style: TextStyle(color: AppColors.ctaApricot, fontWeight: FontWeight.bold)),
-              style: TextButton.styleFrom(iconColor: AppColors.ctaApricot),
-              iconAlignment: IconAlignment.end,
+            SizedBox(
+              width: 150,
+              child: ElevatedButton.icon(
+                onPressed: onNext,
+                icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
+                label: const Text(
+                  'Continua',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.ctaApricot,
+                  elevation: 3,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  minimumSize: const Size(150, 44),
+                ),
+                iconAlignment: IconAlignment.end,
+              ),
             )
           else
             const SizedBox.shrink(),

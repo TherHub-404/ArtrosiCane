@@ -1,15 +1,17 @@
 import 'package:artrosi_cane/features/auth/presentation/screens/auth_prompt_screen.dart';
-import 'package:artrosi_cane/features/home/presentation/screens/home_screen.dart';
+import 'package:artrosi_cane/features/auth/presentation/screens/entry_screen.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/dog_dashboard_screen.dart';
+import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/exercise_advice_screen.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/walks_advice_screen.dart';
-
+import 'package:artrosi_cane/features/home/presentation/screens/home_screen.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/screens/onboarding_welcome_screen.dart';
+import 'package:artrosi_cane/features/onboarding/presentation/screens/splash_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_flow_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_result_screen.dart';
-import 'package:artrosi_cane/features/onboarding/presentation/screens/splash_screen.dart';
+import 'package:artrosi_cane/features/walks/presentation/screens/walks_overview_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -49,6 +51,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthPromptScreen(),
       ),
       GoRoute(
+        path: '/entry',
+        name: 'entry',
+        builder: (context, state) => const EntryScreen(),
+      ),
+      GoRoute(
         path: '/home',
         name: 'home',
         builder: (context, state) => const HomeScreen(),
@@ -62,11 +69,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/walks-overview',
+        name: 'walksOverview',
+        pageBuilder: (context, state) {
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: const WalksOverviewScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0);
+              const end = Offset.zero;
+              const curve = Curves.easeInOut;
+
+              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var offsetAnimation = animation.drive(tween);
+
+              return SlideTransition(
+                position: offsetAnimation,
+                child: child,
+              );
+            },
+          );
+        },
+      ),
+      GoRoute(
         path: '/walks',
         name: 'walks',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return WalksAdviceScreen(
+            grade: extra['grade'] as String? ?? '',
+            dogName: extra['name'] as String? ?? 'Il tuo cane',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/exercise',
+        name: 'exercise',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ExerciseAdviceScreen(
             grade: extra['grade'] as String? ?? '',
             dogName: extra['name'] as String? ?? 'Il tuo cane',
           );

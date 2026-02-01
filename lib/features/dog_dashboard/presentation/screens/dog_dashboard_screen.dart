@@ -1,27 +1,47 @@
-import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
-import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/widgets/app_banner.dart';
+import 'package:artrosi_cane/features/dog_dashboard/presentation/widgets/dog_edit_sheet.dart';
+import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
+import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:artrosi_cane/features/dog_dashboard/presentation/widgets/dog_edit_sheet.dart';
 
-class DogDashboardScreen extends StatelessWidget {
+class DogDashboardScreen extends ConsumerStatefulWidget {
   const DogDashboardScreen({super.key, required this.dogData});
 
   final Map<String, dynamic> dogData; // Using Map for now, will switch to Dog entity later
 
   @override
-  Widget build(BuildContext context) {
-    // Extract data with fallbacks
-    final name = dogData['name'] ?? 'Il tuo cane';
-    final breed = dogData['breed'] ?? 'Razza non indicata';
-    final age = dogData['age'] ?? 'N/A';
-    final weight = dogData['weight'] ?? 'N/A';
-    final imagePath = dogData['imagePath'] ?? 'assets/first-dog.png';
-    final arthrosisGrade = dogData['arthrosisGrade'] ?? 'Non rilevato';
+  ConsumerState<DogDashboardScreen> createState() => _DogDashboardScreenState();
+}
 
+class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
+  late String _name;
+  late String _breed;
+  late String _ageText;
+  late String _weightText;
+  late String _imagePath;
+  late String _arthrosisGrade;
+  String? _dogId;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.dogData;
+    _name = (data['name'] ?? 'Il tuo cane').toString();
+    _breed = (data['breed'] ?? 'Razza non indicata').toString();
+    _ageText = (data['age'] ?? 'N/A').toString();
+    _weightText = (data['weight'] ?? 'N/A').toString();
+    _imagePath = (data['imagePath'] ?? 'assets/first-dog.png').toString();
+    _arthrosisGrade = (data['arthrosisGrade'] ?? 'Non rilevato').toString();
+    _dogId = data['id']?.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
@@ -46,16 +66,119 @@ class DogDashboardScreen extends StatelessWidget {
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
-                builder: (context) => DogEditSheet(
-                  initialName: name,
-                  initialAge: age.toString(),
-                  initialWeight: weight.toString(),
-                  initialImagePath: imagePath,
-                  onSave: (newName, newAge, newWeight, newImage) {
-                    // TODO: Implement save logic with Riverpod
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Modifiche salvate (simulazione)')),
+                builder: (ctx) => DogEditSheet(
+                  initialName: _name,
+                  initialAge: _ageText,
+                  initialWeight: _weightText,
+                  initialImagePath: _imagePath,
+                  onSave: (newName, newAge, newWeight, newImage) async {
+                    final dogId = _dogId;
+                    if (dogId == null || dogId.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Errore: ID cane non trovato')),
+                      );
+                      return false;
+                    }
+
+                    final parsedAge = double.tryParse(newAge.replaceAll(',', '.'));
+                    if (parsedAge == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Inserisci un’età valida.')),
+                      );
+                      return false;
+                    }
+
+                    final parsedWeight = double.tryParse(newWeight.replaceAll(',', '.'));
+                    if (parsedWeight == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Inserisci un peso valido.')),
+                      );
+                      return false;
+                    }
+
+                    try {
+                      final repo = ref.read(dogRemoteRepositoryProvider);
+                      await repo.updateDog(
+                        dogId: dogId,
+                        name: newName.trim(),
+                        ageYears: parsedAge,
+                        weightKg: parsedWeight,
+                      );
+                      ref.invalidate(userDogsProvider);
+                      if (!mounted) return true;
+                      setState(() {
+                        _name = newName.trim();
+                        _ageText = newAge.trim();
+                        _weightText = newWeight.trim();
+                        if (newImage != null) {
+                          _imagePath = newImage;
+                        }
+                      });
+                      AppBanner.showSuccess(context, 'Profilo aggiornato.');
+                      return true;
+                    } catch (e) {
+                      if (!mounted) return false;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Errore durante il salvataggio: $e')),
+                      );
+                      return false;
+                    }
+                  },
+                  onDelete: () async {
+                    // Confirm delete
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Elimina profilo'),
+                        content: Text('Sei sicuro di voler eliminare il profilo di $_name? Questa azione non può essere annullata.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Annulla'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
                     );
+
+                    if (confirm == true) {
+                      final dogId = _dogId;
+                      if (dogId == null) {
+                         // Should not happen if data is consistent, but safety check
+                         if (context.mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(content: Text('Errore: ID cane non trovato')),
+                           );
+                         }
+                         return;
+                      }
+
+                      try {
+                        // Close the sheet first
+                        Navigator.of(ctx).pop(); 
+
+                        final repo = ref.read(dogRemoteRepositoryProvider);
+                        await repo.deleteDog(dogId);
+                        
+                        // Refresh list
+                        ref.invalidate(userDogsProvider);
+
+                        if (context.mounted) {
+                          // Go back to home
+                          context.go('/home');
+                          AppBanner.showSuccess(context, 'Profilo eliminato.');
+                        }
+                      } catch (e) {
+                         if (context.mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                           );
+                         }
+                      }
+                    }
                   },
                 ),
               );
@@ -69,7 +192,7 @@ class DogDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with Image
-            _buildHeader(imagePath),
+            _buildHeader(_imagePath),
 
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -78,12 +201,12 @@ class DogDashboardScreen extends StatelessWidget {
                 children: [
                   // Basic Info
                   Text(
-                    name,
+                    _name,
                     style: AppTypography.h1.copyWith(color: AppColors.primaryBlue),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    breed,
+                    _breed,
                     style: AppTypography.body.copyWith(
                       color: AppColors.text.withOpacity(0.7),
                       fontSize: 16,
@@ -94,15 +217,15 @@ class DogDashboardScreen extends StatelessWidget {
                   // Stats Row
                   Row(
                     children: [
-                      _buildStatCard('Età', '$age anni', Icons.cake),
+                      _buildStatCard('Età', '$_ageText anni', Icons.cake),
                       const SizedBox(width: AppSpacing.md),
-                      _buildStatCard('Peso', '$weight kg', Icons.monitor_weight),
+                      _buildStatCard('Peso', '$_weightText kg', Icons.monitor_weight),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
                   // Arthrosis Grade Section
-                  _buildArthrosisSection(context, arthrosisGrade),
+                  _buildArthrosisSection(context, _arthrosisGrade),
                   const SizedBox(height: AppSpacing.xl),
 
                   // Personalized Advice
@@ -267,7 +390,7 @@ class DogDashboardScreen extends StatelessWidget {
                 onPressed: () {
                 context.push('/quiz', extra: {
                   'skipIntro': true,
-                  'dog': dogData,
+                  'dog': widget.dogData,
                 });
                 },
                 style: ElevatedButton.styleFrom(
@@ -291,7 +414,7 @@ class DogDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildAdviceSection(BuildContext context) {
-    final gradeString = dogData['arthrosisGrade'] as String? ?? '';
+    final gradeString = _arthrosisGrade;
     final riskCategory = _riskCategory(gradeString);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,56 +429,92 @@ class DogDashboardScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         _buildWalkCard(context, riskCategory, gradeString),
         const SizedBox(height: AppSpacing.md),
-        _buildAdviceItem(
-          'Esercizio Fisico',
-          'Mantieni passeggiate brevi ma frequenti per non affaticare le articolazioni.',
-          Icons.directions_walk,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildAdviceItem(
-          'Alimentazione',
-          'Integra la dieta con Omega-3 per supportare la salute articolare.',
-          Icons.restaurant,
-        ),
+        _buildExerciseCard(context, riskCategory, gradeString),
       ],
     );
   }
 
-  Widget _buildAdviceItem(String title, String description, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
+  Widget _buildExerciseCard(BuildContext context, _RiskCategory category, String gradeString) {
+    final subtitle = _exerciseCardSubtitle(category);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppColors.primaryBlue, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.bodyBold.copyWith(color: AppColors.primaryBlue),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.text.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
+        onTap: () {
+          context.push('/exercise', extra: {
+            'grade': gradeString,
+            'name': _name.isNotEmpty ? _name : 'Il tuo cane',
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.fitness_center, color: AppColors.primaryBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esercizio fisico consigliato',
+                      style: AppTypography.bodyBold.copyWith(color: AppColors.primaryBlue, fontSize: 16),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.primaryBlue),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: AppTypography.body.copyWith(color: AppColors.text.withOpacity(0.8)),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(Icons.touch_app, size: 18, color: AppColors.ctaApricot),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tocca per aprire i dettagli',
+                    style: AppTypography.bodyBold.copyWith(
+                      color: AppColors.ctaApricot,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  String _exerciseCardSubtitle(_RiskCategory category) {
+    switch (category) {
+      case _RiskCategory.none:
+        return 'Idee per attività e gioco in sicurezza';
+      case _RiskCategory.mild:
+        return 'Esercizi a basso impatto e sessioni brevi';
+      case _RiskCategory.severe:
+        return 'Movimento dolce per mantenere la mobilità';
+      case _RiskCategory.unknown:
+        return 'Apri i consigli per esercizi su misura';
+    }
   }
 
   _RiskCategory _riskCategory(String grade) {
@@ -375,7 +534,7 @@ class DogDashboardScreen extends StatelessWidget {
         onTap: () {
           context.push('/walks', extra: {
             'grade': gradeString,
-            'name': dogData['name'] ?? 'Il tuo cane',
+            'name': _name.isNotEmpty ? _name : 'Il tuo cane',
           });
         },
         child: AnimatedContainer(

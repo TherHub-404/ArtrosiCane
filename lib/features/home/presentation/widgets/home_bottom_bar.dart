@@ -1,5 +1,6 @@
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({
@@ -15,18 +16,17 @@ class HomeBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 90,
+      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-        boxShadow: isExpanded
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                ),
-              ],
+        color: AppColors.primaryBlue, // Changed to Primary Blue
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBlue.withOpacity(0.3), // Blue shadow
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Stack(
         clipBehavior: Clip.none,
@@ -45,7 +45,7 @@ class HomeBottomBar extends StatelessWidget {
                 _BottomBarItem(
                   icon: Icons.map_rounded,
                   label: 'Passeggiate',
-                  onTap: () {},
+                  onTap: () => context.push('/walks-overview'),
                 ),
               ],
             ),
@@ -168,14 +168,14 @@ class _BottomBarItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 28, color: AppColors.primaryBlue),
+            Icon(icon, size: 28, color: Colors.white), // White Icon
             const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.primaryBlue,
+                color: Colors.white, // White Text
               ),
             ),
           ],
