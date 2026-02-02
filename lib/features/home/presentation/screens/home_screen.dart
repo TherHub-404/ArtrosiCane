@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -917,6 +918,7 @@ class _NewsCarousel extends StatefulWidget {
 class _NewsCarouselState extends State<_NewsCarousel> {
   final PageController _controller = PageController();
   int _currentIndex = 0;
+  static final Uri _siteUri = Uri.parse('https://www.artrosicane.com');
 
   final List<Map<String, dynamic>> _newsItems = [
     {
@@ -944,6 +946,22 @@ class _NewsCarouselState extends State<_NewsCarousel> {
       "buttonText": "Approfondisci",
     },
   ];
+
+  Future<void> _handleNewsTap(int index) async {
+    if (index == 0) {
+      if (mounted) context.push('/walks-overview');
+      return;
+    }
+    final launched = await launchUrl(
+      _siteUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossibile aprire il sito.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1067,28 +1085,32 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                      InkWell(
+                        onTap: () => _handleNewsTap(index),
+                        borderRadius: BorderRadius.circular(25),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            item['buttonText'],
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryBlue, // App's specific blue
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          item['buttonText'],
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryBlue, // App's specific blue
                           ),
                         ),
                       ),

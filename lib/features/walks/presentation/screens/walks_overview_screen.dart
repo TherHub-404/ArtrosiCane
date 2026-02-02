@@ -36,7 +36,13 @@ class WalksOverviewScreen extends StatelessWidget {
                   color: AppColors.primaryBlue,
                   size: 28,
                 ),
-                onPressed: () => context.pop(),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                },
               ),
               centerTitle: true,
               title: const Text(
