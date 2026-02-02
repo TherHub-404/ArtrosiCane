@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EntryScreen extends ConsumerStatefulWidget {
   const EntryScreen({super.key});
@@ -44,6 +46,7 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
 
   Future<void> _syncDogProfileToRemote() async {
     try {
+      if (_isDemoUser()) return;
       final loadProfile = ref.read(loadDogProfileUseCaseProvider);
       final profile = await loadProfile.call();
       if (profile == null) return;
@@ -51,6 +54,13 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
     } catch (_) {
       // Non-blocking sync
     }
+  }
+
+  bool _isDemoUser() {
+    final demoEmail = AppConfig.demoEmail;
+    final currentEmail = Supabase.instance.client.auth.currentUser?.email;
+    if (demoEmail == null || currentEmail == null) return false;
+    return currentEmail.toLowerCase() == demoEmail.toLowerCase();
   }
 
   @override

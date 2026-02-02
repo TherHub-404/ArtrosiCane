@@ -1,6 +1,7 @@
 import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -54,6 +55,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       final authRepo = ref.read(authRepositoryProvider);
       if (_isLogin) {
         await authRepo.signIn(email: email, password: password);
+        await _resetLocalDataIfUserChanged();
         await _syncDogProfileToRemote();
         if (mounted) context.go('/entry');
       } else {
@@ -69,6 +71,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
           );
           if (mounted) setState(() => _isLogin = true);
         } else {
+          await _resetLocalDataIfUserChanged();
           if (mounted) context.go('/entry');
         }
       }
@@ -91,6 +94,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
 
   Future<void> _syncDogProfileToRemote() async {
     try {
+      if (_isDemoUser()) return;
       final loadProfile = ref.read(loadDogProfileUseCaseProvider);
       final profile = await loadProfile.call();
       if (profile == null) return;
@@ -115,6 +119,27 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     return e.message;
   }
 
+  bool _isDemoUser() {
+    final demoEmail = AppConfig.demoEmail;
+    final currentEmail = Supabase.instance.client.auth.currentUser?.email;
+    if (demoEmail == null || currentEmail == null) return false;
+    return currentEmail.toLowerCase() == demoEmail.toLowerCase();
+  }
+
+  Future<void> _resetLocalDataIfUserChanged() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return;
+    final lastUserId = prefs.getString('lastUserId');
+    if (lastUserId != null && lastUserId != currentUserId) {
+      await prefs.remove('onboardingCompleted');
+      await prefs.remove('dogProfile');
+      await prefs.remove('quizProgress');
+      await prefs.remove('lastResult');
+    }
+    await prefs.setString('lastUserId', currentUserId);
+  }
+
   Future<void> _loginDemo() async {
     if (_isSubmitting) return;
     final email = AppConfig.demoEmail;
@@ -128,6 +153,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     try {
       final authRepo = ref.read(authRepositoryProvider);
       await authRepo.signIn(email: email, password: password);
+      await _resetLocalDataIfUserChanged();
       await _syncDogProfileToRemote();
       if (mounted) context.go('/entry');
     } on AuthException catch (e) {

@@ -80,6 +80,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       await prefs.remove('dogProfile');
       await prefs.remove('quizProgress');
       await prefs.remove('lastResult');
+      await prefs.remove('lastUserId');
+      ref.invalidate(userDogsProvider);
       if (mounted) context.go('/auth');
     } catch (e) {
       if (!mounted) return;

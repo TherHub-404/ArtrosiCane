@@ -1,6 +1,7 @@
 import 'package:artrosi_cane/core/widgets/app_card.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -15,6 +16,7 @@ import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuizFlowScreen extends ConsumerStatefulWidget {
   const QuizFlowScreen({super.key, this.skipIntro = false, this.dogData});
@@ -75,6 +77,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   Future<void> _persistDogProfileRemote() async {
     if (_latestProfile == null) return;
     try {
+      if (_isDemoUser()) return;
       final id = await ref.read(dogSupabaseRepositoryProvider).upsertDog(_latestProfile!);
       if (id != null) {
         _dogId = id;
@@ -162,6 +165,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   }
 
   Future<void> _persistResultRemote(QuizResult result) async {
+    if (_isDemoUser()) return;
     final answers = ref.read(quizControllerProvider).answers;
     final dogId = _dogId;
     await ref.read(quizRemoteDataSourceProvider).saveResult(
@@ -169,6 +173,13 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
           dogId: dogId,
           answers: answers,
         );
+  }
+
+  bool _isDemoUser() {
+    final demoEmail = AppConfig.demoEmail;
+    final currentEmail = Supabase.instance.client.auth.currentUser?.email;
+    if (demoEmail == null || currentEmail == null) return false;
+    return currentEmail.toLowerCase() == demoEmail.toLowerCase();
   }
 
   Future<void> _navigateBackToDogDashboard(QuizResult result) async {
