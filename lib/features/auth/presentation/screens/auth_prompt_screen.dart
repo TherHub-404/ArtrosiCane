@@ -1,4 +1,4 @@
-import 'package:artrosi_cane/core/widgets/app_button.dart';
+import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
@@ -113,6 +113,32 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       return 'Devi confermare l\'email prima di accedere. Controlla la posta e riprova.';
     }
     return e.message;
+  }
+
+  Future<void> _loginDemo() async {
+    if (_isSubmitting) return;
+    final email = AppConfig.demoEmail;
+    final password = AppConfig.demoPassword;
+    if (email == null || password == null) {
+      _showSnack('DEMO_EMAIL o DEMO_PASSWORD mancanti in .env');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.signIn(email: email, password: password);
+      await _syncDogProfileToRemote();
+      if (mounted) context.go('/entry');
+    } on AuthException catch (e) {
+      final message = _friendlyAuthMessage(e);
+      _showSnack(message);
+      _setBanner(message, Colors.red.shade700);
+    } catch (e) {
+      _showSnack('Errore: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -311,6 +337,23 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                   elevation: 2, // Reduced elevation
                   textStyle: AppTypography.bodyBold,
                 ),
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              ElevatedButton(
+                onPressed: _isSubmitting ? null : _loginDemo,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.primaryBlue,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 2,
+                  textStyle: AppTypography.bodyBold,
+                ),
+                child: const Text('ENTRA IN MODALITÀ DEMO'),
               ),
 
               const SizedBox(height: AppSpacing.xl),

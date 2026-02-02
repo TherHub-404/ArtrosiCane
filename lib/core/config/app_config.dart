@@ -22,4 +22,14 @@ class AppConfig {
   static Future<void> load() async {
     await dotenv.load(fileName: '.env');
   }
+
+  static String? get demoEmail => _optional('DEMO_EMAIL');
+
+  static String? get demoPassword => _optional('DEMO_PASSWORD');
+
+  static String? _optional(String key) {
+    final value = dotenv.env[key];
+    if (value == null || value.isEmpty) return null;
+    return value;
+  }
 }
