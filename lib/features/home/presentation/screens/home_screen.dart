@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/home_bottom_bar.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
@@ -7,6 +6,7 @@ import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.d
 import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
+import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -86,21 +86,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (mounted) context.go('/auth');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Logout fallito: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Logout fallito: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final showBibbioneBackground = inviteLocation == 'bibbione';
+
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
     final speedDialBottomOffset = 90.0 + 40.0 + 16.0 + bottomInset;
     const appBarHeight = 110.0;
     final contentTopPadding = appBarHeight + topInset;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
@@ -196,10 +201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red),
-              ),
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
               onTap: _handleLogout,
             ),
           ],
@@ -211,6 +213,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       body: Stack(
         children: [
+          Positioned.fill(
+            child: showBibbioneBackground
+                ? Image.asset(
+                    'assets/Marina-di-Bibbiona.jpg',
+                    fit: BoxFit.cover,
+                  )
+                : const ColoredBox(color: Colors.white),
+          ),
+          if (showBibbioneBackground)
+            Positioned.fill(
+              child: Container(color: Colors.white.withOpacity(0.25)),
+            ),
           // Main Content
           SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -251,7 +265,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Icon(Icons.pets_rounded, color: AppColors.ctaApricot, size: 20),
+                          Icon(
+                            Icons.pets_rounded,
+                            color: AppColors.ctaApricot,
+                            size: 20,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'I tuoi Cani',
@@ -281,13 +299,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 onTap: _openAddPetDialog,
                                 child: CustomPaint(
                                   painter: _DashedBorderPainter(
-                                    color: AppColors.ctaApricot.withOpacity(0.5),
+                                    color: AppColors.ctaApricot.withOpacity(
+                                      0.5,
+                                    ),
                                     strokeWidth: 2,
                                     gap: 6,
                                     radius: 28,
                                   ),
                                   child: Container(
-                                    padding: const EdgeInsets.all(AppSpacing.lg),
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.lg,
+                                    ),
                                     width: double.infinity,
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.6),
@@ -459,7 +481,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppColors.ctaApricot.withOpacity(0.15),
+                                    color: AppColors.ctaApricot.withOpacity(
+                                      0.15,
+                                    ),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: const Icon(
@@ -506,7 +530,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     );
                   },
                 ),
-                const SizedBox(height: 140), // Extra space for bottom navigation bar
+                const SizedBox(
+                  height: 140,
+                ), // Extra space for bottom navigation bar
               ],
             ),
           ),
@@ -655,7 +681,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           height: 380,
           margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8), // Slight transparency for texture
+            color: Colors.white.withOpacity(
+              0.8,
+            ), // Slight transparency for texture
             borderRadius: BorderRadius.circular(28),
           ),
           child: Column(
@@ -766,7 +794,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (riskLabel != null)
                       Container(
                         margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _riskPillColor(riskLabel).withOpacity(0.18),
                           borderRadius: BorderRadius.circular(12),
@@ -813,10 +844,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     context.push(
                       '/walks',
-                      extra: {
-                        'grade': gradeString,
-                        'name': dogName,
-                      },
+                      extra: {'grade': gradeString, 'name': dogName},
                     );
                   },
                 ),
@@ -830,10 +858,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     context.push(
                       '/exercise',
-                      extra: {
-                        'grade': gradeString,
-                        'name': dogName,
-                      },
+                      extra: {'grade': gradeString, 'name': dogName},
                     );
                   },
                 ),
@@ -932,7 +957,10 @@ class _NewsCarouselState extends State<_NewsCarousel> {
     {
       "title": "Nuovi snack",
       "subtitle": "Ricette sane per il tuo cane",
-      "colors": [const Color(0xFFFFE0B2), const Color(0xFFFFCC80)], // Orange Gradient
+      "colors": [
+        const Color(0xFFFFE0B2),
+        const Color(0xFFFFCC80),
+      ], // Orange Gradient
       "textColor": const Color(0xFF2D2D2D),
       "icon": Icons.restaurant_menu,
       "buttonText": "Leggi ora",
@@ -940,7 +968,10 @@ class _NewsCarouselState extends State<_NewsCarousel> {
     {
       "title": "Cos'è l'artrosi?",
       "subtitle": "Segni precoci da non ignorare",
-      "colors": [const Color(0xFFFFFFFF), const Color(0xFFF5F5F5)], // White Gradient
+      "colors": [
+        const Color(0xFFFFFFFF),
+        const Color(0xFFF5F5F5),
+      ], // White Gradient
       "textColor": AppColors.primaryBlue,
       "icon": Icons.info_outline,
       "buttonText": "Approfondisci",
@@ -987,7 +1018,8 @@ class _NewsCarouselState extends State<_NewsCarousel> {
               animation: _controller,
               builder: (context, child) {
                 double page = 0;
-                if (_controller.hasClients && _controller.position.haveDimensions) {
+                if (_controller.hasClients &&
+                    _controller.position.haveDimensions) {
                   page = _controller.page ?? 0;
                 } else {
                   page = _currentIndex.toDouble();
@@ -995,11 +1027,15 @@ class _NewsCarouselState extends State<_NewsCarousel> {
 
                 return Stack(
                   children: List.generate(_newsItems.length, (index) {
-                    final double opacity = (1 - (page - index).abs()).clamp(0.0, 1.0);
+                    final double opacity = (1 - (page - index).abs()).clamp(
+                      0.0,
+                      1.0,
+                    );
                     if (opacity == 0) return const SizedBox.shrink();
 
                     final item = _newsItems[index];
-                    final bool isFullBackground = item['isFullBackground'] ?? false;
+                    final bool isFullBackground =
+                        item['isFullBackground'] ?? false;
 
                     return Opacity(
                       opacity: opacity,
@@ -1058,9 +1094,12 @@ class _NewsCarouselState extends State<_NewsCarousel> {
               itemBuilder: (context, index) {
                 final item = _newsItems[index];
                 final bool isFullBackground = item['isFullBackground'] ?? false;
-                
+
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1071,7 +1110,9 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
                           fontFamily: 'Montserrat',
-                          color: isFullBackground ? Colors.white : item['textColor'],
+                          color: isFullBackground
+                              ? Colors.white
+                              : item['textColor'],
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1079,7 +1120,11 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                         item['subtitle'],
                         style: TextStyle(
                           fontSize: 14,
-                          color: (isFullBackground ? Colors.white : item['textColor']).withOpacity(0.8),
+                          color:
+                              (isFullBackground
+                                      ? Colors.white
+                                      : item['textColor'])
+                                  .withOpacity(0.8),
                           fontWeight: FontWeight.w500,
                           fontFamily: 'Montserrat',
                         ),
@@ -1109,7 +1154,8 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.primaryBlue, // App's specific blue
+                              color:
+                                  AppColors.primaryBlue, // App's specific blue
                             ),
                           ),
                         ),
@@ -1120,43 +1166,42 @@ class _NewsCarouselState extends State<_NewsCarousel> {
               },
             ),
 
-          // Dots Indicator
-          Positioned(
-            bottom: 12,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_newsItems.length, (index) {
-                final bool isSelected = _currentIndex == index;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: isSelected ? 24 : 8,
-                  height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Colors.white.withOpacity(0.9)
-                        : Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
+            // Dots Indicator
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_newsItems.length, (index) {
+                  final bool isSelected = _currentIndex == index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: isSelected ? 24 : 8,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
-}
-
 
 class _AppBarWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    
+
     // Height of the control points to create a deeper wave
     const waveHeight = 25.0;
 
@@ -1165,11 +1210,11 @@ class _AppBarWaveClipper extends CustomClipper<Path> {
     // Create a smooth S-curve
     path.cubicTo(
       size.width * 0.35, // P1x
-      size.height + 10,  // P1y (Down)
+      size.height + 10, // P1y (Down)
       size.width * 0.65, // P2x
-      size.height - 40,  // P2y (Up)
-      size.width,        // P3x
-      size.height - 15,  // P3y
+      size.height - 40, // P2y (Up)
+      size.width, // P3x
+      size.height - 15, // P3y
     );
 
     path.lineTo(size.width, 0);
@@ -1182,13 +1227,8 @@ class _AppBarWaveClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-
-
 class _PetCarousel extends StatefulWidget {
-  const _PetCarousel({
-    required this.dogs,
-    required this.onAddTap,
-  });
+  const _PetCarousel({required this.dogs, required this.onAddTap});
 
   final List<dynamic> dogs;
   final VoidCallback onAddTap;
@@ -1241,8 +1281,8 @@ class _PetCarouselState extends State<_PetCarousel> {
             // distance from current centered page
             final distance = (page - index).abs();
             final scale = (1 - (distance * 0.1)).clamp(0.9, 1.0);
-            
-            // Opacity fade 
+
+            // Opacity fade
             // final opacity = (1 - (distance * 0.3)).clamp(0.5, 1.0);
 
             return Transform.scale(
@@ -1251,9 +1291,7 @@ class _PetCarouselState extends State<_PetCarousel> {
               child: child,
             );
           },
-          child: Center(
-            child: _buildItem(context, index),
-          ),
+          child: Center(child: _buildItem(context, index)),
         );
       },
     );
@@ -1265,7 +1303,7 @@ class _PetCarouselState extends State<_PetCarousel> {
     }
     final dog = widget.dogs[index];
     final riskLabel = _mapRisk(dog.riskLevel);
-    
+
     return PetCard(
       name: dog.name ?? 'Il tuo cane',
       breed: dog.breedName ?? 'Razza non indicata',

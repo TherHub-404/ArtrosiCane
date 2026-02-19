@@ -1,0 +1,24 @@
+{
+  "name": "artrosicane-remotion-visuals",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "remotion studio",
+    "render:showcase": "remotion render ArtrosiSlidesShowcase out/artrosi-slides-showcase.mp4",
+    "render:logo": "remotion render ArtrosiLogoReveal out/artrosi-logo-reveal.mp4",
+    "render:gif:flow": "remotion render ArtrosiOnboardingFlowGif out/artrosi-onboarding-flow.gif",
+    "render:gif:iphone": "remotion render ArtrosiIPhone17MockupGif out/artrosi-iphone17-mockup.gif",
+    "render:gif:journey": "remotion render ArtrosiEndToEndJourneyGif out/artrosi-end-to-end-journey.gif"
+  },
+  "dependencies": {
+    "@remotion/transitions": "^4.0.370",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "^4.0.370"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.370",
+    "typescript": "5.7.3"
+  }
+}

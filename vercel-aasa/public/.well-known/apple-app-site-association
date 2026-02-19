@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "9Z8F9Q282X.com.artrosicase.artrosicane",
+        "paths": [
+          "/i",
+          "/i/*"
+        ]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": [
+      "9Z8F9Q282X.com.artrosicase.artrosicane.Clip"
+    ]
+  }
+}
