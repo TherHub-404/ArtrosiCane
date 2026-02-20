@@ -27,6 +27,12 @@ class AppConfig {
 
   static String? get demoPassword => _optional('DEMO_PASSWORD');
 
+  static String get googleIosClientId =>
+      _optional('GOOGLE_IOS_CLIENT_ID') ??
+      '1058669899472-k1tnp52pj2o25fbn7uemtunbt18bfclp.apps.googleusercontent.com';
+
+  static String? get googleWebClientId => _optional('GOOGLE_WEB_CLIENT_ID');
+
   static String get inviteApiBaseUrl =>
       _optional('INVITE_API_BASE_URL') ?? 'https://api.example.com';
 

@@ -1,3 +1,5 @@
+const _inviteLocationUnchanged = Object();
+
 class FeatureFlagsState {
   const FeatureFlagsState({
     required this.flags,
@@ -20,7 +22,7 @@ class FeatureFlagsState {
   FeatureFlagsState copyWith({
     Map<String, dynamic>? flags,
     String? activeToken,
-    String? inviteLocation,
+    Object? inviteLocation = _inviteLocationUnchanged,
     String? lastError,
     DateTime? lastUpdatedAt,
     bool? isLoading,
@@ -28,7 +30,9 @@ class FeatureFlagsState {
     return FeatureFlagsState(
       flags: flags ?? this.flags,
       activeToken: activeToken ?? this.activeToken,
-      inviteLocation: inviteLocation ?? this.inviteLocation,
+      inviteLocation: identical(inviteLocation, _inviteLocationUnchanged)
+          ? this.inviteLocation
+          : inviteLocation as String?,
       lastError: lastError,
       lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
       isLoading: isLoading ?? this.isLoading,

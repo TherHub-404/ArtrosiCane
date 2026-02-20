@@ -46,9 +46,11 @@ class FeatureFlagsController extends StateNotifier<FeatureFlagsState> {
     );
   }
 
-  Future<void> persistInviteLocation(String location) async {
-    final normalized = location.trim().toLowerCase();
-    if (normalized.isEmpty) {
+  Future<void> persistInviteLocationFromLink(String? location) async {
+    final normalized = _normalizeInviteLocation(location);
+    if (normalized == null) {
+      await _prefs.remove(_inviteLocationStorageKey);
+      state = state.copyWith(inviteLocation: null);
       return;
     }
 
@@ -73,24 +75,45 @@ class FeatureFlagsController extends StateNotifier<FeatureFlagsState> {
   }
 
   void _hydrateFromStorage() {
+    final storedLocation = _normalizeInviteLocation(
+      _prefs.getString(_inviteLocationStorageKey),
+    );
+    final rawUpdatedAt = _prefs.getString(_flagsUpdatedAtStorageKey);
+    final storedToken = getStoredToken();
+
     final rawFlags = _prefs.getString(_flagsStorageKey);
     if (rawFlags == null || rawFlags.isEmpty) {
+      state = state.copyWith(
+        activeToken: storedToken,
+        inviteLocation: storedLocation,
+        lastUpdatedAt: rawUpdatedAt == null
+            ? null
+            : DateTime.tryParse(rawUpdatedAt),
+        lastError: null,
+      );
       return;
     }
 
     try {
       final decoded = jsonDecode(rawFlags);
       if (decoded is! Map) {
+        state = state.copyWith(
+          activeToken: storedToken,
+          inviteLocation: storedLocation,
+          lastUpdatedAt: rawUpdatedAt == null
+              ? null
+              : DateTime.tryParse(rawUpdatedAt),
+          lastError: null,
+        );
         return;
       }
 
-      final rawUpdatedAt = _prefs.getString(_flagsUpdatedAtStorageKey);
       state = state.copyWith(
         flags: Map<String, dynamic>.unmodifiable(
           decoded.map((key, value) => MapEntry(key.toString(), value)),
         ),
-        activeToken: getStoredToken(),
-        inviteLocation: _prefs.getString(_inviteLocationStorageKey),
+        activeToken: storedToken,
+        inviteLocation: storedLocation,
         lastUpdatedAt: rawUpdatedAt == null
             ? null
             : DateTime.tryParse(rawUpdatedAt),
@@ -99,5 +122,20 @@ class FeatureFlagsController extends StateNotifier<FeatureFlagsState> {
     } catch (error) {
       AppLogger.debug('Unable to hydrate flags from storage: $error');
     }
+  }
+
+  String? _normalizeInviteLocation(String? value) {
+    if (value == null) return null;
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+
+    // Accept common variants/typos and map them to one canonical location.
+    if (normalized == 'bibbione' ||
+        normalized == 'bibbine' ||
+        normalized == 'bibiobe' ||
+        normalized.startsWith('bibb')) {
+      return 'bibbione';
+    }
+    return normalized;
   }
 }

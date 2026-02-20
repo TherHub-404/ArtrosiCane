@@ -11,13 +11,30 @@ final class ClipInvocationModel: ObservableObject {
   @Published var location: String?
   @Published var errorText: String?
 
-  private let inviteHost = "artrosicane.vercel.app"
-  private let invitePath = "/i"
-  private let validateBaseUrl = "https://api.example.com"
-  private let appGroupId = "group.com.company.app"
+  private let inviteHost: String
+  private let invitePath: String
+  private let validateBaseUrl: String?
+  private let appGroupId: String
+  private let fullAppAppStoreId: String?
   private let pendingTokenKey = "pending_invite_token"
   private let pendingLocationKey = "pending_invite_location"
-  private let fullAppAppStoreId = "1234567890" // Replace with your App Store ID
+
+  init() {
+    let info = Bundle.main.infoDictionary ?? [:]
+    inviteHost = (info["INVITE_DOMAIN"] as? String ?? "artrosicane.vercel.app")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .lowercased()
+    invitePath = (info["INVITE_PATH"] as? String ?? "/i")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let rawBaseUrl = (info["INVITE_API_BASE_URL"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    validateBaseUrl = (rawBaseUrl?.isEmpty ?? true) ? nil : rawBaseUrl
+    appGroupId = (info["APP_GROUP_ID"] as? String ?? "group.com.artrosicase.artrosicane")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let rawStoreId = (info["FULL_APP_APP_STORE_ID"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    fullAppAppStoreId = (rawStoreId?.isEmpty ?? true) ? nil : rawStoreId
+  }
 
   func handle(userActivity: NSUserActivity) {
     guard
@@ -46,12 +63,12 @@ final class ClipInvocationModel: ObservableObject {
 
   func showGetFullApp(openURL: OpenURLAction) {
     if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-      let config = SKOverlay.AppConfiguration(
-        appIdentifier: fullAppAppStoreId,
-        position: .bottom
-      )
-      config.userDismissible = true
+      let config = SKOverlay.AppClipConfiguration(position: .bottom)
       SKOverlay(configuration: config).present(in: scene)
+      return
+    }
+
+    guard let fullAppAppStoreId else {
       return
     }
 
@@ -74,23 +91,30 @@ final class ClipInvocationModel: ObservableObject {
         isValidating = false
         return
       }
-
-      let defaults = UserDefaults(suiteName: appGroupId)
-      defaults?.set(token, forKey: pendingTokenKey)
-      defaults?.set(location, forKey: pendingLocationKey)
-      defaults?.set(Date().timeIntervalSince1970, forKey: "pending_invite_token_saved_at")
-      defaults?.synchronize()
-
-      statusText = "Token valido. Installa l'app completa."
     } catch {
-      statusText = "Errore di rete"
-      errorText = error.localizedDescription
+      // In caso di rete non disponibile continuiamo il deferred handoff.
+      statusText = "Validazione non disponibile, procedo con installazione app."
+      errorText = nil
+    }
+
+    let defaults = UserDefaults(suiteName: appGroupId)
+    defaults?.set(token, forKey: pendingTokenKey)
+    defaults?.set(location, forKey: pendingLocationKey)
+    defaults?.set(Date().timeIntervalSince1970, forKey: "pending_invite_token_saved_at")
+    defaults?.synchronize()
+
+    if errorText == nil {
+      statusText = "Token registrato. Installa l'app completa."
     }
 
     isValidating = false
   }
 
   private func validate(token: String) async throws -> Bool {
+    guard let validateBaseUrl else {
+      return true
+    }
+
     guard
       let encoded = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
       let url = URL(string: "\(validateBaseUrl)/validate?t=\(encoded)")

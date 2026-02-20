@@ -167,6 +167,27 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.signInWithGoogle();
+      await _resetLocalDataIfUserChanged();
+      await _syncDogProfileToRemote();
+      if (mounted) context.go('/entry');
+    } on AuthException catch (e) {
+      final message = _friendlyAuthMessage(e);
+      _showSnack(message);
+      _setBanner(message, Colors.red.shade700);
+    } catch (e) {
+      _showSnack('Errore: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -347,7 +368,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
 
               // Google Button
               ElevatedButton.icon(
-                onPressed: () => context.go('/entry'),
+                onPressed: _isSubmitting ? null : _signInWithGoogle,
                 icon: Image.asset(
                   'assets/google_logo.png',
                   height: 22,

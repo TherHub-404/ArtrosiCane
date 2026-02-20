@@ -162,9 +162,7 @@ class LinkService {
       return;
     }
 
-    if (inviteLink.location != null) {
-      await _flagsController.persistInviteLocation(inviteLink.location!);
-    }
+    await _flagsController.persistInviteLocationFromLink(inviteLink.location);
 
     await _syncToken(inviteLink.token, source: source);
   }

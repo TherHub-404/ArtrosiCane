@@ -4,7 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private let deepLinkChannelName = "com.company.app/deeplink"
-  private let appGroupId = "group.com.company.app"
+  private let appGroupId = "group.com.artrosicase.artrosicane"
   private let pendingInviteTokenKey = "pending_invite_token"
   private let pendingInviteLocationKey = "pending_invite_location"
   private let inviteHost = "artrosicane.vercel.app"
@@ -99,8 +99,8 @@ import UIKit
   }
 
   private func enqueuePendingTokenFromAppGroupIfNeeded() {
+    let defaults = UserDefaults(suiteName: appGroupId) ?? .standard
     guard
-      let defaults = UserDefaults(suiteName: appGroupId),
       let token = defaults.string(forKey: pendingInviteTokenKey),
       !token.isEmpty
     else {

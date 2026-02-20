@@ -15,20 +15,19 @@ struct ClipContentView: View {
       if let token = model.token {
         Text("Token: \(token)")
           .font(.caption)
-          .foregroundStyle(.secondary)
-          .textSelection(.enabled)
+          .foregroundColor(.secondary)
       }
 
       if let location = model.location {
         Text("Location: \(location)")
           .font(.caption2)
-          .foregroundStyle(.secondary)
+          .foregroundColor(.secondary)
       }
 
       if let error = model.errorText {
         Text(error)
           .font(.footnote)
-          .foregroundStyle(.red)
+          .foregroundColor(.red)
       }
 
       Button {
@@ -36,8 +35,11 @@ struct ClipContentView: View {
       } label: {
         Text("Get full app")
           .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(10)
       }
-      .buttonStyle(.borderedProminent)
       .disabled(model.isValidating)
 
       Spacer()
