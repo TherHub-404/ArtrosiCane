@@ -254,6 +254,7 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				43CAE2875E5CD6715401474E /* Embed App Clips */,
+				A1B2C3D4E5F6789012345678 /* Copy AppClip Swift Runtime */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				66EFDA26A9D2AA35452BA01E /* [CP] Embed Pods Frameworks */,
 				8720921909C27DD82F1B1FF0 /* [CP] Copy Pods Resources */,
@@ -466,6 +467,22 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		A1B2C3D4E5F6789012345678 /* Copy AppClip Swift Runtime */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/AppClips/AppClip.app/Frameworks",
+			);
+			name = "Copy AppClip Swift Runtime";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nAPPCLIP_FRAMEWORKS=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/AppClips/AppClip.app/Frameworks\"\nRUNNER_FRAMEWORKS=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks\"\n\nif [ -d \"$APPCLIP_FRAMEWORKS\" ]; then\n  mkdir -p \"$RUNNER_FRAMEWORKS\"\n  find \"$APPCLIP_FRAMEWORKS\" -maxdepth 1 -name 'libswift*.dylib' -print0 | while IFS= read -r -d '' dylib; do\n    cp -f \"$dylib\" \"$RUNNER_FRAMEWORKS/\"\n  done\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -617,11 +634,13 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 					CODE_SIGN_STYLE = Automatic;
 					CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
+				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -834,11 +853,13 @@
 			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 					CODE_SIGN_STYLE = Automatic;
 					CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
+				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -859,11 +880,13 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 					CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
+				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
