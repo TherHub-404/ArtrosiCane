@@ -20,16 +20,29 @@
     <div class="box">
       <p><strong>Parametri link rilevati</strong></p>
       <p id="params">Nessun parametro.</p>
+      <p style="margin-top:12px;"><strong>URL ricevuta</strong></p>
+      <p id="url"><code>-</code></p>
     </div>
   </main>
   <script>
     const qs = new URLSearchParams(window.location.search);
-    const t = qs.get('t');
-    const location = qs.get('location');
+    let t = qs.get('t') || qs.get('token');
+    let location = qs.get('location') || qs.get('loc');
+    if (!t) {
+      const seg = window.location.pathname.split('/').filter(Boolean);
+      // /i/{token}/{location?}
+      if (seg.length >= 2 && seg[0] === 'i') {
+        t = decodeURIComponent(seg[1]);
+      }
+      if (!location && seg.length >= 3 && seg[0] === 'i') {
+        location = decodeURIComponent(seg[2]);
+      }
+    }
     const parts = [];
     if (t) parts.push('t=' + t);
     if (location) parts.push('location=' + location);
     document.getElementById('params').textContent = parts.length ? parts.join(' | ') : 'Nessun parametro.';
+    document.getElementById('url').textContent = window.location.href;
   </script>
 </body>
 </html>

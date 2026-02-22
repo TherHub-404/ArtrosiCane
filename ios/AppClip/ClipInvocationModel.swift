@@ -158,23 +158,51 @@ final class ClipInvocationModel: ObservableObject {
     let normalizedPath = url.path.hasSuffix("/") && url.path.count > 1
       ? String(url.path.dropLast())
       : url.path
-    guard normalizedPath == invitePath else {
+    let isInviteRoot = normalizedPath == invitePath
+    let isInviteSubpath = normalizedPath.hasPrefix("\(invitePath)/")
+    guard isInviteRoot || isInviteSubpath else {
       return nil
     }
 
-    guard
-      let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-      let token = components.queryItems?.first(where: { $0.name == "t" })?.value,
-      !token.isEmpty
-    else {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
       return nil
     }
 
-    let location = components.queryItems?
-      .first(where: { $0.name == "location" })?
+    var token = components.queryItems?.first(where: {
+      let key = $0.name.lowercased()
+      return key == "t" || key == "token"
+    })?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    var location = components.queryItems?
+      .first(where: {
+        let key = $0.name.lowercased()
+        return key == "location" || key == "loc"
+      })?
       .value?
       .trimmingCharacters(in: .whitespacesAndNewlines)
       .lowercased()
+
+    // Fallback: support path-based format /i/{token}/{location?}
+    if (token == nil || token?.isEmpty == true), isInviteSubpath {
+      let inviteSegments = invitePath.split(separator: "/").filter { !$0.isEmpty }.count
+      let tailSegments = url.pathComponents
+        .filter { $0 != "/" }
+        .dropFirst(inviteSegments)
+      if let first = tailSegments.first {
+        token = String(first).removingPercentEncoding?.trimmingCharacters(in: .whitespacesAndNewlines) ?? String(first)
+      }
+      if (location == nil || location?.isEmpty == true), tailSegments.count > 1 {
+        let second = tailSegments[tailSegments.index(tailSegments.startIndex, offsetBy: 1)]
+        location =
+          (String(second).removingPercentEncoding ?? String(second))
+          .trimmingCharacters(in: .whitespacesAndNewlines)
+          .lowercased()
+      }
+    }
+
+    guard let token, !token.isEmpty else {
+      return nil
+    }
 
     return (token, (location?.isEmpty ?? true) ? nil : location)
   }

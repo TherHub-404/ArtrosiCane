@@ -140,7 +140,10 @@ import UIKit
       return
     }
 
-    guard url.path == invitePath || url.path == "\(invitePath)/" else {
+    let path = url.path
+    let isInviteRoot = (path == invitePath || path == "\(invitePath)/")
+    let isInviteSubpath = path.hasPrefix("\(invitePath)/")
+    guard isInviteRoot || isInviteSubpath else {
       return
     }
 

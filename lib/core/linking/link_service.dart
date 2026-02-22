@@ -206,16 +206,37 @@ class LinkService {
     }
 
     final normalizedPath = _normalizePath(uri.path);
-    if (normalizedPath != _invitePath) {
+    final isInviteRoot = normalizedPath == _invitePath;
+    final isInviteSubpath = normalizedPath.startsWith('$_invitePath/');
+    if (!isInviteRoot && !isInviteSubpath) {
       return null;
     }
 
-    final token = uri.queryParameters['t']?.trim();
+    String? token =
+        (uri.queryParameters['t'] ?? uri.queryParameters['token'])?.trim();
+    String? location =
+        (uri.queryParameters['location'] ?? uri.queryParameters['loc'])
+            ?.trim()
+            .toLowerCase();
+
+    // Fallback: support path-based format /i/{token}/{location?}
+    if ((token == null || token.isEmpty) && isInviteSubpath) {
+      final inviteSegments = _invitePath
+          .split('/')
+          .where((segment) => segment.isNotEmpty)
+          .length;
+      final tailSegments = uri.pathSegments.skip(inviteSegments).toList();
+      if (tailSegments.isNotEmpty) {
+        token = Uri.decodeComponent(tailSegments.first).trim();
+      }
+      if ((location == null || location.isEmpty) && tailSegments.length > 1) {
+        location = Uri.decodeComponent(tailSegments[1]).trim().toLowerCase();
+      }
+    }
+
     if (token == null || token.isEmpty) {
       return null;
     }
-
-    final location = uri.queryParameters['location']?.trim().toLowerCase();
 
     return _ParsedInviteLink(
       token: token,

@@ -55,10 +55,22 @@ def parse_args() -> argparse.Namespace:
         default="assets/qr",
         help="Output directory",
     )
+    parser.add_argument(
+        "--url-format",
+        choices=("path", "query"),
+        default="path",
+        help="Invite URL format. 'path' => /i/{token}/{location?}, 'query' => /i?t=...&location=... (default: path)",
+    )
     return parser.parse_args()
 
 
-def build_url(domain: str, token: str, location: str | None = None) -> str:
+def build_url(domain: str, token: str, location: str | None = None, *, url_format: str = "path") -> str:
+    if url_format == "path":
+        base = f"https://{domain}/i/{urllib.parse.quote(token, safe='')}"
+        if location:
+            base += f"/{urllib.parse.quote(location, safe='')}"
+        return base
+
     params = {"t": token}
     if location:
         params["location"] = location
@@ -128,8 +140,13 @@ def main() -> int:
     out_dir = pathlib.Path(args.out_dir)
     cache_dir = out_dir / ".emoji-cache"
 
-    normal_url = build_url(args.domain, args.normal_token)
-    bibbione_url = build_url(args.domain, args.bibbione_token, "bibbione")
+    normal_url = build_url(args.domain, args.normal_token, url_format=args.url_format)
+    bibbione_url = build_url(
+        args.domain,
+        args.bibbione_token,
+        "bibbione",
+        url_format=args.url_format,
+    )
 
     normal_file = out_dir / "qr-normal-dog.png"
     bibbione_file = out_dir / "qr-bibbione-island.png"
