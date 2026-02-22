@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/core/config/app_config.dart';
+import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
@@ -37,10 +38,7 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
   Future<void> _runEntryFlow() async {
     _timer?.cancel();
     final delay = Future.delayed(const Duration(milliseconds: 4500));
-    await Future.wait([
-      delay,
-      _syncDogProfileToRemote(),
-    ]);
+    await Future.wait([delay, _syncDogProfileToRemote()]);
     if (mounted) context.go('/home');
   }
 
@@ -65,27 +63,37 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final showBibbioneBackground = inviteLocation == 'bibbione';
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/Marina-di-Bibbiona.jpg',
-            fit: BoxFit.cover,
+          Positioned.fill(
+            child: showBibbioneBackground
+                ? Image.asset(
+                    'assets/Marina-di-Bibbiona.jpg',
+                    fit: BoxFit.cover,
+                  )
+                : const ColoredBox(color: Colors.white),
           ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.45),
-                  Colors.black.withOpacity(0.15),
-                  Colors.black.withOpacity(0.35),
-                ],
+          if (showBibbioneBackground)
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.45),
+                    Colors.black.withOpacity(0.15),
+                    Colors.black.withOpacity(0.35),
+                  ],
+                ),
               ),
             ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -95,7 +103,9 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                   AppText.h1(
                     'Dove stai bene tu,\npuò stare bene anche il tuo cane',
                     align: TextAlign.center,
-                    color: Colors.white,
+                    color: showBibbioneBackground
+                        ? Colors.white
+                        : AppColors.primaryBlue,
                   ),
                   const Spacer(),
                   Container(
@@ -108,7 +118,9 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withOpacity(
+                            showBibbioneBackground ? 0.2 : 0.08,
+                          ),
                           blurRadius: 26,
                           offset: const Offset(0, 12),
                         ),
@@ -117,15 +129,9 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/ArtrosiCane-Logo.png',
-                          width: 140,
-                        ),
+                        Image.asset('assets/ArtrosiCane-Logo.png', width: 140),
                         const SizedBox(height: AppSpacing.lg),
-                        Lottie.asset(
-                          'assets/paw.json',
-                          width: 120,
-                        ),
+                        Lottie.asset('assets/paw.json', width: 120),
                         const SizedBox(height: AppSpacing.md),
                         AppText.body(
                           'Ti stiamo preparando tutto...',

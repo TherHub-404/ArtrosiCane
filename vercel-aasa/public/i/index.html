@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="apple-itunes-app"
+    content="app-id=6758579385, app-clip-bundle-id=com.artrosicase.artrosicane.Clip, app-clip-display=card"
+  />
   <title>Artrosi Cane</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin:0; background:#fff; color:#111; }
@@ -27,20 +31,20 @@
   <script>
     const qs = new URLSearchParams(window.location.search);
     let t = qs.get('t') || qs.get('token');
-    let location = qs.get('location') || qs.get('loc');
+    let locationParam = qs.get('location') || qs.get('loc');
     if (!t) {
       const seg = window.location.pathname.split('/').filter(Boolean);
       // /i/{token}/{location?}
       if (seg.length >= 2 && seg[0] === 'i') {
         t = decodeURIComponent(seg[1]);
       }
-      if (!location && seg.length >= 3 && seg[0] === 'i') {
-        location = decodeURIComponent(seg[2]);
+      if (!locationParam && seg.length >= 3 && seg[0] === 'i') {
+        locationParam = decodeURIComponent(seg[2]);
       }
     }
     const parts = [];
     if (t) parts.push('t=' + t);
-    if (location) parts.push('location=' + location);
+    if (locationParam) parts.push('location=' + locationParam);
     document.getElementById('params').textContent = parts.length ? parts.join(' | ') : 'Nessun parametro.';
     document.getElementById('url').textContent = window.location.href;
   </script>

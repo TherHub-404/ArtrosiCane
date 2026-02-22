@@ -4,9 +4,9 @@ import 'package:artrosi_cane/features/home/presentation/widgets/home_bottom_bar.
 import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
+import 'package:artrosi_cane/features/home/data/monthly_sentence_repository.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
-import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -94,11 +94,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final inviteLocation = ref.watch(
-      featureFlagsControllerProvider.select((state) => state.inviteLocation),
-    );
-    final showBibbioneBackground = inviteLocation == 'bibbione';
-
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
     final speedDialBottomOffset = 90.0 + 40.0 + 16.0 + bottomInset;
@@ -213,18 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: showBibbioneBackground
-                ? Image.asset(
-                    'assets/Marina-di-Bibbiona.jpg',
-                    fit: BoxFit.cover,
-                  )
-                : const ColoredBox(color: Colors.white),
-          ),
-          if (showBibbioneBackground)
-            Positioned.fill(
-              child: Container(color: Colors.white.withOpacity(0.25)),
-            ),
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
           // Main Content
           SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -933,56 +917,90 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-class _NewsCarousel extends StatefulWidget {
+class _NewsCarousel extends ConsumerStatefulWidget {
   const _NewsCarousel();
 
   @override
-  State<_NewsCarousel> createState() => _NewsCarouselState();
+  ConsumerState<_NewsCarousel> createState() => _NewsCarouselState();
 }
 
-class _NewsCarouselState extends State<_NewsCarousel> {
+class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
   final PageController _controller = PageController();
   int _currentIndex = 0;
   static final Uri _siteUri = Uri.parse('https://www.artrosicane.com');
 
-  final List<Map<String, dynamic>> _newsItems = [
-    {
-      "title": "Passeggiate",
-      "subtitle": "Scopri le nostre passeggiate",
-      "textColor": Colors.white,
-      "image": "assets/Marina-di-Bibbiona.jpg",
-      "isFullBackground": true,
-      "buttonText": "Scopri di più",
-    },
-    {
-      "title": "Nuovi snack",
-      "subtitle": "Ricette sane per il tuo cane",
-      "colors": [
-        const Color(0xFFFFE0B2),
-        const Color(0xFFFFCC80),
-      ], // Orange Gradient
-      "textColor": const Color(0xFF2D2D2D),
-      "icon": Icons.restaurant_menu,
-      "buttonText": "Leggi ora",
-    },
-    {
-      "title": "Cos'è l'artrosi?",
-      "subtitle": "Segni precoci da non ignorare",
-      "colors": [
-        const Color(0xFFFFFFFF),
-        const Color(0xFFF5F5F5),
-      ], // White Gradient
-      "textColor": AppColors.primaryBlue,
-      "icon": Icons.info_outline,
-      "buttonText": "Approfondisci",
-    },
-  ];
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-  Future<void> _handleNewsTap(int index) async {
-    if (index == 0) {
-      if (mounted) context.push('/walks-overview');
+  List<Map<String, dynamic>> _buildNewsItems({
+    required MonthlySentence? monthlySentence,
+    required bool monthlyLoading,
+  }) {
+    final monthlySubtitle = monthlyLoading
+        ? 'Caricamento tema del mese...'
+        : monthlySentence == null
+        ? 'Contenuto mensile in aggiornamento.'
+        : monthlySentence.focus.isEmpty
+        ? 'Scopri il focus del mese.'
+        : 'Focus: ${monthlySentence.focus}';
+
+    return [
+      {
+        'kind': 'walks',
+        'title': 'Passeggiate',
+        'subtitle': 'Scopri i percorsi consigliati',
+        'textColor': Colors.white,
+        'image': 'assets/Marina-di-Bibbiona.jpg',
+        'isFullBackground': true,
+        'buttonText': 'Scopri di più',
+      },
+      {
+        'kind': 'monthly',
+        'title': monthlySentence?.title ?? 'Tema del mese',
+        'subtitle': monthlySubtitle,
+        'colors': const [Color(0xFFEAF2FF), Color(0xFFDDEAFF)],
+        'textColor': AppColors.primaryBlue,
+        'icon': Icons.calendar_month_rounded,
+        'badgeLabel': monthlySentence?.monthName ?? 'Mese corrente',
+        'buttonText': 'Apri tema',
+        'monthlySentence': monthlySentence,
+      },
+      {
+        'kind': 'article',
+        'title': "Cos'e l'artrosi?",
+        'subtitle': 'Segnali precoci da non ignorare',
+        'colors': const [Color(0xFFFFFFFF), Color(0xFFF5F5F5)],
+        'textColor': AppColors.primaryBlue,
+        'icon': Icons.info_outline,
+        'badgeLabel': 'Guida',
+        'buttonText': 'Approfondisci',
+      },
+    ];
+  }
+
+  Future<void> _handleNewsTap(Map<String, dynamic> item) async {
+    final kind = item['kind'] as String?;
+    if (kind == 'walks') {
+      if (mounted) await context.push('/walks-overview');
       return;
     }
+
+    if (kind == 'monthly') {
+      final sentence = item['monthlySentence'] as MonthlySentence?;
+      if (sentence == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tema del mese in aggiornamento.')),
+        );
+        return;
+      }
+      _openMonthlySentenceBottomSheet(sentence);
+      return;
+    }
+
     final launched = await launchUrl(
       _siteUri,
       mode: LaunchMode.externalApplication,
@@ -994,8 +1012,176 @@ class _NewsCarouselState extends State<_NewsCarousel> {
     }
   }
 
+  void _openMonthlySentenceBottomSheet(MonthlySentence sentence) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ctaApricot.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      sentence.monthName.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryBlue,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    sentence.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primaryBlue,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (sentence.focus.isNotEmpty) ...[
+                    const Text(
+                      'Focus',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryBlue,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      sentence.focus,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.35,
+                        color: Color(0xFF2B3D5A),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  if (sentence.objective.isNotEmpty) ...[
+                    const Text(
+                      'Obiettivo',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryBlue,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      sentence.objective,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.35,
+                        color: Color(0xFF2B3D5A),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  if (sentence.areas.isNotEmpty) ...[
+                    const Text(
+                      'Aree',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryBlue,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...sentence.areas.map(
+                      (area) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 6),
+                              child: Icon(
+                                Icons.circle,
+                                size: 7,
+                                color: AppColors.ctaApricot,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                area,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.35,
+                                  color: Color(0xFF2B3D5A),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final monthlySentenceAsync = ref.watch(currentMonthlySentenceProvider);
+    final monthlySentence = monthlySentenceAsync.valueOrNull;
+    final monthlyLoading = monthlySentenceAsync.isLoading;
+    final newsItems = _buildNewsItems(
+      monthlySentence: monthlySentence,
+      monthlyLoading: monthlyLoading,
+    );
+
+    final safeIndex = newsItems.isEmpty
+        ? 0
+        : (_currentIndex < 0
+              ? 0
+              : (_currentIndex > newsItems.length - 1
+                    ? newsItems.length - 1
+                    : _currentIndex));
+    final isFullBackgroundSelected =
+        newsItems[safeIndex]['isFullBackground'] == true;
+
     return Container(
       height: 160, // Increased height to prevent overflow
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -1026,14 +1212,14 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                 }
 
                 return Stack(
-                  children: List.generate(_newsItems.length, (index) {
+                  children: List.generate(newsItems.length, (index) {
                     final double opacity = (1 - (page - index).abs()).clamp(
                       0.0,
                       1.0,
                     );
                     if (opacity == 0) return const SizedBox.shrink();
 
-                    final item = _newsItems[index];
+                    final item = newsItems[index];
                     final bool isFullBackground =
                         item['isFullBackground'] ?? false;
 
@@ -1090,9 +1276,9 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                   _currentIndex = index;
                 });
               },
-              itemCount: _newsItems.length,
+              itemCount: newsItems.length,
               itemBuilder: (context, index) {
-                final item = _newsItems[index];
+                final item = newsItems[index];
                 final bool isFullBackground = item['isFullBackground'] ?? false;
 
                 return Padding(
@@ -1104,6 +1290,39 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      if (!isFullBackground && item['icon'] != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.72),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                item['icon'] as IconData,
+                                size: 15,
+                                color: AppColors.primaryBlue,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                item['badgeLabel'] as String? ?? 'Info',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  fontFamily: 'Montserrat',
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Text(
                         item['title'],
                         style: TextStyle(
@@ -1131,7 +1350,7 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                       ),
                       const SizedBox(height: 16),
                       InkWell(
-                        onTap: () => _handleNewsTap(index),
+                        onTap: () => _handleNewsTap(item),
                         borderRadius: BorderRadius.circular(25),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -1173,7 +1392,7 @@ class _NewsCarouselState extends State<_NewsCarousel> {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_newsItems.length, (index) {
+                children: List.generate(newsItems.length, (index) {
                   final bool isSelected = _currentIndex == index;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
@@ -1182,8 +1401,12 @@ class _NewsCarouselState extends State<_NewsCarousel> {
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? Colors.white.withOpacity(0.9)
-                          : Colors.white.withOpacity(0.3),
+                          ? (isFullBackgroundSelected
+                                ? Colors.white.withOpacity(0.9)
+                                : AppColors.primaryBlue.withOpacity(0.85))
+                          : (isFullBackgroundSelected
+                                ? Colors.white.withOpacity(0.3)
+                                : AppColors.primaryBlue.withOpacity(0.26)),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );

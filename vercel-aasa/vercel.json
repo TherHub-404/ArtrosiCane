@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    {
+      "source": "/i/:token/:location",
+      "destination": "/i?t=:token&location=:location"
+    },
+    {
+      "source": "/i/:token",
+      "destination": "/i?t=:token"
+    }
+  ],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
