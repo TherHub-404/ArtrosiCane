@@ -5,6 +5,7 @@ import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
 import 'package:artrosi_cane/features/home/data/monthly_sentence_repository.dart';
+import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
@@ -92,8 +93,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  Future<void> _setExperienceMode(String mode) async {
+    final normalized = mode.toLowerCase() == 'bibbione' ? 'bibbione' : 'normal';
+    await ref
+        .read(featureFlagsControllerProvider.notifier)
+        .persistInviteLocationFromLink(normalized);
+
+    if (!mounted) return;
+    final message = normalized == 'bibbione'
+        ? 'Modalità Passeggiate Bibione attiva'
+        : 'Modalità Percorso Artrosi attiva';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildModeCard({
+    required bool isSelected,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: isSelected
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFFFE0B2), Color(0xFFFFCC80)],
+                    )
+                  : null,
+              color: isSelected ? null : Colors.white,
+              border: Border.all(
+                color: isSelected
+                    ? AppColors.ctaApricot
+                    : AppColors.primaryBlue.withOpacity(0.18),
+                width: isSelected ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isSelected ? 0.1 : 0.04),
+                  blurRadius: isSelected ? 12 : 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? AppColors.primaryBlue : AppColors.text,
+                  size: 18,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: isSelected ? AppColors.primaryBlue : AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color:
+                        (isSelected
+                                ? AppColors.primaryBlue
+                                : AppColors.text.withOpacity(0.75))
+                            .withOpacity(0.9),
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final isBibbioneMode = inviteLocation == 'bibbione';
+
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
     final speedDialBottomOffset = 90.0 + 40.0 + 16.0 + bottomInset;
@@ -189,6 +291,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFF),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withOpacity(0.12),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Modalità esperienza',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Scegli il percorso da approfondire adesso.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.text.withOpacity(0.75),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _buildModeCard(
+                          isSelected: isBibbioneMode,
+                          icon: Icons.beach_access_rounded,
+                          title: 'Passeggiate Bibione',
+                          subtitle: 'Focus passeggiate e territorio',
+                          onTap: () => _setExperienceMode('bibbione'),
+                        ),
+                        const SizedBox(width: 10),
+                        _buildModeCard(
+                          isSelected: !isBibbioneMode,
+                          icon: Icons.favorite_rounded,
+                          title: 'Percorso Artrosi',
+                          subtitle: 'Focus su artrosi, routine e benessere',
+                          onTap: () => _setExperienceMode('normal'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.settings, color: AppColors.primaryBlue),
               title: const Text('Impostazioni'),
@@ -938,6 +1098,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
   List<Map<String, dynamic>> _buildNewsItems({
     required MonthlySentence? monthlySentence,
     required bool monthlyLoading,
+    required bool isBibbioneMode,
   }) {
     final monthlySubtitle = monthlyLoading
         ? 'Caricamento tema del mese...'
@@ -947,38 +1108,58 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
         ? 'Scopri il focus del mese.'
         : 'Focus: ${monthlySentence.focus}';
 
-    return [
-      {
-        'kind': 'walks',
-        'title': 'Passeggiate',
-        'subtitle': 'Scopri i percorsi consigliati',
-        'textColor': Colors.white,
-        'image': 'assets/Marina-di-Bibbiona.jpg',
-        'isFullBackground': true,
-        'buttonText': 'Scopri di più',
-      },
-      {
-        'kind': 'monthly',
-        'title': monthlySentence?.title ?? 'Tema del mese',
-        'subtitle': monthlySubtitle,
-        'colors': const [Color(0xFFEAF2FF), Color(0xFFDDEAFF)],
-        'textColor': AppColors.primaryBlue,
-        'icon': Icons.calendar_month_rounded,
-        'badgeLabel': monthlySentence?.monthName ?? 'Mese corrente',
-        'buttonText': 'Apri tema',
-        'monthlySentence': monthlySentence,
-      },
-      {
-        'kind': 'article',
-        'title': "Cos'e l'artrosi?",
-        'subtitle': 'Segnali precoci da non ignorare',
-        'colors': const [Color(0xFFFFFFFF), Color(0xFFF5F5F5)],
-        'textColor': AppColors.primaryBlue,
-        'icon': Icons.info_outline,
-        'badgeLabel': 'Guida',
-        'buttonText': 'Approfondisci',
-      },
-    ];
+    final walksCard = <String, dynamic>{
+      'kind': 'walks',
+      'title': 'Passeggiate',
+      'subtitle': 'Scopri i percorsi consigliati',
+      'textColor': Colors.white,
+      'image': 'assets/Marina-di-Bibbiona.jpg',
+      'isFullBackground': true,
+      'buttonText': 'Scopri di più',
+    };
+
+    final monthlyCard = <String, dynamic>{
+      'kind': 'monthly',
+      'title': _monthlyCarouselTitle(monthlySentence),
+      'subtitle': monthlySubtitle,
+      'colors': const [Color(0xFFEAF2FF), Color(0xFFDDEAFF)],
+      'textColor': AppColors.primaryBlue,
+      'icon': Icons.calendar_month_rounded,
+      'badgeLabel': monthlySentence?.monthName ?? 'Mese corrente',
+      'buttonText': 'Approfondisci',
+      'monthlySentence': monthlySentence,
+    };
+
+    final articleCard = <String, dynamic>{
+      'kind': 'article',
+      'title': "Cos'e l'artrosi?",
+      'subtitle': 'Segnali precoci da non ignorare',
+      'colors': const [Color(0xFFFFFFFF), Color(0xFFF5F5F5)],
+      'textColor': AppColors.primaryBlue,
+      'icon': Icons.info_outline,
+      'badgeLabel': 'Guida',
+      'buttonText': 'Approfondisci',
+    };
+
+    if (isBibbioneMode) {
+      return [walksCard, monthlyCard, articleCard];
+    }
+    return [monthlyCard, articleCard];
+  }
+
+  String _monthlyCarouselTitle(MonthlySentence? sentence) {
+    if (sentence == null) return 'Tema del mese';
+    final month = sentence.monthName.trim();
+    final rawTitle = sentence.title.trim();
+    if (rawTitle.isEmpty) return month;
+
+    final prefixRegex = RegExp(
+      '^${RegExp.escape(month)}\\s*[-–—:]?\\s*',
+      caseSensitive: false,
+    );
+    final compact = rawTitle.replaceFirst(prefixRegex, '').trim();
+    if (compact.isEmpty) return month;
+    return '$month · $compact';
   }
 
   Future<void> _handleNewsTap(Map<String, dynamic> item) async {
@@ -1165,11 +1346,16 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
   @override
   Widget build(BuildContext context) {
     final monthlySentenceAsync = ref.watch(currentMonthlySentenceProvider);
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final isBibbioneMode = inviteLocation == 'bibbione';
     final monthlySentence = monthlySentenceAsync.valueOrNull;
     final monthlyLoading = monthlySentenceAsync.isLoading;
     final newsItems = _buildNewsItems(
       monthlySentence: monthlySentence,
       monthlyLoading: monthlyLoading,
+      isBibbioneMode: isBibbioneMode,
     );
 
     final safeIndex = newsItems.isEmpty
@@ -1280,17 +1466,18 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
               itemBuilder: (context, index) {
                 final item = newsItems[index];
                 final bool isFullBackground = item['isFullBackground'] ?? false;
+                final bool isMonthly = item['kind'] == 'monthly';
+                final bool showBadge =
+                    !isFullBackground &&
+                    item['icon'] != null &&
+                    item['kind'] != 'monthly';
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16.0,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 30.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (!isFullBackground && item['icon'] != null) ...[
+                      if (showBadge) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -1325,8 +1512,10 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                       ],
                       Text(
                         item['title'],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: isFullBackground ? 22 : 18,
                           fontWeight: FontWeight.w900,
                           fontFamily: 'Montserrat',
                           color: isFullBackground
@@ -1334,9 +1523,11 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                               : item['textColor'],
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         item['subtitle'],
+                        maxLines: isMonthly ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
                           color:
@@ -1348,14 +1539,14 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                           fontFamily: 'Montserrat',
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const Spacer(),
                       InkWell(
                         onTap: () => _handleNewsTap(item),
                         borderRadius: BorderRadius.circular(25),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
+                            horizontal: 16,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -1371,7 +1562,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                           child: Text(
                             item['buttonText'],
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color:
                                   AppColors.primaryBlue, // App's specific blue
