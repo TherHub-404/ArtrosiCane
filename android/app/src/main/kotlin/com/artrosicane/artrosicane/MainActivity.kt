@@ -1,4 +1,4 @@
-package com.example.artrosi_cane
+package com.artrosicane.artrosicane
 
 import io.flutter.embedding.android.FlutterActivity
 
