@@ -78,12 +78,19 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     try {
       final saved = await ref.read(loadDogProfileUseCaseProvider).call();
       if (!mounted || saved == null) return;
+      final isLegacyUnknown =
+          saved.diagnosisStatus == ArthrosisDiagnosisStatus.unknown;
+      final restoredStatus = isLegacyUnknown ? null : saved.diagnosisStatus;
+      final restoredAnsweredAt = isLegacyUnknown
+          ? null
+          : saved.diagnosisAnsweredAt;
       setState(() {
-        _diagnosisStatus = saved.diagnosisStatus;
-        _diagnosisAnsweredAt = saved.diagnosisAnsweredAt;
+        _diagnosisStatus = restoredStatus;
+        _diagnosisAnsweredAt = restoredAnsweredAt;
         _diagnosisDate = saved.diagnosisDate;
         _diagnosisVet = saved.diagnosisVet;
-        _shouldAskDiagnosis = saved.diagnosisAnsweredAt == null;
+        _shouldAskDiagnosis =
+            restoredAnsweredAt == null || restoredStatus == null;
       });
       _syncProfile();
     } catch (_) {
@@ -241,7 +248,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case ArthrosisDiagnosisStatus.confirmed:
         return 1;
       case ArthrosisDiagnosisStatus.unknown:
-        return 2;
+        return 0;
       case ArthrosisDiagnosisStatus.notDiagnosed:
       case null:
         return 0;
@@ -579,7 +586,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
             children: [
               Expanded(
                 child: _ChoiceCard(
-                  label: 'Sì',
+                  label: 'Sì, ha una diagnosi\ndi artrosi',
                   selected: _status == ArthrosisDiagnosisStatus.confirmed,
                   onTap: () {
                     setState(
@@ -592,23 +599,12 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _ChoiceCard(
-                  label: 'No',
+                  label: 'No, non ha una\ndiagnosi di artrosi',
                   selected: _status == ArthrosisDiagnosisStatus.notDiagnosed,
                   onTap: () {
                     setState(
                       () => _status = ArthrosisDiagnosisStatus.notDiagnosed,
                     );
-                    _notifyChange();
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _ChoiceCard(
-                  label: 'Non lo so',
-                  selected: _status == ArthrosisDiagnosisStatus.unknown,
-                  onTap: () {
-                    setState(() => _status = ArthrosisDiagnosisStatus.unknown);
                     _notifyChange();
                   },
                 ),
