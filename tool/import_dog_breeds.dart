@@ -6,13 +6,23 @@ Future<void> main() async {
   final dogApiKey = _readEnv('DOG_API_KEY', fileEnv);
   final supabaseUrl = _readEnv('SUPABASE_URL', fileEnv);
   final anonKey = _readEnv('SUPABASE_ANON_KEY', fileEnv);
-  final serviceKey =
-      _readEnvMulti(['SUPABASE_SERVICE_ROLE', 'SUPABASE_SERVICE_ROLE_KEY'], fileEnv);
-  final libreEndpoint =
-      _readEnv('LIBRETRANSLATE_ENDPOINT', fileEnv, required: false) ??
-          'https://libretranslate.com/translate';
-  final libreApiKey =
-      _readEnv('LIBRETRANSLATE_API_KEY', fileEnv, required: false);
+  final serviceKey = _readEnvMulti([
+    'SUPABASE_SERVICE_ROLE',
+    'SUPABASE_SERVICE_ROLE_KEY',
+  ], fileEnv);
+  final libreEndpointRaw = _readEnv(
+    'LIBRETRANSLATE_ENDPOINT',
+    fileEnv,
+    required: false,
+  );
+  final libreEndpoint = libreEndpointRaw.isNotEmpty
+      ? libreEndpointRaw
+      : 'https://libretranslate.com/translate';
+  final libreApiKey = _readEnv(
+    'LIBRETRANSLATE_API_KEY',
+    fileEnv,
+    required: false,
+  );
 
   final breeds = await _fetchDogBreeds(dogApiKey);
   await _fillMissingImages(breeds, dogApiKey);
@@ -35,8 +45,9 @@ Future<void> main() async {
 
 Future<List<Map<String, dynamic>>> _fetchDogBreeds(String apiKey) async {
   final client = HttpClient();
-  final request =
-      await client.getUrl(Uri.parse('https://api.thedogapi.com/v1/breeds'));
+  final request = await client.getUrl(
+    Uri.parse('https://api.thedogapi.com/v1/breeds'),
+  );
   request.headers.set('x-api-key', apiKey);
 
   final response = await request.close();
@@ -75,7 +86,11 @@ Future<void> _fillMissingImages(
     if ((breed['image_url'] as String?)?.isNotEmpty == true) continue;
     final refId = breed['reference_image_id'] as String?;
     if (refId == null || refId.isEmpty) continue;
-    final url = await _fetchImageUrlById(client, apiKey: apiKey, imageId: refId);
+    final url = await _fetchImageUrlById(
+      client,
+      apiKey: apiKey,
+      imageId: refId,
+    );
     if (url != null) {
       breed['image_url'] = url;
     }
@@ -90,12 +105,16 @@ Future<String?> _fetchImageUrlById(
   required String imageId,
 }) async {
   try {
-    final req = await client.getUrl(Uri.parse('https://api.thedogapi.com/v1/images/$imageId'));
+    final req = await client.getUrl(
+      Uri.parse('https://api.thedogapi.com/v1/images/$imageId'),
+    );
     req.headers.set('x-api-key', apiKey);
     final resp = await req.close();
     final body = await resp.transform(utf8.decoder).join();
     if (resp.statusCode != 200) {
-      stderr.writeln('Image lookup failed for $imageId: ${resp.statusCode} $body');
+      stderr.writeln(
+        'Image lookup failed for $imageId: ${resp.statusCode} $body',
+      );
       return null;
     }
     final data = jsonDecode(body) as Map<String, dynamic>;
@@ -112,7 +131,7 @@ Future<List<Map<String, dynamic>>> _translateBreeds(
   String? apiKey,
 }) async {
   final overridesFile = File('tool/dog_breeds_it.csv');
-  Map<String, String> overrides = {};
+  final overrides = <String, String>{};
   if (overridesFile.existsSync()) {
     final lines = overridesFile.readAsLinesSync();
     for (final line in lines.skip(1)) {
@@ -179,7 +198,9 @@ Future<String?> _translateText(
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     if (response.statusCode != 200) {
-      stderr.writeln('Translate failed for "$text": ${response.statusCode} $body');
+      stderr.writeln(
+        'Translate failed for "$text": ${response.statusCode} $body',
+      );
       return null;
     }
     final data = jsonDecode(body) as Map<String, dynamic>;
@@ -197,8 +218,9 @@ Future<void> _upsertDogBreeds({
   required List<Map<String, dynamic>> breeds,
 }) async {
   final client = HttpClient();
-  final uri =
-      Uri.parse('$supabaseUrl/rest/v1/breeds?on_conflict=name&select=id');
+  final uri = Uri.parse(
+    '$supabaseUrl/rest/v1/breeds?on_conflict=name&select=id',
+  );
   final request = await client.postUrl(uri);
   request.headers.contentType = ContentType.json;
   request.headers.set('apikey', anonKey);
@@ -232,10 +254,16 @@ Map<String, String> _loadDotEnv() {
   return env;
 }
 
-String _readEnv(String key, Map<String, String> fileEnv, {bool required = true}) {
+String _readEnv(
+  String key,
+  Map<String, String> fileEnv, {
+  bool required = true,
+}) {
   final value = Platform.environment[key] ?? fileEnv[key];
   if ((value == null || value.isEmpty) && required) {
-    stderr.writeln('Environment variable $key is required (set in .env or shell).');
+    stderr.writeln(
+      'Environment variable $key is required (set in .env or shell).',
+    );
     exit(1);
   }
   return value ?? '';
@@ -246,6 +274,8 @@ String _readEnvMulti(List<String> keys, Map<String, String> fileEnv) {
     final value = Platform.environment[key] ?? fileEnv[key];
     if (value != null && value.isNotEmpty) return value;
   }
-  stderr.writeln('Environment variable ${keys.join(" or ")} is required (set in .env or shell).');
+  stderr.writeln(
+    'Environment variable ${keys.join(" or ")} is required (set in .env or shell).',
+  );
   exit(1);
 }
