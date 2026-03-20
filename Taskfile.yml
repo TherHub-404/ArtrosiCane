@@ -11,6 +11,33 @@ tasks:
     cmds:
       - flutter run -d chrome
 
+  run-pixel9-pro:
+    desc: Avvia l'app Flutter sull'emulatore Android Pixel 9 Pro
+    cmds:
+      - flutter emulators --launch Pixel_9_Pro || true
+      - |
+        ADB_BIN="${ADB:-${ANDROID_SDK_ROOT:+${ANDROID_SDK_ROOT}/platform-tools/adb}}"
+        if [ -z "$ADB_BIN" ]; then
+          ADB_BIN="${HOME}/Library/Android/sdk/platform-tools/adb"
+        fi
+
+        echo "Attendo che l'emulatore Pixel_9_Pro sia pronto..."
+        for i in $(seq 1 120); do
+          SERIALS="$(flutter devices 2>/dev/null | awk -F '•' '/emulator-[0-9]+/ {gsub(/^ +| +$/, "", $2); print $2}')"
+          for SERIAL in $SERIALS; do
+            AVD_NAME="$($ADB_BIN -s "$SERIAL" emu avd name 2>/dev/null | head -n 1 | tr -d '\r')"
+            if [ "$AVD_NAME" = "Pixel_9_Pro" ]; then
+              echo "Uso device $SERIAL ($AVD_NAME)"
+              flutter run -d "$SERIAL"
+              exit $?
+            fi
+          done
+          sleep 2
+        done
+
+        echo "Pixel_9_Pro non trovato. Verifica Android Studio > Device Manager."
+        exit 1
+
   test:
     desc: Esegue la suite di test Flutter
     cmds:
