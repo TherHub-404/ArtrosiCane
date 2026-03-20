@@ -12,7 +12,8 @@ import 'package:go_router/go_router.dart';
 class DogDashboardScreen extends ConsumerStatefulWidget {
   const DogDashboardScreen({super.key, required this.dogData});
 
-  final Map<String, dynamic> dogData; // Using Map for now, will switch to Dog entity later
+  final Map<String, dynamic>
+  dogData; // Using Map for now, will switch to Dog entity later
 
   @override
   ConsumerState<DogDashboardScreen> createState() => _DogDashboardScreenState();
@@ -75,23 +76,33 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                     final dogId = _dogId;
                     if (dogId == null || dogId.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Errore: ID cane non trovato')),
+                        const SnackBar(
+                          content: Text('Errore: ID cane non trovato'),
+                        ),
                       );
                       return false;
                     }
 
-                    final parsedAge = double.tryParse(newAge.replaceAll(',', '.'));
+                    final parsedAge = double.tryParse(
+                      newAge.replaceAll(',', '.'),
+                    );
                     if (parsedAge == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Inserisci un’età valida.')),
+                        const SnackBar(
+                          content: Text('Inserisci un’età valida.'),
+                        ),
                       );
                       return false;
                     }
 
-                    final parsedWeight = double.tryParse(newWeight.replaceAll(',', '.'));
+                    final parsedWeight = double.tryParse(
+                      newWeight.replaceAll(',', '.'),
+                    );
                     if (parsedWeight == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Inserisci un peso valido.')),
+                        const SnackBar(
+                          content: Text('Inserisci un peso valido.'),
+                        ),
                       );
                       return false;
                     }
@@ -105,7 +116,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                         weightKg: parsedWeight,
                       );
                       ref.invalidate(userDogsProvider);
-                      if (!mounted) return true;
+                      if (!context.mounted) return true;
                       setState(() {
                         _name = newName.trim();
                         _ageText = newAge.trim();
@@ -117,9 +128,11 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                       AppBanner.showSuccess(context, 'Profilo aggiornato.');
                       return true;
                     } catch (e) {
-                      if (!mounted) return false;
+                      if (!context.mounted) return false;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore durante il salvataggio: $e')),
+                        SnackBar(
+                          content: Text('Errore durante il salvataggio: $e'),
+                        ),
                       );
                       return false;
                     }
@@ -130,7 +143,9 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Elimina profilo'),
-                        content: Text('Sei sicuro di voler eliminare il profilo di $_name? Questa azione non può essere annullata.'),
+                        content: Text(
+                          'Sei sicuro di voler eliminare il profilo di $_name? Questa azione non può essere annullata.',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
@@ -138,7 +153,10 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              'Elimina',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                         ],
                       ),
@@ -147,22 +165,26 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                     if (confirm == true) {
                       final dogId = _dogId;
                       if (dogId == null) {
-                         // Should not happen if data is consistent, but safety check
-                         if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Errore: ID cane non trovato')),
-                           );
-                         }
-                         return;
+                        // Should not happen if data is consistent, but safety check
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Errore: ID cane non trovato'),
+                            ),
+                          );
+                        }
+                        return;
                       }
 
                       try {
                         // Close the sheet first
-                        Navigator.of(ctx).pop(); 
+                        if (ctx.mounted) {
+                          Navigator.of(ctx).pop();
+                        }
 
                         final repo = ref.read(dogRemoteRepositoryProvider);
                         await repo.deleteDog(dogId);
-                        
+
                         // Refresh list
                         ref.invalidate(userDogsProvider);
 
@@ -172,11 +194,15 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                           AppBanner.showSuccess(context, 'Profilo eliminato.');
                         }
                       } catch (e) {
-                         if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
-                           );
-                         }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Errore durante l\'eliminazione: $e',
+                              ),
+                            ),
+                          );
+                        }
                       }
                     }
                   },
@@ -202,13 +228,15 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   // Basic Info
                   Text(
                     _name,
-                    style: AppTypography.h1.copyWith(color: AppColors.primaryBlue),
+                    style: AppTypography.h1.copyWith(
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _breed,
                     style: AppTypography.body.copyWith(
-                      color: AppColors.text.withOpacity(0.7),
+                      color: AppColors.text.withValues(alpha: 0.7),
                       fontSize: 16,
                     ),
                   ),
@@ -219,7 +247,11 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                     children: [
                       _buildStatCard('Età', '$_ageText anni', Icons.cake),
                       const SizedBox(width: AppSpacing.md),
-                      _buildStatCard('Peso', '$_weightText kg', Icons.monitor_weight),
+                      _buildStatCard(
+                        'Peso',
+                        '$_weightText kg',
+                        Icons.monitor_weight,
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -228,9 +260,13 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   _buildArthrosisSection(context, _arthrosisGrade),
                   const SizedBox(height: AppSpacing.xl),
 
+                  // Quick Check giornaliero
+                  _buildQuickCheckSection(context),
+                  const SizedBox(height: AppSpacing.xl),
+
                   // Personalized Advice
                   _buildAdviceSection(context),
-                  
+
                   const SizedBox(height: 100), // Bottom padding
                 ],
               ),
@@ -261,9 +297,9 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.4),
+                    Colors.black.withValues(alpha: 0.4),
                     Colors.transparent,
-                    Colors.black.withOpacity(0.1),
+                    Colors.black.withValues(alpha: 0.1),
                   ],
                   stops: const [0.0, 0.4, 1.0],
                 ),
@@ -278,9 +314,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             height: 60,
             child: ClipPath(
               clipper: const _HeaderWaveClipper(),
-              child: Container(
-                color: AppColors.background,
-              ),
+              child: Container(color: AppColors.background),
             ),
           ),
         ],
@@ -297,7 +331,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -308,7 +342,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
+                color: AppColors.primaryBlue.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: AppColors.primaryBlue, size: 20),
@@ -320,13 +354,15 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                 Text(
                   label,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.text.withOpacity(0.6),
+                    color: AppColors.text.withValues(alpha: 0.6),
                     fontSize: 12,
                   ),
                 ),
                 Text(
                   value,
-                  style: AppTypography.bodyBold.copyWith(color: AppColors.primaryBlue),
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.primaryBlue,
+                  ),
                 ),
               ],
             ),
@@ -348,7 +384,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
         border: Border.all(color: AppColors.borderSoft),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -369,7 +405,9 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                 ),
               ),
               Icon(
-                isUnknown ? Icons.warning_amber_rounded : Icons.health_and_safety,
+                isUnknown
+                    ? Icons.warning_amber_rounded
+                    : Icons.health_and_safety,
                 color: AppColors.primaryBlue,
                 size: 28,
               ),
@@ -386,26 +424,30 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                context.push('/quiz', extra: {
-                  'skipIntro': true,
-                  'dog': widget.dogData,
-                });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isUnknown ? AppColors.ctaApricot : Colors.white,
-                  foregroundColor: isUnknown ? Colors.white : AppColors.ctaApricot,
-                  elevation: isUnknown ? 2 : 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            child: ElevatedButton(
+              onPressed: () {
+                context.push(
+                  '/quiz',
+                  extra: {'skipIntro': true, 'dog': widget.dogData},
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isUnknown
+                    ? AppColors.ctaApricot
+                    : Colors.white,
+                foregroundColor: isUnknown
+                    ? Colors.white
+                    : AppColors.ctaApricot,
+                elevation: isUnknown ? 2 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  isUnknown ? 'Fai il test' : 'Rifai il test',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Text(
+                isUnknown ? 'Fai il test' : 'Rifai il test',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
@@ -434,17 +476,112 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
     );
   }
 
-  Widget _buildExerciseCard(BuildContext context, _RiskCategory category, String gradeString) {
+  Widget _buildQuickCheckSection(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primaryBlue.withValues(alpha: 0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.ctaApricot.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.traffic_rounded,
+                  color: AppColors.ctaApricot,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Quick Check giornaliero',
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.primaryBlue,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'In 20 secondi ottieni semaforo, 2 micro-azioni e 1 cosa da evitare per oggi.',
+            style: AppTypography.body.copyWith(
+              color: AppColors.text.withValues(alpha: 0.78),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                context.push(
+                  '/daily-check',
+                  extra: {
+                    'dogId': _dogId,
+                    'dogName': _name.isNotEmpty ? _name : 'Il tuo cane',
+                  },
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.ctaApricot,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Fai quick check',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseCard(
+    BuildContext context,
+    _RiskCategory category,
+    String gradeString,
+  ) {
     final subtitle = _exerciseCardSubtitle(category);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          context.push('/exercise', extra: {
-            'grade': gradeString,
-            'name': _name.isNotEmpty ? _name : 'Il tuo cane',
-          });
+          context.push(
+            '/exercise',
+            extra: {
+              'grade': gradeString,
+              'name': _name.isNotEmpty ? _name : 'Il tuo cane',
+            },
+          );
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -455,7 +592,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -471,16 +608,24 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   Expanded(
                     child: Text(
                       'Esercizio fisico consigliato',
-                      style: AppTypography.bodyBold.copyWith(color: AppColors.primaryBlue, fontSize: 16),
+                      style: AppTypography.bodyBold.copyWith(
+                        color: AppColors.primaryBlue,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.primaryBlue),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.primaryBlue,
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: AppTypography.body.copyWith(color: AppColors.text.withOpacity(0.8)),
+                style: AppTypography.body.copyWith(
+                  color: AppColors.text.withValues(alpha: 0.8),
+                ),
               ),
               const SizedBox(height: 10),
               Row(
@@ -519,23 +664,36 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
 
   _RiskCategory _riskCategory(String grade) {
     final normalized = grade.toLowerCase();
-    if (normalized.contains('grave') || normalized.contains('alto')) return _RiskCategory.severe;
-    if (normalized.contains('lieve') || normalized.contains('medio')) return _RiskCategory.mild;
-    if (normalized.contains('nessun') || normalized.contains('basso')) return _RiskCategory.none;
+    if (normalized.contains('grave') || normalized.contains('alto')) {
+      return _RiskCategory.severe;
+    }
+    if (normalized.contains('lieve') || normalized.contains('medio')) {
+      return _RiskCategory.mild;
+    }
+    if (normalized.contains('nessun') || normalized.contains('basso')) {
+      return _RiskCategory.none;
+    }
     return _RiskCategory.unknown;
   }
 
-  Widget _buildWalkCard(BuildContext context, _RiskCategory category, String gradeString) {
+  Widget _buildWalkCard(
+    BuildContext context,
+    _RiskCategory category,
+    String gradeString,
+  ) {
     final summary = _walkSummary(category);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          context.push('/walks', extra: {
-            'grade': gradeString,
-            'name': _name.isNotEmpty ? _name : 'Il tuo cane',
-          });
+          context.push(
+            '/walks',
+            extra: {
+              'grade': gradeString,
+              'name': _name.isNotEmpty ? _name : 'Il tuo cane',
+            },
+          );
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -546,7 +704,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -562,17 +720,35 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   Expanded(
                     child: Text(
                       'Passeggiate consigliate',
-                      style: AppTypography.bodyBold.copyWith(color: AppColors.primaryBlue, fontSize: 16),
+                      style: AppTypography.bodyBold.copyWith(
+                        color: AppColors.primaryBlue,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.primaryBlue),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.primaryBlue,
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Scopri cosa gli esperti consigliano per la salute del tuo cane',
-                style: AppTypography.body.copyWith(color: AppColors.text.withOpacity(0.8)),
+                summary.title,
+                style: AppTypography.body.copyWith(
+                  color: AppColors.text.withValues(alpha: 0.8),
+                ),
               ),
+              if (summary.details != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  summary.details!,
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.text.withValues(alpha: 0.68),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -610,10 +786,10 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
       case _RiskCategory.severe:
         return _WalkSummary(
           title: 'Artrosi avanzata: 5–10 min su prato, più volte al giorno.',
-          details: 'Evita superfici dure o irregolari; percorsi piatti e prevedibili.',
+          details:
+              'Evita superfici dure o irregolari; percorsi piatti e prevedibili.',
         );
       case _RiskCategory.unknown:
-      default:
         return _WalkSummary(
           title: 'Fai il test per consigli mirati sulle passeggiate.',
         );
@@ -677,26 +853,26 @@ class _HeaderWaveClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    var path = Path();
+    final path = Path();
     // Start from the bottom left, but go up to the wave start height
     // We want the white part to be at the bottom.
     // So we draw the shape of the WHITE overlay.
-    
+
     // Start at (0, 40) - lower down
     path.moveTo(0, 40);
 
     // Go to (0, 0) is not what we want if we want the wave to be the top edge of this container.
     // The container is the white overlay.
     // So the top edge of this container should be the wave.
-    
+
     // Let's make a nice S-curve
     // Start high on the left
-    path.lineTo(0, 20); 
+    path.lineTo(0, 20);
 
     // Curve down then up
     final firstControlPoint = Offset(size.width * 0.25, 50);
     final firstEndPoint = Offset(size.width * 0.5, 30);
-    
+
     path.quadraticBezierTo(
       firstControlPoint.dx,
       firstControlPoint.dy,
@@ -706,7 +882,7 @@ class _HeaderWaveClipper extends CustomClipper<Path> {
 
     final secondControlPoint = Offset(size.width * 0.75, 10);
     final secondEndPoint = Offset(size.width, 40);
-    
+
     path.quadraticBezierTo(
       secondControlPoint.dx,
       secondControlPoint.dy,
