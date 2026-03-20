@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:artrosi_cane/core/errors/exceptions.dart';
 import 'package:artrosi_cane/features/onboarding/data/models/dog_profile_model.dart';
 import 'package:artrosi_cane/features/quiz/data/models/quiz_answer_model.dart';
+import 'package:artrosi_cane/features/quiz/data/models/diagnosis_priority_result_model.dart';
 import 'package:artrosi_cane/features/quiz/data/models/quiz_result_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +16,7 @@ class PreferencesDataSource {
   static const _dogProfileKey = 'dogProfile';
   static const _quizProgressKey = 'quizProgress';
   static const _lastResultKey = 'lastResult';
+  static const _lastDiagnosisPriorityResultKey = 'lastDiagnosisPriorityResult';
 
   Future<bool> isOnboardingCompleted() async {
     return _prefs.getBool(_onboardingKey) ?? false;
@@ -57,7 +59,10 @@ class PreferencesDataSource {
   }
 
   Future<void> saveLastResult(QuizResultModel model) async {
-    final saved = await _prefs.setString(_lastResultKey, json.encode(model.toJson()));
+    final saved = await _prefs.setString(
+      _lastResultKey,
+      json.encode(model.toJson()),
+    );
     if (!saved) {
       throw CacheException('Impossibile salvare il risultato del quiz');
     }
@@ -68,5 +73,26 @@ class PreferencesDataSource {
     if (jsonString == null) return null;
     final map = json.decode(jsonString) as Map<String, dynamic>;
     return QuizResultModel.fromJson(map);
+  }
+
+  Future<void> saveDiagnosisPriorityResult(
+    DiagnosisPriorityResultModel model,
+  ) async {
+    final saved = await _prefs.setString(
+      _lastDiagnosisPriorityResultKey,
+      json.encode(model.toJson()),
+    );
+    if (!saved) {
+      throw CacheException(
+        'Impossibile salvare il risultato priorita diagnosi',
+      );
+    }
+  }
+
+  Future<DiagnosisPriorityResultModel?> loadDiagnosisPriorityResult() async {
+    final jsonString = _prefs.getString(_lastDiagnosisPriorityResultKey);
+    if (jsonString == null) return null;
+    final map = json.decode(jsonString) as Map<String, dynamic>;
+    return DiagnosisPriorityResultModel.fromJson(map);
   }
 }

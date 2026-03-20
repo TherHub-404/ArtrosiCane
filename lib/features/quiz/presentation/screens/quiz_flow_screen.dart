@@ -3,6 +3,7 @@ import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/core/config/app_config.dart';
+import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -10,6 +11,7 @@ import 'package:artrosi_cane/features/onboarding/presentation/screens/dog_profil
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
+import 'package:artrosi_cane/features/quiz/data/models/diagnosis_priority_result_model.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_priority_engine.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_answer.dart';
@@ -311,6 +313,47 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     return QuizResult(riskLevel: riskLevel, score: result.totalScore);
   }
 
+  int _encodeJointsMask(Set<DiagnosisJoint> joints) {
+    var mask = 0;
+    for (final joint in joints) {
+      mask |= (1 << joint.index);
+    }
+    return mask;
+  }
+
+  List<QuizAnswer> _buildConfirmedDiagnosisAnswers() {
+    return [
+      QuizAnswer(
+        questionId: 'dq_joints_mask',
+        value: _encodeJointsMask(_diagnosisJoints),
+      ),
+      QuizAnswer(
+        questionId: 'dq_mobility',
+        value: _diagnosisMobility?.index ?? 0,
+      ),
+      QuizAnswer(
+        questionId: 'dq_rigidity_frequency',
+        value: _diagnosisRigidityFrequency?.index ?? 0,
+      ),
+      QuizAnswer(
+        questionId: 'dq_recovery',
+        value: _diagnosisRecovery?.index ?? 0,
+      ),
+      QuizAnswer(
+        questionId: 'dq_home_risk_factors',
+        value: (_diagnosisHomeRiskFactors ?? false) ? 1 : 0,
+      ),
+      QuizAnswer(
+        questionId: 'dq_weight_trend',
+        value: _diagnosisWeightTrend?.index ?? 0,
+      ),
+      QuizAnswer(
+        questionId: 'dq_movement_rhythm',
+        value: _diagnosisMovementRhythm?.index ?? 0,
+      ),
+    ];
+  }
+
   Future<void> _submitConfirmedDiagnosisFlow() async {
     if (_submittingDiagnosisFlow) return;
     if (_diagnosisMobility == null ||
@@ -337,7 +380,15 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
       final priorityResult = _diagnosisPriorityEngine.evaluate(input);
       final legacyResult = _toLegacyQuizResult(priorityResult);
-      await _persistResultRemote(legacyResult, answers: const []);
+      await ref
+          .read(preferencesDataSourceProvider)
+          .saveDiagnosisPriorityResult(
+            DiagnosisPriorityResultModel.fromEntity(priorityResult),
+          );
+      await _persistResultRemote(
+        legacyResult,
+        answers: _buildConfirmedDiagnosisAnswers(),
+      );
       await ref.read(completeOnboardingUseCaseProvider).call();
       if (!mounted) return;
       context.go('/quiz/diagnosis-result', extra: priorityResult);
