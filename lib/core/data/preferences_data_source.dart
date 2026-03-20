@@ -17,6 +17,7 @@ class PreferencesDataSource {
   static const _quizProgressKey = 'quizProgress';
   static const _lastResultKey = 'lastResult';
   static const _lastDiagnosisPriorityResultKey = 'lastDiagnosisPriorityResult';
+  static const _onboardingEventsKey = 'onboardingEvents';
 
   Future<bool> isOnboardingCompleted() async {
     return _prefs.getBool(_onboardingKey) ?? false;
@@ -94,5 +95,41 @@ class PreferencesDataSource {
     if (jsonString == null) return null;
     final map = json.decode(jsonString) as Map<String, dynamic>;
     return DiagnosisPriorityResultModel.fromJson(map);
+  }
+
+  Future<void> appendOnboardingEvent({
+    required String eventName,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    final raw = _prefs.getString(_onboardingEventsKey);
+    final events = raw == null
+        ? <Map<String, dynamic>>[]
+        : (json.decode(raw) as List<dynamic>)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+
+    events.add({
+      'eventName': eventName,
+      'payload': payload,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+
+    final trimmed = events.length > 120
+        ? events.sublist(events.length - 120)
+        : events;
+    final saved = await _prefs.setString(
+      _onboardingEventsKey,
+      json.encode(trimmed),
+    );
+    if (!saved) {
+      throw CacheException('Impossibile salvare evento onboarding');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> loadOnboardingEvents() async {
+    final raw = _prefs.getString(_onboardingEventsKey);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    final list = json.decode(raw) as List<dynamic>;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 }

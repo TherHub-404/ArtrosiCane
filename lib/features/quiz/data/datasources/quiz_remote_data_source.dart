@@ -31,15 +31,38 @@ class QuizRemoteDataSource {
     final resultId = response?['id'] as String?;
     if (resultId == null || answers.isEmpty) return;
 
-    await _client.from('quiz_answers').insert(
+    await _client
+        .from('quiz_answers')
+        .insert(
           answers
-              .map((a) => {
-                    'result_id': resultId,
-                    'question_id': a.questionId,
-                    'answer_value': a.value,
-                  })
+              .map(
+                (a) => {
+                  'result_id': resultId,
+                  'question_id': a.questionId,
+                  'answer_value': a.value,
+                },
+              )
               .toList(),
         );
+  }
+
+  Future<void> saveOnboardingEvent({
+    required String eventName,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      await _client.from('app_events').insert({
+        'owner_id': userId,
+        'event_name': eventName,
+        'flow': 'diagnosis_onboarding',
+        'payload': payload,
+      });
+    } catch (_) {
+      // Best-effort telemetry: ignore failures or missing table.
+    }
   }
 }
 

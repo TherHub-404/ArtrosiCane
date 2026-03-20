@@ -1,22 +1,77 @@
+import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
+import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_micro_action_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_micro_action_engine.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class DiagnosisPriorityResultScreen extends StatelessWidget {
+class DiagnosisPriorityResultScreen extends ConsumerStatefulWidget {
   const DiagnosisPriorityResultScreen({super.key, required this.result});
 
   final DiagnosisPriorityResult result;
 
   @override
+  ConsumerState<DiagnosisPriorityResultScreen> createState() =>
+      _DiagnosisPriorityResultScreenState();
+}
+
+class _DiagnosisPriorityResultScreenState
+    extends ConsumerState<DiagnosisPriorityResultScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _trackEvent(
+        'diagnosis_result_viewed',
+        payload: {
+          'totalScore': widget.result.totalScore,
+          'shownHighAreas': widget.result.shownHighAreas
+              .map((area) => area.name)
+              .toList(),
+        },
+      );
+    });
+  }
+
+  Future<void> _trackEvent(
+    String eventName, {
+    Map<String, dynamic> payload = const {},
+  }) async {
+    try {
+      await ref
+          .read(preferencesDataSourceProvider)
+          .appendOnboardingEvent(eventName: eventName, payload: payload);
+    } catch (_) {
+      // Ignore local telemetry errors.
+    }
+
+    await ref
+        .read(quizRemoteDataSourceProvider)
+        .saveOnboardingEvent(eventName: eventName, payload: payload);
+  }
+
+  Future<void> _openAuthWithContext(String entryContext) async {
+    await _trackEvent(
+      'diagnosis_result_cta_click',
+      payload: {'entryContext': entryContext},
+    );
+    if (!mounted) return;
+    context.go(
+      '/auth',
+      extra: {'entryContext': entryContext, 'source': 'diagnosis_result'},
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     const microActionEngine = DiagnosisMicroActionEngine();
-    final microPlan = microActionEngine.buildPlan(result);
+    final microPlan = microActionEngine.buildPlan(widget.result);
     return AppScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -43,11 +98,11 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            ...result.orderedAreas.map((area) {
-              final item = result.area(area);
+            ...widget.result.orderedAreas.map((area) {
+              final item = widget.result.area(area);
               return _PriorityTile(item: item);
             }),
-            if (result.compressedFromHigh.isNotEmpty) ...[
+            if (widget.result.compressedFromHigh.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'Ci lavoriamo dopo le priorita principali.',
@@ -110,13 +165,7 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Videocall: funzione in arrivo.'),
-                    ),
-                  );
-                },
+                onPressed: () => _openAuthWithContext('videocall'),
                 child: const Text('Prenota videocall iniziale'),
               ),
             ),
@@ -124,7 +173,7 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => context.go('/auth'),
+                onPressed: () => _openAuthWithContext('percorso_annuale'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.ctaApricot,
                   foregroundColor: Colors.white,
@@ -137,7 +186,7 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: () => context.go('/auth'),
+                onPressed: () => _openAuthWithContext('autonomia'),
                 child: const Text('Continua in autonomia'),
               ),
             ),

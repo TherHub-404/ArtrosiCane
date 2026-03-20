@@ -150,6 +150,15 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   Future<void> _goToQuestions() async {
     _shouldAskDiagnosis = false;
     await _persistDogProfileRemote();
+    await _trackOnboardingEvent(
+      'diagnosis_gate_confirmed',
+      payload: {
+        'diagnosisStatus': _diagnosisStatus?.name,
+        'hasDiagnosisDate':
+            _diagnosisDate != null && _diagnosisDate!.isNotEmpty,
+        'hasDiagnosisVet': _diagnosisVet != null && _diagnosisVet!.isNotEmpty,
+      },
+    );
     if (!mounted) return;
     await _pageController.nextPage(
       duration: const Duration(milliseconds: 300),
@@ -221,6 +230,14 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       await controller.submitQuiz(scoreAdjustment: _diagnosisScoreAdjustment());
       final result = ref.read(quizControllerProvider).result;
       if (result != null && mounted) {
+        await _trackOnboardingEvent(
+          'quiz_standard_completed',
+          payload: {
+            'diagnosisStatus': _diagnosisStatus?.name,
+            'riskLevel': result.riskLevel.name,
+            'score': result.score,
+          },
+        );
         await _persistResultRemote(result);
         if (widget.skipIntro) {
           await _navigateBackToDogDashboard(result);
@@ -299,6 +316,23 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     await ref
         .read(quizRemoteDataSourceProvider)
         .saveResult(result: result, dogId: dogId, answers: payloadAnswers);
+  }
+
+  Future<void> _trackOnboardingEvent(
+    String eventName, {
+    Map<String, dynamic> payload = const {},
+  }) async {
+    try {
+      await ref
+          .read(preferencesDataSourceProvider)
+          .appendOnboardingEvent(eventName: eventName, payload: payload);
+    } catch (_) {
+      // Ignore local telemetry failures.
+    }
+
+    await ref
+        .read(quizRemoteDataSourceProvider)
+        .saveOnboardingEvent(eventName: eventName, payload: payload);
   }
 
   QuizResult _toLegacyQuizResult(DiagnosisPriorityResult result) {
@@ -380,6 +414,18 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
       final priorityResult = _diagnosisPriorityEngine.evaluate(input);
       final legacyResult = _toLegacyQuizResult(priorityResult);
+      await _trackOnboardingEvent(
+        'diagnosis_priority_completed',
+        payload: {
+          'totalScore': priorityResult.totalScore,
+          'shownHighAreas': priorityResult.shownHighAreas
+              .map((a) => a.name)
+              .toList(),
+          'compressedFromHigh': priorityResult.compressedFromHigh
+              .map((a) => a.name)
+              .toList(),
+        },
+      );
       await ref
           .read(preferencesDataSourceProvider)
           .saveDiagnosisPriorityResult(

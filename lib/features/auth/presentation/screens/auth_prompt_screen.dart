@@ -1,10 +1,12 @@
 import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -14,7 +16,9 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthPromptScreen extends ConsumerStatefulWidget {
-  const AuthPromptScreen({super.key});
+  const AuthPromptScreen({super.key, this.entryContext});
+
+  final String? entryContext;
 
   @override
   ConsumerState<AuthPromptScreen> createState() => _AuthPromptScreenState();
@@ -30,6 +34,19 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nicknameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.entryContext != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _trackAuthContextEvent(
+          'auth_prompt_viewed',
+          payload: {'entryContext': widget.entryContext},
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -52,11 +69,19 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
 
     setState(() => _isSubmitting = true);
     try {
+      await _trackAuthContextEvent(
+        'auth_submit_attempt',
+        payload: {'entryContext': widget.entryContext, 'isLogin': _isLogin},
+      );
       final authRepo = ref.read(authRepositoryProvider);
       if (_isLogin) {
         await authRepo.signIn(email: email, password: password);
         await _resetLocalDataIfUserChanged();
         await _syncDogProfileToRemote();
+        await _trackAuthContextEvent(
+          'auth_submit_success',
+          payload: {'entryContext': widget.entryContext, 'isLogin': true},
+        );
         if (mounted) context.go('/entry');
       } else {
         final needsEmailConfirm = await authRepo.signUp(
@@ -72,6 +97,10 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
           if (mounted) setState(() => _isLogin = true);
         } else {
           await _resetLocalDataIfUserChanged();
+          await _trackAuthContextEvent(
+            'auth_submit_success',
+            payload: {'entryContext': widget.entryContext, 'isLogin': false},
+          );
           if (mounted) context.go('/entry');
         }
       }
@@ -86,10 +115,28 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     }
   }
 
+  Future<void> _trackAuthContextEvent(
+    String eventName, {
+    Map<String, dynamic> payload = const {},
+  }) async {
+    if (widget.entryContext == null) return;
+    try {
+      await ref
+          .read(preferencesDataSourceProvider)
+          .appendOnboardingEvent(eventName: eventName, payload: payload);
+    } catch (_) {
+      // Ignore local telemetry errors.
+    }
+
+    await ref
+        .read(quizRemoteDataSourceProvider)
+        .saveOnboardingEvent(eventName: eventName, payload: payload);
+  }
+
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _syncDogProfileToRemote() async {
@@ -124,6 +171,34 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     final currentEmail = Supabase.instance.client.auth.currentUser?.email;
     if (demoEmail == null || currentEmail == null) return false;
     return currentEmail.toLowerCase() == demoEmail.toLowerCase();
+  }
+
+  String _contextHeadline() {
+    switch (widget.entryContext) {
+      case 'videocall':
+        return 'Sblocca la videocall iniziale';
+      case 'percorso_annuale':
+        return 'Attiva il Percorso Annuale';
+      case 'autonomia':
+        return 'Continua in autonomia';
+      default:
+        return _isLogin ? 'Bentornato!' : 'Benvenuto!';
+    }
+  }
+
+  String _contextSubtitle() {
+    switch (widget.entryContext) {
+      case 'videocall':
+        return 'Accedi per prenotare la prima videocall e salvare la tua mappa priorita.';
+      case 'percorso_annuale':
+        return 'Accedi per iniziare il piano personalizzato con check periodici.';
+      case 'autonomia':
+        return 'Accedi per conservare progressi e consigli personalizzati nel tempo.';
+      default:
+        return _isLogin
+            ? 'Accedi per continuare a gestire l\'artrosi del tuo cane.'
+            : 'Registra un profilo per iniziare a gestire l\'artrosi del tuo cane.';
+    }
   }
 
   Future<void> _resetLocalDataIfUserChanged() async {
@@ -214,7 +289,9 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              _bannerColor == AppColors.primaryBlue ? Icons.info_outline : Icons.error_outline,
+                              _bannerColor == AppColors.primaryBlue
+                                  ? Icons.info_outline
+                                  : Icons.error_outline,
                               color: _bannerColor,
                             ),
                             const SizedBox(width: AppSpacing.sm),
@@ -250,15 +327,13 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     AppText.h1(
-                      _isLogin ? 'Bentornato!' : 'Benvenuto!',
+                      _contextHeadline(),
                       align: TextAlign.center,
                       color: AppColors.primaryBlue,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     AppText.body(
-                      _isLogin
-                          ? 'Accedi per continuare a gestire l\'artrosi del tuo cane.'
-                          : 'Registra un profilo per iniziare a gestire l\'artrosi del tuo cane.',
+                      _contextSubtitle(),
                       align: TextAlign.center,
                       color: AppColors.text.withOpacity(0.7),
                     ),
@@ -306,8 +381,8 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                         _isSubmitting
                             ? 'ATTENDERE...'
                             : _isLogin
-                                ? 'ACCEDI'
-                                : 'REGISTRATI',
+                            ? 'ACCEDI'
+                            : 'REGISTRATI',
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 14, // Reduced from 18
@@ -326,7 +401,8 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue, // Blue background
+                        backgroundColor:
+                            AppColors.primaryBlue, // Blue background
                         foregroundColor: Colors.white,
                         elevation: 4,
                         minimumSize: const Size.fromHeight(56),
@@ -335,7 +411,9 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                         ),
                       ),
                       child: Text(
-                        _isLogin ? 'NON HAI UN ACCOUNT? REGISTRATI' : 'HAI GIÀ UN ACCOUNT? ACCEDI',
+                        _isLogin
+                            ? 'NON HAI UN ACCOUNT? REGISTRATI'
+                            : 'HAI GIÀ UN ACCOUNT? ACCEDI',
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 11, // Reduced from 14
@@ -352,15 +430,24 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
               // Oppure Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
+                  Expanded(
+                    child: Divider(color: Colors.white.withOpacity(0.5)),
+                  ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
                     child: Text(
                       'oppure',
-                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
+                  Expanded(
+                    child: Divider(color: Colors.white.withOpacity(0.5)),
+                  ),
                 ],
               ),
 
@@ -369,10 +456,7 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
               // Google Button
               ElevatedButton.icon(
                 onPressed: _isSubmitting ? null : _signInWithGoogle,
-                icon: Image.asset(
-                  'assets/google_logo.png',
-                  height: 22,
-                ),
+                icon: Image.asset('assets/google_logo.png', height: 22),
                 label: const Text('CONTINUA CON GOOGLE'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -444,7 +528,10 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
           hintText: hint,
           hintStyle: TextStyle(color: AppColors.text.withOpacity(0.5)),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 16,
+          ),
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(

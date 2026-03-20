@@ -69,7 +69,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth',
         name: 'auth',
-        builder: (context, state) => const AuthPromptScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final entryContext = extra?['entryContext'] as String?;
+          return AuthPromptScreen(entryContext: entryContext);
+        },
       ),
       GoRoute(
         path: '/entry',
