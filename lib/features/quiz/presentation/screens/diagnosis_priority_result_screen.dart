@@ -1,6 +1,8 @@
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
+import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_micro_action_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
+import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_micro_action_engine.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,8 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const microActionEngine = DiagnosisMicroActionEngine();
+    final microPlan = microActionEngine.buildPlan(result);
     return AppScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -67,6 +71,37 @@ class DiagnosisPriorityResultScreen extends StatelessWidget {
               child: const Text(
                 'Non serve fare tutto. Serve intervenire nell\'ordine giusto.',
                 style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.borderSoft),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Micro-azioni consigliate',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Focus: ${microPlan.focusAreas.map(priorityAreaLabel).join(' + ')}',
+                    style: TextStyle(
+                      color: AppColors.text.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ...microPlan.items.map(_MicroActionTile.new),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -153,6 +188,47 @@ class _PriorityTile extends StatelessWidget {
             style: TextStyle(color: color, fontWeight: FontWeight.w800),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MicroActionTile extends StatelessWidget {
+  const _MicroActionTile(this.item);
+
+  final DiagnosisMicroAction item;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAction = item.type == DiagnosisMicroActionType.action;
+    final accent = isAction ? const Color(0xFF2E9D65) : const Color(0xFFD64545);
+    final icon = isAction ? Icons.check_circle_outline : Icons.block;
+    final prefix = isAction ? 'Azione' : 'Evita';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: accent),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                '$prefix · ${priorityAreaLabel(item.primaryArea)}\n${item.text}',
+                style: const TextStyle(
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
