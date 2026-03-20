@@ -6,10 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockQuizRepository extends Mock implements QuizRepository {}
+class _FakeQuizResult extends Fake implements QuizResult {}
 
 void main() {
   late _MockQuizRepository repository;
   late CalculateResult usecase;
+
+  setUpAll(() {
+    registerFallbackValue(_FakeQuizResult());
+  });
 
   setUp(() {
     repository = _MockQuizRepository();
@@ -17,12 +22,10 @@ void main() {
     when(() => repository.saveLastResult(any())).thenAnswer((_) async {});
   });
 
-  test('Calcola rischio basso per punteggio <=5', () async {
+  test('Calcola rischio basso per punteggio <=2', () async {
     final answers = [
       const QuizAnswer(questionId: 'q1', value: 1),
-      const QuizAnswer(questionId: 'q2', value: 2),
-      const QuizAnswer(questionId: 'q3', value: 1),
-      const QuizAnswer(questionId: 'q4', value: 1),
+      const QuizAnswer(questionId: 'q2', value: 1),
     ];
 
     final result = await usecase(answers);

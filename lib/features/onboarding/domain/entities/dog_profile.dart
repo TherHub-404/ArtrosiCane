@@ -2,6 +2,8 @@ enum AgeGroup { cucciolo, adulto, senior }
 
 enum DogSize { piccola, media, grande }
 
+enum ArthrosisDiagnosisStatus { confirmed, notDiagnosed, unknown }
+
 class DogProfile {
   const DogProfile({
     this.id,
@@ -13,7 +15,8 @@ class DogProfile {
     this.breedImageUrl,
     this.riskLevel,
     this.riskScore,
-    this.hasDiagnosis = false,
+    this.diagnosisStatus,
+    this.diagnosisAnsweredAt,
     this.diagnosisDate,
     this.diagnosisVet,
     this.ageGroup = AgeGroup.adulto,
@@ -29,9 +32,12 @@ class DogProfile {
   final String? breedImageUrl;
   final String? riskLevel;
   final int? riskScore;
-  final bool hasDiagnosis;
+  final ArthrosisDiagnosisStatus? diagnosisStatus;
+  final DateTime? diagnosisAnsweredAt;
   final String? diagnosisDate;
   final String? diagnosisVet;
   final AgeGroup ageGroup;
   final DogSize size;
+
+  bool get hasDiagnosis => diagnosisStatus == ArthrosisDiagnosisStatus.confirmed;
 }

@@ -1,199 +1,254 @@
-import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'dart:async';
+
+import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
-import 'dart:async';
 
 class OnboardingWelcomeScreen extends StatefulWidget {
   const OnboardingWelcomeScreen({super.key});
 
   @override
-  State<OnboardingWelcomeScreen> createState() => _OnboardingWelcomeScreenState();
+  State<OnboardingWelcomeScreen> createState() =>
+      _OnboardingWelcomeScreenState();
 }
 
-class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
-  static const Duration _introVisibleDuration = Duration(seconds: 2);
-  static const Duration _introFadeDuration = Duration(milliseconds: 500);
-  static const int _lottieLoops = 2;
-
-  Timer? _timer;
-  Timer? _swapTimer;
-  Timer? _lottieTimer;
-  bool _showIntroText = true;
-  bool _showLottie = false;
-
-  void _scheduleNavigation(Duration delay) {
-    _timer?.cancel();
-    _timer = Timer(delay, () {
-      if (mounted) {
-        context.go('/quiz');
-      }
-    });
-  }
+class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
+    with SingleTickerProviderStateMixin {
+  bool _starting = false;
+  late final AnimationController _pawSpinController;
+  final Completer<void> _pawLoadedCompleter = Completer<void>();
 
   @override
   void initState() {
     super.initState();
-    _swapTimer = Timer(_introVisibleDuration, () {
-      if (mounted) {
-        setState(() => _showIntroText = false);
-      }
-    });
-    _lottieTimer = Timer(_introVisibleDuration + _introFadeDuration, () {
-      if (mounted) {
-        setState(() => _showLottie = true);
-      }
-    });
-    _scheduleNavigation(const Duration(seconds: 4));
+    _pawSpinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precarica il cane per evitare micro-lag al primo frame della transizione.
+    precacheImage(const AssetImage('assets/first-dog.png'), context);
   }
 
   @override
   void dispose() {
-    _swapTimer?.cancel();
-    _lottieTimer?.cancel();
-    _timer?.cancel();
+    _pawSpinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleStartPressed() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+
+    // Attende che la Lottie sia pronta, evitando transizioni scattose.
+    await _pawLoadedCompleter.future.timeout(
+      const Duration(milliseconds: 900),
+      onTimeout: () {},
+    );
+
+    // Due giri completi della Lottie prima di entrare nel quiz.
+    await _pawSpinController.forward(from: 0);
+    await _pawSpinController.forward(from: 0);
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    context.go('/quiz');
   }
 
   @override
   Widget build(BuildContext context) {
-
-    final media = MediaQuery.of(context);
-
     return Scaffold(
-      backgroundColor: AppColors.ctaApricot,
+      backgroundColor: Colors.white,
       body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final screenHeight = constraints.maxHeight;
-            final topHeight = screenHeight * 0.42;
-            final lottieAreaHeight = screenHeight * 0.2;
-            final dogHeight = screenHeight * 0.28;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  height: topHeight,
-                  width: double.infinity,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned.fill(
-                        child: ClipPath(
-                          clipper: _BlobClipper(),
-                          child: Container(
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: media.padding.top + screenHeight * 0.04,
-                        child: Image.asset(
-                          'assets/ArtrosiCane-Logo.png',
-                          height: 170,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ],
+        top: true,
+        bottom: false,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 220,
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: ColoredBox(color: AppColors.ctaApricot),
                   ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: lottieAreaHeight,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              AnimatedOpacity(
-                                opacity: _showIntroText ? 1 : 0,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeOutCubic,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    AppText.h1(
-                                      'Più movimento,\nmeno dolore',
-                                      align: TextAlign.center,
-                                      color: AppColors.primaryBlue,
-                                    ),
-                                    const SizedBox(height: AppSpacing.md),
-                                    AppText.body(
-                                      'Scopri in 10 domande quanto è esposto il tuo cane al rischio artrosi e come aiutarlo a stare meglio.',
-                                      align: TextAlign.center,
-                                      color: Colors.white,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              AnimatedOpacity(
-                                opacity: _showLottie ? 1 : 0,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeOutCubic,
-                                child: Lottie.asset(
-                                  'assets/paw.json',
-                                  height: lottieAreaHeight,
-                                  repeat: true,
-                                  onLoaded: (composition) {
-                                    final lottieDuration = Duration(
-                                      milliseconds: composition.duration.inMilliseconds * _lottieLoops,
-                                    );
-                                    _scheduleNavigation(
-                                      _introVisibleDuration + _introFadeDuration + lottieDuration,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: dogHeight),
-                          child: Transform.translate(
-                            offset: const Offset(0, -24),
-                            child: Image.asset(
-                              'assets/first-dog.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
+                  Positioned.fill(
+                    child: ClipPath(
+                      clipper: _WelcomeWaveClipper(),
+                      child: const ColoredBox(color: Colors.white),
                     ),
                   ),
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.lg),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppColors.primaryBlue.withValues(
+                              alpha: 0.16,
+                            ),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/ArtrosiCane-Logo.png',
+                          width: 190,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: AppColors.ctaApricot,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 420),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                    child: _starting
+                        ? SizedBox.expand(
+                            key: const ValueKey('welcome-loading'),
+                            child: Column(
+                              children: [
+                                const Spacer(flex: 2),
+                                Lottie.asset(
+                                  'assets/paw.json',
+                                  controller: _pawSpinController,
+                                  width: 150,
+                                  repeat: false,
+                                  onLoaded: (composition) {
+                                    _pawSpinController.duration =
+                                        composition.duration;
+                                    if (!_pawLoadedCompleter.isCompleted) {
+                                      _pawLoadedCompleter.complete();
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: AppSpacing.lg),
+                                Expanded(
+                                  flex: 4,
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Image.asset(
+                                      'assets/first-dog.png',
+                                      width: 285,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            key: const ValueKey('welcome-content'),
+                            children: [
+                              const Text(
+                                '30 secondi per capire\ncome muoversi oggi.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  height: 1.1,
+                                  fontFamily: 'Montserrat',
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                'Ti aiutiamo a proteggere le articolazioni del tuo cane in vacanza.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  height: 1.35,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _handleStartPressed,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryBlue,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size.fromHeight(56),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Inizia',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              const NonMedicalDisclaimer(compact: true),
+                            ],
+                          ),
+                  ),
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _BlobClipper extends CustomClipper<Path> {
+class _WelcomeWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    path.lineTo(0, size.height * 0.75);
-    
-    // Create a smooth curve at the bottom
-    path.quadraticBezierTo(
-      size.width * 0.5, // Control point x (center)
-      size.height,      // Control point y (bottom)
-      size.width,       // End point x (right edge)
-      size.height * 0.75 // End point y
+    path.lineTo(0, size.height - 52);
+    path.cubicTo(
+      size.width * 0.25,
+      size.height + 6,
+      size.width * 0.72,
+      size.height - 82,
+      size.width,
+      size.height - 28,
     );
-
     path.lineTo(size.width, 0);
     path.close();
     return path;

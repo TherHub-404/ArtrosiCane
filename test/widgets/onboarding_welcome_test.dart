@@ -13,7 +13,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Benvenuto in Artrosi Cane'), findsOneWidget);
-    expect(find.text('Inizia il quiz'), findsOneWidget);
+    expect(find.text('30 secondi per capire\ncome muoversi oggi.'), findsOneWidget);
+    expect(find.text('Inizia'), findsOneWidget);
   });
 }

@@ -7,8 +7,13 @@ class CalculateResult {
 
   final QuizRepository repository;
 
-  Future<QuizResult> call(List<QuizAnswer> answers) async {
-    final score = answers.fold<int>(0, (prev, answer) => prev + answer.value);
+  Future<QuizResult> call(
+    List<QuizAnswer> answers, {
+    int scoreAdjustment = 0,
+  }) async {
+    final score =
+        answers.fold<int>(0, (prev, answer) => prev + answer.value) +
+        scoreAdjustment;
     final riskLevel = _mapScoreToRisk(score);
     final result = QuizResult(riskLevel: riskLevel, score: score);
     await repository.saveLastResult(result);

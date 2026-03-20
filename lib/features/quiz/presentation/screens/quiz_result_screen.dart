@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:artrosi_cane/core/widgets/app_button.dart';
-import 'package:artrosi_cane/core/widgets/app_card.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
@@ -18,7 +19,8 @@ class QuizResultScreen extends StatefulWidget {
   State<QuizResultScreen> createState() => _QuizResultScreenState();
 }
 
-class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerProviderStateMixin {
+class _QuizResultScreenState extends State<QuizResultScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   bool _isLoading = true;
@@ -42,7 +44,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
       setState(() {
         _isLoading = false;
       });
-      _controller.forward();
+      unawaited(_controller.forward());
     }
   }
 
@@ -54,7 +56,9 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final quizResult = widget.result is QuizResult ? widget.result as QuizResult : null;
+    final quizResult = widget.result is QuizResult
+        ? widget.result as QuizResult
+        : null;
     final riskLevel = quizResult?.riskLevel ?? RiskLevel.basso;
 
     return AppScaffold(
@@ -72,18 +76,15 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                   Image.asset(
                     'assets/ArtrosiCane-Logo.png',
                     height: 80,
-                    errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox.shrink(),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  
+
                   // Spinner
-                  Lottie.asset(
-                    'assets/paw.json',
-                    height: 90,
-                    repeat: true,
-                  ),
+                  Lottie.asset('assets/paw.json', height: 90, repeat: true),
                   const SizedBox(height: AppSpacing.xl),
-                  
+
                   // Text
                   Text(
                     'Stiamo analizzando\nle risposte...',
@@ -104,7 +105,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                   const SizedBox(height: AppSpacing.lg),
                   AppText.h1('Il rischio artrosi è:', align: TextAlign.center),
                   const SizedBox(height: AppSpacing.xl),
-                  
+
                   // Gauge/Indicator Animation
                   ScaleTransition(
                     scale: _animation,
@@ -113,7 +114,10 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                       height: 200,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.borderSoft, width: 8),
+                        border: Border.all(
+                          color: AppColors.borderSoft,
+                          width: 8,
+                        ),
                       ),
                       child: Center(
                         child: Column(
@@ -121,11 +125,12 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                           children: [
                             Text(
                               _riskLabel(riskLevel),
-                              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                                color: _riskColor(riskLevel),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Montserrat', // Requested font
-                              ),
+                              style: Theme.of(context).textTheme.displayMedium
+                                  ?.copyWith(
+                                    color: _riskColor(riskLevel),
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Montserrat', // Requested font
+                                  ),
                             ),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
@@ -137,21 +142,25 @@ class _QuizResultScreenState extends State<QuizResultScreen> with SingleTickerPr
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: AppSpacing.xl),
-                  
+
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
                     child: AppText.body(
                       'Continua per tenere un diario, ricevere consigli personalizzati e prevenire l\'artrosi.',
                       align: TextAlign.center,
                     ),
                   ),
-                  
+
                   const SizedBox(height: AppSpacing.xl),
-                  
+
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
                     child: AppButton(
                       label: 'Continua',
                       onPressed: () => context.go('/auth'),

@@ -11,7 +11,8 @@ class DogProfileModel {
     this.breedImageUrl,
     this.riskLevel,
     this.riskScore,
-    this.hasDiagnosis = false,
+    this.diagnosisStatus,
+    this.diagnosisAnsweredAt,
     this.diagnosisDate,
     this.diagnosisVet,
     required this.ageGroup,
@@ -27,7 +28,8 @@ class DogProfileModel {
   final String? breedImageUrl;
   final String? riskLevel;
   final int? riskScore;
-  final bool hasDiagnosis;
+  final ArthrosisDiagnosisStatus? diagnosisStatus;
+  final String? diagnosisAnsweredAt;
   final String? diagnosisDate;
   final String? diagnosisVet;
   final AgeGroup ageGroup;
@@ -43,7 +45,9 @@ class DogProfileModel {
         'breedImageUrl': breedImageUrl,
         'riskLevel': riskLevel,
         'riskScore': riskScore,
-        'hasDiagnosis': hasDiagnosis,
+        'diagnosisStatus': diagnosisStatus?.name,
+        'hasDiagnosis': diagnosisStatus == ArthrosisDiagnosisStatus.confirmed,
+        'diagnosisAnsweredAt': diagnosisAnsweredAt,
         'diagnosisDate': diagnosisDate,
         'diagnosisVet': diagnosisVet,
         'ageGroup': ageGroup.name,
@@ -61,7 +65,8 @@ class DogProfileModel {
       breedImageUrl: json['breedImageUrl'] as String?,
       riskLevel: json['riskLevel'] as String?,
       riskScore: json['riskScore'] as int?,
-      hasDiagnosis: json['hasDiagnosis'] as bool? ?? false,
+      diagnosisStatus: _parseDiagnosisStatus(json),
+      diagnosisAnsweredAt: json['diagnosisAnsweredAt'] as String?,
       diagnosisDate: json['diagnosisDate'] as String?,
       diagnosisVet: json['diagnosisVet'] as String?,
       ageGroup: AgeGroup.values.firstWhere(
@@ -86,7 +91,8 @@ class DogProfileModel {
       breedImageUrl: profile.breedImageUrl,
       riskLevel: profile.riskLevel,
       riskScore: profile.riskScore,
-      hasDiagnosis: profile.hasDiagnosis,
+      diagnosisStatus: profile.diagnosisStatus,
+      diagnosisAnsweredAt: profile.diagnosisAnsweredAt?.toIso8601String(),
       diagnosisDate: profile.diagnosisDate,
       diagnosisVet: profile.diagnosisVet,
       ageGroup: profile.ageGroup,
@@ -104,10 +110,32 @@ class DogProfileModel {
         breedImageUrl: breedImageUrl,
         riskLevel: riskLevel,
         riskScore: riskScore,
-        hasDiagnosis: hasDiagnosis,
+        diagnosisStatus: diagnosisStatus,
+        diagnosisAnsweredAt: diagnosisAnsweredAt == null
+            ? null
+            : DateTime.tryParse(diagnosisAnsweredAt!),
         diagnosisDate: diagnosisDate,
         diagnosisVet: diagnosisVet,
         ageGroup: ageGroup,
         size: size,
       );
+
+  static ArthrosisDiagnosisStatus? _parseDiagnosisStatus(
+    Map<String, dynamic> json,
+  ) {
+    final rawStatus = json['diagnosisStatus'] as String?;
+    if (rawStatus != null && rawStatus.isNotEmpty) {
+      for (final status in ArthrosisDiagnosisStatus.values) {
+        if (status.name == rawStatus) return status;
+      }
+    }
+
+    final legacyHasDiagnosis = json['hasDiagnosis'];
+    if (legacyHasDiagnosis is bool) {
+      return legacyHasDiagnosis
+          ? ArthrosisDiagnosisStatus.confirmed
+          : ArthrosisDiagnosisStatus.notDiagnosed;
+    }
+    return null;
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:artrosi_cane/core/widgets/app_card.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
@@ -29,13 +30,15 @@ class QuizFlowScreen extends ConsumerStatefulWidget {
 }
 
 class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
-  late final PageController _pageController =
-      PageController(initialPage: widget.skipIntro ? 0 : 0);
+  late final PageController _pageController = PageController(
+    initialPage: widget.skipIntro ? 0 : 0,
+  );
   int _currentPage = 0;
   DogProfile? _profileDraft;
   DogProfile? _latestProfile;
-  bool _wantsTest = true;
-  bool _hasDiagnosis = false;
+  ArthrosisDiagnosisStatus? _diagnosisStatus;
+  DateTime? _diagnosisAnsweredAt;
+  bool _shouldAskDiagnosis = true;
   String? _diagnosisDate;
   String? _diagnosisVet;
   String? _dogId;
@@ -66,6 +69,26 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       _dogAge = (data['age'] as num?)?.toDouble();
       _dogWeight = (data['weight'] as num?)?.toDouble();
     }
+    if (!widget.skipIntro) {
+      _bootstrapDiagnosisState();
+    }
+  }
+
+  Future<void> _bootstrapDiagnosisState() async {
+    try {
+      final saved = await ref.read(loadDogProfileUseCaseProvider).call();
+      if (!mounted || saved == null) return;
+      setState(() {
+        _diagnosisStatus = saved.diagnosisStatus;
+        _diagnosisAnsweredAt = saved.diagnosisAnsweredAt;
+        _diagnosisDate = saved.diagnosisDate;
+        _diagnosisVet = saved.diagnosisVet;
+        _shouldAskDiagnosis = saved.diagnosisAnsweredAt == null;
+      });
+      _syncProfile();
+    } catch (_) {
+      // Ignore stale local data and keep default onboarding flow.
+    }
   }
 
   void _onProfileChanged(DogProfile profile) {
@@ -78,7 +101,9 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     if (_latestProfile == null) return;
     try {
       if (_isDemoUser()) return;
-      final id = await ref.read(dogSupabaseRepositoryProvider).upsertDog(_latestProfile!);
+      final id = await ref
+          .read(dogSupabaseRepositoryProvider)
+          .upsertDog(_latestProfile!);
       if (id != null) {
         _dogId = id;
       }
@@ -88,32 +113,24 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   }
 
   Future<void> _goToQuestions() async {
+    _shouldAskDiagnosis = false;
     await _persistDogProfileRemote();
-    if (mounted) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  Future<void> _skipTestToLogin() async {
-    await ref.read(completeOnboardingUseCaseProvider).call();
-    if (mounted) {
-      context.go('/auth');
-    }
+    if (!mounted) return;
+    await _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _updateDiagnosis({
-    required bool hasDiagnosis,
+    required ArthrosisDiagnosisStatus diagnosisStatus,
     String? diagnosisDate,
     String? diagnosisVet,
-    required bool wantsTest,
   }) {
-    _hasDiagnosis = hasDiagnosis;
+    _diagnosisStatus = diagnosisStatus;
+    _diagnosisAnsweredAt ??= DateTime.now();
     _diagnosisDate = diagnosisDate;
     _diagnosisVet = diagnosisVet;
-    _wantsTest = wantsTest;
     _syncProfile();
   }
 
@@ -125,7 +142,8 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       weightKg: base?.weightKg,
       breedId: base?.breedId,
       breedName: base?.breedName,
-      hasDiagnosis: _hasDiagnosis,
+      diagnosisStatus: _diagnosisStatus,
+      diagnosisAnsweredAt: _diagnosisAnsweredAt,
       diagnosisDate: _diagnosisDate,
       diagnosisVet: _diagnosisVet,
       ageGroup: base?.ageGroup ?? AgeGroup.adulto,
@@ -135,44 +153,49 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
   Future<void> _onAnswerSelected(String questionId, int answerValue) async {
     final controller = ref.read(quizControllerProvider.notifier);
-    controller.selectAnswer(questionId, answerValue);
+    await controller.selectAnswer(questionId, answerValue);
 
     await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-       final state = ref.read(quizControllerProvider);
-       final introPages = widget.skipIntro ? 0 : 2;
-       final totalPages = state.questions.length + introPages;
+    if (!mounted) return;
+    final state = ref.read(quizControllerProvider);
+    final introPages = _introPages();
+    final totalPages = state.questions.length + introPages;
 
-       if (_currentPage == totalPages - 1) {
-         await controller.submitQuiz();
-         final result = ref.read(quizControllerProvider).result;
-         if (result != null && mounted) {
-            await _persistResultRemote(result);
-            if (widget.skipIntro) {
-              await _navigateBackToDogDashboard(result);
-            } else {
-              await ref.read(completeOnboardingUseCaseProvider).call();
-              context.go('/quiz/result', extra: result);
-            }
-         }
-       } else {
-         _pageController.nextPage(
-           duration: const Duration(milliseconds: 300),
-           curve: Curves.easeInOut,
-         );
-       }
+    if (_currentPage == totalPages - 1) {
+      await controller.submitQuiz(scoreAdjustment: _diagnosisScoreAdjustment());
+      final result = ref.read(quizControllerProvider).result;
+      if (result != null && mounted) {
+        await _persistResultRemote(result);
+        if (widget.skipIntro) {
+          await _navigateBackToDogDashboard(result);
+        } else {
+          await ref.read(completeOnboardingUseCaseProvider).call();
+          if (!mounted) return;
+          context.go('/quiz/result', extra: result);
+        }
+      }
+    } else {
+      await _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
+
+  int _introPages() {
+    if (widget.skipIntro) return 0;
+    return _shouldAskDiagnosis ? 2 : 1;
+  }
+
+  int _questionStartIndex() => _introPages();
 
   Future<void> _persistResultRemote(QuizResult result) async {
     if (_isDemoUser()) return;
     final answers = ref.read(quizControllerProvider).answers;
     final dogId = _dogId;
-    await ref.read(quizRemoteDataSourceProvider).saveResult(
-          result: result,
-          dogId: dogId,
-          answers: answers,
-        );
+    await ref
+        .read(quizRemoteDataSourceProvider)
+        .saveResult(result: result, dogId: dogId, answers: answers);
   }
 
   bool _isDemoUser() {
@@ -213,18 +236,33 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     }
   }
 
+  int _diagnosisScoreAdjustment() {
+    switch (_diagnosisStatus) {
+      case ArthrosisDiagnosisStatus.confirmed:
+        return 1;
+      case ArthrosisDiagnosisStatus.unknown:
+        return 2;
+      case ArthrosisDiagnosisStatus.notDiagnosed:
+      case null:
+        return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(quizControllerProvider);
 
     if (state.isLoading) {
       return const AppScaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue)),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryBlue),
+        ),
       );
     }
 
-    final introPages = widget.skipIntro ? 0 : 2;
-    final totalPages = state.questions.length + introPages; // profile + diagnosis + questions
+    final introPages = _introPages();
+    final questionStartIndex = _questionStartIndex();
+    final totalPages = state.questions.length + introPages;
 
     return AppScaffold(
       appBar: AppBar(
@@ -237,7 +275,9 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
           AnimatedBuilder(
             animation: _pageController,
             builder: (context, child) {
-              final page = _pageController.hasClients ? (_pageController.page ?? 0.0) : 0.0;
+              final page = _pageController.hasClients
+                  ? (_pageController.page ?? 0.0)
+                  : 0.0;
               final progress = (page + 1) / totalPages;
               return ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -259,8 +299,10 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                 setState(() {
                   _currentPage = index;
                 });
-                if (!widget.skipIntro && index > 1) {
-                  ref.read(quizControllerProvider.notifier).setIndex(index - 2);
+                if (!widget.skipIntro && index >= questionStartIndex) {
+                  ref
+                      .read(quizControllerProvider.notifier)
+                      .setIndex(index - questionStartIndex);
                 } else if (widget.skipIntro) {
                   ref.read(quizControllerProvider.notifier).setIndex(index);
                 }
@@ -270,31 +312,30 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                   if (index == 0) {
                     return DogProfilePage(onProfileChanged: _onProfileChanged);
                   }
-                  if (index == 1) {
+                  if (_shouldAskDiagnosis && index == 1) {
                     return _DiagnosisStep(
-                      initialHasDiagnosis: _hasDiagnosis,
-                      initialWantsTest: _wantsTest,
+                      initialStatus: _diagnosisStatus,
                       initialDate: _diagnosisDate,
                       initialVet: _diagnosisVet,
-                      onChange: (hasDx, wantsTest, date, vet) {
+                      onChange: (status, date, vet) {
                         setState(() {
                           _updateDiagnosis(
-                            hasDiagnosis: hasDx,
+                            diagnosisStatus: status,
                             diagnosisDate: date,
                             diagnosisVet: vet,
-                            wantsTest: wantsTest,
                           );
                         });
                       },
                       onProceedTest: _goToQuestions,
-                      onSkipTest: _skipTestToLogin,
                     );
                   }
                 }
 
-                final questionIndex = widget.skipIntro ? index : index - 2;
+                final questionIndex = widget.skipIntro
+                    ? index
+                    : index - questionStartIndex;
                 final question = state.questions[questionIndex];
-                
+
                 int? selectedAnswer;
                 for (final answer in state.answers) {
                   if (answer.questionId == question.id) {
@@ -327,15 +368,16 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       ...question.options.asMap().entries.map(
-                            (entry) => Padding(
-                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                              child: _OptionTile(
-                                label: entry.value,
-                                isSelected: selectedAnswer == entry.key,
-                                onTap: () => _onAnswerSelected(question.id, entry.key),
-                              ),
-                            ),
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: _OptionTile(
+                            label: entry.value,
+                            isSelected: selectedAnswer == entry.key,
+                            onTap: () =>
+                                _onAnswerSelected(question.id, entry.key),
                           ),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -358,7 +400,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                 if (_currentPage == 0) {
                   await _persistDogProfileRemote();
                 }
-                _pageController.nextPage(
+                await _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                 );
@@ -390,7 +432,9 @@ class _OptionTile extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.ctaApricot : AppColors.card, // Orange when selected
+          color: isSelected
+              ? AppColors.ctaApricot
+              : AppColors.card, // Orange when selected
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? AppColors.ctaApricot : AppColors.borderSoft,
@@ -407,14 +451,18 @@ class _OptionTile extends StatelessWidget {
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected ? Colors.white : AppColors.borderSoft, // White icon when selected
+              color: isSelected
+                  ? Colors.white
+                  : AppColors.borderSoft, // White icon when selected
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.text, // White text when selected
+                  color: isSelected
+                      ? Colors.white
+                      : AppColors.text, // White text when selected
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 16,
                 ),
@@ -429,69 +477,69 @@ class _OptionTile extends StatelessWidget {
 
 class _DiagnosisStep extends StatelessWidget {
   const _DiagnosisStep({
-    required this.initialHasDiagnosis,
-    required this.initialWantsTest,
+    required this.initialStatus,
     this.initialDate,
     this.initialVet,
     required this.onChange,
     required this.onProceedTest,
-    required this.onSkipTest,
   });
 
-  final bool initialHasDiagnosis;
-  final bool initialWantsTest;
+  final ArthrosisDiagnosisStatus? initialStatus;
   final String? initialDate;
   final String? initialVet;
-  final void Function(bool hasDiagnosis, bool wantsTest, String? date, String? vet) onChange;
+  final void Function(
+    ArthrosisDiagnosisStatus status,
+    String? date,
+    String? vet,
+  )
+  onChange;
   final VoidCallback onProceedTest;
-  final VoidCallback onSkipTest;
 
   @override
   Widget build(BuildContext context) {
     return _DiagnosisStepContent(
-      initialHasDiagnosis: initialHasDiagnosis,
-      initialWantsTest: initialWantsTest,
+      initialStatus: initialStatus,
       initialDate: initialDate,
       initialVet: initialVet,
       onChange: onChange,
       onProceedTest: onProceedTest,
-      onSkipTest: onSkipTest,
     );
   }
 }
 
 class _DiagnosisStepContent extends StatefulWidget {
   const _DiagnosisStepContent({
-    required this.initialHasDiagnosis,
-    required this.initialWantsTest,
+    required this.initialStatus,
     this.initialDate,
     this.initialVet,
     required this.onChange,
     required this.onProceedTest,
-    required this.onSkipTest,
   });
 
-  final bool initialHasDiagnosis;
-  final bool initialWantsTest;
+  final ArthrosisDiagnosisStatus? initialStatus;
   final String? initialDate;
   final String? initialVet;
-  final void Function(bool hasDiagnosis, bool wantsTest, String? date, String? vet) onChange;
+  final void Function(
+    ArthrosisDiagnosisStatus status,
+    String? date,
+    String? vet,
+  )
+  onChange;
   final VoidCallback onProceedTest;
-  final VoidCallback onSkipTest;
 
   @override
   State<_DiagnosisStepContent> createState() => _DiagnosisStepContentState();
 }
 
 class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
-  late bool _hasDiagnosis = widget.initialHasDiagnosis;
-  late bool _wantsTest = widget.initialWantsTest;
+  ArthrosisDiagnosisStatus? _status;
   late TextEditingController _dateCtrl;
   late TextEditingController _vetCtrl;
 
   @override
   void initState() {
     super.initState();
+    _status = widget.initialStatus;
     _dateCtrl = TextEditingController(text: widget.initialDate ?? '');
     _vetCtrl = TextEditingController(text: widget.initialVet ?? '');
   }
@@ -504,9 +552,9 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
   }
 
   void _notifyChange() {
+    if (_status == null) return;
     widget.onChange(
-      _hasDiagnosis,
-      _wantsTest,
+      _status!,
       _dateCtrl.text.isEmpty ? null : _dateCtrl.text.trim(),
       _vetCtrl.text.isEmpty ? null : _vetCtrl.text.trim(),
     );
@@ -519,22 +567,56 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppText.h1(
-            'Diagnosi di artrosi',
-            color: AppColors.primaryBlue,
+          AppText.h1('Diagnosi', color: AppColors.primaryBlue),
+          const SizedBox(height: AppSpacing.md),
+          AppText.body(
+            'Il tuo cane ha una diagnosi di artrosi confermata dal veterinario?',
+            color: AppColors.text,
+            bold: true,
           ),
           const SizedBox(height: AppSpacing.md),
-          SwitchListTile(
-            value: _hasDiagnosis,
-            activeColor: AppColors.ctaApricot,
-            title: const Text('Il tuo cane ha già una diagnosi di artrosi?'),
-            onChanged: (value) {
-              setState(() => _hasDiagnosis = value);
-              _notifyChange();
-            },
+          Row(
+            children: [
+              Expanded(
+                child: _ChoiceCard(
+                  label: 'Sì',
+                  selected: _status == ArthrosisDiagnosisStatus.confirmed,
+                  onTap: () {
+                    setState(
+                      () => _status = ArthrosisDiagnosisStatus.confirmed,
+                    );
+                    _notifyChange();
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ChoiceCard(
+                  label: 'No',
+                  selected: _status == ArthrosisDiagnosisStatus.notDiagnosed,
+                  onTap: () {
+                    setState(
+                      () => _status = ArthrosisDiagnosisStatus.notDiagnosed,
+                    );
+                    _notifyChange();
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ChoiceCard(
+                  label: 'Non lo so',
+                  selected: _status == ArthrosisDiagnosisStatus.unknown,
+                  onTap: () {
+                    setState(() => _status = ArthrosisDiagnosisStatus.unknown);
+                    _notifyChange();
+                  },
+                ),
+              ),
+            ],
           ),
-          if (_hasDiagnosis) ...[
-            const SizedBox(height: AppSpacing.md),
+          if (_status == ArthrosisDiagnosisStatus.confirmed) ...[
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _dateCtrl,
               decoration: InputDecoration(
@@ -552,7 +634,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
               ),
               onChanged: (_) => _notifyChange(),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _vetCtrl,
               decoration: InputDecoration(
@@ -570,63 +652,35 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
               ),
               onChanged: (_) => _notifyChange(),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            AppText.body(
-              'Vuoi comunque fare il test rapido di 5 domande?',
-              color: AppColors.text,
-              bold: true,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: _ChoiceCard(
-                    label: 'Sì, fai il test',
-                    selected: _wantsTest,
-                    onTap: () {
-                      setState(() => _wantsTest = true);
+          ],
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _status == null
+                  ? null
+                  : () {
                       _notifyChange();
                       widget.onProceedTest();
                     },
-                  ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.ctaApricot,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _ChoiceCard(
-                    label: 'No, vai al login',
-                    selected: !_wantsTest,
-                    onTap: () {
-                      setState(() => _wantsTest = false);
-                      _notifyChange();
-                      widget.onSkipTest();
-                    },
-                  ),
+              ),
+              child: const Text(
+                'Continua',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            AppText.body(
-              'Se scegli di saltare il test verrai portato alla schermata di login.',
-              color: AppColors.text,
-            ),
-          ] else ...[
-            const SizedBox(height: AppSpacing.lg),
-            AppText.body(
-              'Nessuna diagnosi? Puoi fare un rapido test di 5 domande per scoprire lo stato di salute del tuo cane.',
-              color: AppColors.text.withOpacity(0.8),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _ChoiceCard(
-              label: 'Sì, fai il test',
-              selected: true,
-              onTap: () {
-                setState(() => _wantsTest = true);
-                _notifyChange();
-                widget.onProceedTest();
-              },
-            ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const NonMedicalDisclaimer(compact: true),
         ],
       ),
     );
@@ -706,8 +760,18 @@ class _QuizBottomBar extends StatelessWidget {
           if (!isFirst)
             TextButton.icon(
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_ios, size: 16, color: AppColors.ctaApricot),
-              label: const Text('Indietro', style: TextStyle(color: AppColors.ctaApricot, fontWeight: FontWeight.bold)),
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                size: 16,
+                color: AppColors.ctaApricot,
+              ),
+              label: const Text(
+                'Indietro',
+                style: TextStyle(
+                  color: AppColors.ctaApricot,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             )
           else
             const SizedBox.shrink(),
@@ -717,7 +781,11 @@ class _QuizBottomBar extends StatelessWidget {
               width: 150,
               child: ElevatedButton.icon(
                 onPressed: onNext,
-                icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
+                icon: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.white,
+                ),
                 label: const Text(
                   'Continua',
                   style: TextStyle(
@@ -729,7 +797,10 @@ class _QuizBottomBar extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.ctaApricot,
                   elevation: 3,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),

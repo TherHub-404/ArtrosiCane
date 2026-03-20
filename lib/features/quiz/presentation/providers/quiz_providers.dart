@@ -120,17 +120,23 @@ class QuizController extends StateNotifier<QuizState> {
     state = state.copyWith(currentIndex: index);
   }
 
-  Future<void> goToNext() async {
+  Future<void> goToNext({int scoreAdjustment = 0}) async {
     if (state.currentIndex >= state.questions.length - 1) {
-      final result = await calculateResult(state.answers);
+      final result = await calculateResult(
+        state.answers,
+        scoreAdjustment: scoreAdjustment,
+      );
       state = state.copyWith(result: result);
       return;
     }
     state = state.copyWith(currentIndex: state.currentIndex + 1);
   }
 
-  Future<void> submitQuiz() async {
-    final result = await calculateResult(state.answers);
+  Future<void> submitQuiz({int scoreAdjustment = 0}) async {
+    final result = await calculateResult(
+      state.answers,
+      scoreAdjustment: scoreAdjustment,
+    );
     state = state.copyWith(result: result);
   }
 
