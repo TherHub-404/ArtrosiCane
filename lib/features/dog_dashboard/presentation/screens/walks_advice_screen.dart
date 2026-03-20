@@ -143,7 +143,9 @@ class WalksAdviceScreen extends StatelessWidget {
                       ],
                       if (advice.points.length > 1) ...[
                         const SizedBox(height: 6),
-                        ...advice.points.sublist(1).map(
+                        ...advice.points
+                            .sublist(1)
+                            .map(
                               (p) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Text(
@@ -234,7 +236,6 @@ class WalksAdviceScreen extends StatelessWidget {
     final itemSize = itemTextSize ?? 14.5;
     final titleSize = titleTextSize ?? 16;
 
-    final softBg = Color.lerp(accentColor, Colors.white, 0.92)!;
     final headerBg = Color.lerp(accentColor, Colors.white, 0.78)!;
     final cardTop = Color.lerp(accentColor, Colors.white, 0.90)!;
     final cardBottom = Color.lerp(accentColor, Colors.white, 0.97)!;
@@ -321,7 +322,9 @@ class WalksAdviceScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: Colors.white.withAlpha(210),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: accentColor.withAlpha(28)),
+                              border: Border.all(
+                                color: accentColor.withAlpha(28),
+                              ),
                             ),
                             alignment: Alignment.center,
                             child: Text(

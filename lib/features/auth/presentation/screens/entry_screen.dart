@@ -66,7 +66,8 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
     final inviteLocation = ref.watch(
       featureFlagsControllerProvider.select((state) => state.inviteLocation),
     );
-    final showBibbioneBackground = inviteLocation == 'bibbione';
+    final showBibbioneBackground =
+        inviteLocation == 'bibbione' || inviteLocation == 'bibione';
 
     return Scaffold(
       body: Stack(
@@ -87,9 +88,9 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.45),
-                    Colors.black.withOpacity(0.15),
-                    Colors.black.withOpacity(0.35),
+                    Colors.black.withValues(alpha: 0.45),
+                    Colors.black.withValues(alpha: 0.15),
+                    Colors.black.withValues(alpha: 0.35),
                   ],
                 ),
               ),
@@ -118,8 +119,8 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(
-                            showBibbioneBackground ? 0.2 : 0.08,
+                          color: Colors.black.withValues(
+                            alpha: showBibbioneBackground ? 0.2 : 0.08,
                           ),
                           blurRadius: 26,
                           offset: const Offset(0, 12),

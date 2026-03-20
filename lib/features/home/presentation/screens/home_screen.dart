@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -94,18 +93,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _setExperienceMode(String mode) async {
-    final normalized = mode.toLowerCase() == 'bibbione' ? 'bibbione' : 'normal';
+    final input = mode.toLowerCase();
+    final normalized = (input == 'bibbione' || input == 'bibione')
+        ? 'bibbione'
+        : 'normal';
     await ref
         .read(featureFlagsControllerProvider.notifier)
         .persistInviteLocationFromLink(normalized);
-
-    if (!mounted) return;
-    final message = normalized == 'bibbione'
-        ? 'Modalità Passeggiate Bibione attiva'
-        : 'Modalità Percorso Artrosi attiva';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildModeCard({
@@ -113,75 +107,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     required IconData icon,
     required String title,
     required String subtitle,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
+    final titleColor = isSelected ? accentColor : AppColors.text;
+    final subtitleColor = isSelected
+        ? accentColor.withValues(alpha: 0.9)
+        : AppColors.text.withValues(alpha: 0.74);
+
     return Expanded(
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: isSelected
-                  ? const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFFFE0B2), Color(0xFFFFCC80)],
-                    )
-                  : null,
-              color: isSelected ? null : Colors.white,
-              border: Border.all(
+          child: SizedBox(
+            height: 150,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
                 color: isSelected
-                    ? AppColors.ctaApricot
-                    : AppColors.primaryBlue.withOpacity(0.18),
-                width: isSelected ? 1.5 : 1,
+                    ? accentColor.withValues(alpha: 0.18)
+                    : Colors.white,
+                border: Border.all(
+                  color: isSelected
+                      ? accentColor.withValues(alpha: 0.95)
+                      : accentColor.withValues(alpha: 0.22),
+                  width: isSelected ? 1.8 : 1.1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isSelected
+                        ? accentColor.withValues(alpha: 0.16)
+                        : Colors.black.withValues(alpha: 0.04),
+                    blurRadius: isSelected ? 12 : 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(isSelected ? 0.1 : 0.04),
-                  blurRadius: isSelected ? 12 : 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? AppColors.primaryBlue : AppColors.text,
-                  size: 18,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: isSelected ? AppColors.primaryBlue : AppColors.text,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(icon, color: titleColor, size: 17),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color:
-                        (isSelected
-                                ? AppColors.primaryBlue
-                                : AppColors.text.withOpacity(0.75))
-                            .withOpacity(0.9),
-                    height: 1.2,
+                  const SizedBox(height: 8),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      color: titleColor,
+                      height: 1.2,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: subtitleColor,
+                      height: 1.2,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -194,7 +201,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final inviteLocation = ref.watch(
       featureFlagsControllerProvider.select((state) => state.inviteLocation),
     );
-    final isBibbioneMode = inviteLocation == 'bibbione';
+    final isBibbioneMode =
+        inviteLocation == 'bibbione' || inviteLocation == 'bibione';
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
@@ -242,7 +250,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     border: Border.all(color: Colors.white, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -299,7 +307,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   color: const Color(0xFFF8FAFF),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.12),
+                    color: AppColors.primaryBlue.withValues(alpha: 0.12),
                     width: 1,
                   ),
                 ),
@@ -320,7 +328,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       'Scegli il percorso da approfondire adesso.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.text.withOpacity(0.75),
+                        color: AppColors.text.withValues(alpha: 0.75),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -330,15 +338,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           isSelected: isBibbioneMode,
                           icon: Icons.beach_access_rounded,
                           title: 'Passeggiate Bibione',
-                          subtitle: 'Focus passeggiate e territorio',
+                          subtitle: 'Focus Passeggiate',
+                          accentColor: AppColors.ctaApricot,
                           onTap: () => _setExperienceMode('bibbione'),
                         ),
                         const SizedBox(width: 10),
                         _buildModeCard(
                           isSelected: !isBibbioneMode,
                           icon: Icons.favorite_rounded,
-                          title: 'Percorso Artrosi',
-                          subtitle: 'Focus su artrosi, routine e benessere',
+                          title: 'Percorso Salute',
+                          subtitle: 'Focus Artrosi',
+                          accentColor: AppColors.primaryBlue,
                           onTap: () => _setExperienceMode('normal'),
                         ),
                       ],
@@ -395,12 +405,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: AppColors.ctaApricot.withOpacity(0.2),
+                          color: AppColors.ctaApricot.withValues(alpha: 0.2),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -443,8 +453,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 onTap: _openAddPetDialog,
                                 child: CustomPaint(
                                   painter: _DashedBorderPainter(
-                                    color: AppColors.ctaApricot.withOpacity(
-                                      0.5,
+                                    color: AppColors.ctaApricot.withValues(
+                                      alpha: 0.5,
                                     ),
                                     strokeWidth: 2,
                                     gap: 6,
@@ -456,7 +466,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     ),
                                     width: double.infinity,
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.6),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.6,
+                                      ),
                                       borderRadius: BorderRadius.circular(28),
                                     ),
                                     child: Column(
@@ -466,7 +478,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                           padding: const EdgeInsets.all(14),
                                           decoration: BoxDecoration(
                                             color: AppColors.ctaApricot
-                                                .withOpacity(0.15),
+                                                .withValues(alpha: 0.15),
                                             shape: BoxShape.circle,
                                           ),
                                           child: const Icon(
@@ -489,8 +501,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                           'Aggiungilo ora con un tap',
                                           style: TextStyle(
                                             fontSize: 14,
-                                            color: AppColors.text.withOpacity(
-                                              0.7,
+                                            color: AppColors.text.withValues(
+                                              alpha: 0.7,
                                             ),
                                           ),
                                         ),
@@ -613,7 +625,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 12,
                                   offset: const Offset(0, 6),
                                 ),
@@ -625,8 +637,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppColors.ctaApricot.withOpacity(
-                                      0.15,
+                                    color: AppColors.ctaApricot.withValues(
+                                      alpha: 0.15,
                                     ),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -641,7 +653,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     'Aggiungi un cane per ricevere consigli personalizzati.',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: AppColors.text.withOpacity(0.75),
+                                      color: AppColors.text.withValues(
+                                        alpha: 0.75,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -686,7 +700,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Positioned.fill(
               child: GestureDetector(
                 onTap: _closeSpeedDial,
-                child: Container(color: Colors.black.withOpacity(0.3)),
+                child: Container(color: Colors.black.withValues(alpha: 0.3)),
               ),
             ),
 
@@ -793,7 +807,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                ),
               ],
             ),
             child: Text(
@@ -806,71 +823,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAddPetCard() {
-    return GestureDetector(
-      onTap: _openAddPetDialog,
-      child: CustomPaint(
-        painter: _DashedBorderPainter(
-          color: AppColors.ctaApricot.withOpacity(0.5),
-          strokeWidth: 2,
-          gap: 6,
-          radius: 28,
-        ),
-        child: Container(
-          width: 300,
-          height: 380,
-          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(
-              0.8,
-            ), // Slight transparency for texture
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: AppColors.ctaApricot.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  size: 56,
-                  color: AppColors.ctaApricot,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              const Text(
-                'Aggiungi un cane',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primaryBlue,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: Text(
-                  'Crea il profilo per il tuo\namico a quattro zampe',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.text.withOpacity(0.6),
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -888,12 +840,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 14,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.08)),
+        border: Border.all(
+          color: AppColors.primaryBlue.withValues(alpha: 0.08),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -904,7 +858,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.12),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -943,10 +897,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _riskPillColor(riskLabel).withOpacity(0.18),
+                          color: _riskPillColor(
+                            riskLabel,
+                          ).withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _riskPillColor(riskLabel).withOpacity(0.6),
+                            color: _riskPillColor(
+                              riskLabel,
+                            ).withValues(alpha: 0.6),
                             width: 1,
                           ),
                         ),
@@ -966,7 +924,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.08),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -1034,7 +992,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           decoration: BoxDecoration(
             color: soft,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withOpacity(0.25)),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1087,7 +1045,6 @@ class _NewsCarousel extends ConsumerStatefulWidget {
 class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
   final PageController _controller = PageController();
   int _currentIndex = 0;
-  static final Uri _siteUri = Uri.parse('https://www.artrosicane.com');
 
   @override
   void dispose() {
@@ -1131,14 +1088,22 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
     };
 
     final articleCard = <String, dynamic>{
-      'kind': 'article',
-      'title': "Cos'e l'artrosi?",
-      'subtitle': 'Segnali precoci da non ignorare',
+      'kind': 'mode_switch',
+      'title': isBibbioneMode
+          ? 'Percorso Salute'
+          : 'Le nostre passeggiate a Bibione',
+      'subtitle': isBibbioneMode
+          ? 'Prova il percorso salute, non ignorare i segni precoci di artrosi del tuo cane'
+          : 'Attiva la modalità Bibione per scoprire i percorsi dedicati e viverli al meglio.',
       'colors': const [Color(0xFFFFFFFF), Color(0xFFF5F5F5)],
       'textColor': AppColors.primaryBlue,
-      'icon': Icons.info_outline,
-      'badgeLabel': 'Guida',
-      'buttonText': 'Approfondisci',
+      'icon': isBibbioneMode
+          ? Icons.favorite_rounded
+          : Icons.directions_walk_rounded,
+      'buttonText': isBibbioneMode
+          ? 'Prova Percorso Salute'
+          : 'Scopri le nostre passeggiate',
+      'targetMode': isBibbioneMode ? 'normal' : 'bibbione',
     };
 
     if (isBibbioneMode) {
@@ -1182,15 +1147,20 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
       return;
     }
 
-    final launched = await launchUrl(
-      _siteUri,
-      mode: LaunchMode.externalApplication,
-    );
-    if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossibile aprire il sito.')),
-      );
+    if (kind == 'mode_switch') {
+      final targetMode = item['targetMode'] as String? ?? 'normal';
+      await _switchExperienceMode(targetMode);
     }
+  }
+
+  Future<void> _switchExperienceMode(String mode) async {
+    final input = mode.toLowerCase();
+    final normalized = (input == 'bibbione' || input == 'bibione')
+        ? 'bibbione'
+        : 'normal';
+    await ref
+        .read(featureFlagsControllerProvider.notifier)
+        .persistInviteLocationFromLink(normalized);
   }
 
   void _openMonthlySentenceBottomSheet(MonthlySentence sentence) {
@@ -1215,7 +1185,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.2),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -1227,7 +1197,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.ctaApricot.withOpacity(0.18),
+                      color: AppColors.ctaApricot.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -1349,7 +1319,8 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
     final inviteLocation = ref.watch(
       featureFlagsControllerProvider.select((state) => state.inviteLocation),
     );
-    final isBibbioneMode = inviteLocation == 'bibbione';
+    final isBibbioneMode =
+        inviteLocation == 'bibbione' || inviteLocation == 'bibione';
     final monthlySentence = monthlySentenceAsync.valueOrNull;
     final monthlyLoading = monthlySentenceAsync.isLoading;
     final newsItems = _buildNewsItems(
@@ -1375,7 +1346,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1437,8 +1408,8 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
                                           colors: [
-                                            Colors.black.withOpacity(0.7),
-                                            Colors.black.withOpacity(0.2),
+                                            Colors.black.withValues(alpha: 0.7),
+                                            Colors.black.withValues(alpha: 0.2),
                                           ],
                                         ),
                                       ),
@@ -1467,13 +1438,15 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                 final item = newsItems[index];
                 final bool isFullBackground = item['isFullBackground'] ?? false;
                 final bool isMonthly = item['kind'] == 'monthly';
+                final bool isModeSwitch = item['kind'] == 'mode_switch';
                 final bool showBadge =
                     !isFullBackground &&
                     item['icon'] != null &&
-                    item['kind'] != 'monthly';
+                    item['kind'] != 'monthly' &&
+                    !isModeSwitch;
 
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 30.0),
+                  padding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 28.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1484,7 +1457,7 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.72),
+                            color: Colors.white.withValues(alpha: 0.72),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Row(
@@ -1510,31 +1483,57 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                         ),
                         const SizedBox(height: 8),
                       ],
-                      Text(
-                        item['title'],
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: isFullBackground ? 22 : 18,
-                          fontWeight: FontWeight.w900,
-                          fontFamily: 'Montserrat',
-                          color: isFullBackground
-                              ? Colors.white
-                              : item['textColor'],
+                      if (isModeSwitch)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              item['icon'] as IconData,
+                              size: 20,
+                              color: item['textColor'] as Color,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item['title'],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Montserrat',
+                                  color: item['textColor'],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      if (!isModeSwitch)
+                        Text(
+                          item['title'],
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: isFullBackground ? 22 : 18,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Montserrat',
+                            color: isFullBackground
+                                ? Colors.white
+                                : item['textColor'],
+                          ),
+                        ),
                       const SizedBox(height: 6),
                       Text(
                         item['subtitle'],
-                        maxLines: isMonthly ? 1 : 2,
+                        maxLines: isMonthly ? 1 : (isModeSwitch ? 3 : 2),
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isModeSwitch ? 12.5 : 14,
                           color:
                               (isFullBackground
                                       ? Colors.white
                                       : item['textColor'])
-                                  .withOpacity(0.8),
+                                  .withValues(alpha: 0.8),
                           fontWeight: FontWeight.w500,
                           fontFamily: 'Montserrat',
                         ),
@@ -1545,15 +1544,15 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                         borderRadius: BorderRadius.circular(25),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            horizontal: 12,
+                            vertical: 7,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -1561,8 +1560,8 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                           ),
                           child: Text(
                             item['buttonText'],
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: isModeSwitch ? 10.5 : 12,
                               fontWeight: FontWeight.w800,
                               color:
                                   AppColors.primaryBlue, // App's specific blue
@@ -1593,11 +1592,13 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (isFullBackgroundSelected
-                                ? Colors.white.withOpacity(0.9)
-                                : AppColors.primaryBlue.withOpacity(0.85))
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : AppColors.primaryBlue.withValues(alpha: 0.85))
                           : (isFullBackgroundSelected
-                                ? Colors.white.withOpacity(0.3)
-                                : AppColors.primaryBlue.withOpacity(0.26)),
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : AppColors.primaryBlue.withValues(
+                                    alpha: 0.26,
+                                  )),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -1749,7 +1750,7 @@ class _PetCarouselState extends State<_PetCarousel> {
       onTap: widget.onAddTap,
       child: CustomPaint(
         painter: _DashedBorderPainter(
-          color: AppColors.ctaApricot.withOpacity(0.5),
+          color: AppColors.ctaApricot.withValues(alpha: 0.5),
           strokeWidth: 2,
           gap: 6,
           radius: 28,
@@ -1759,7 +1760,7 @@ class _PetCarouselState extends State<_PetCarousel> {
           height: 380, // Match PetCard height
           margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(28),
           ),
           child: Column(
@@ -1768,7 +1769,7 @@ class _PetCarouselState extends State<_PetCarousel> {
               Container(
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
-                  color: AppColors.ctaApricot.withOpacity(0.1),
+                  color: AppColors.ctaApricot.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1795,7 +1796,7 @@ class _PetCarouselState extends State<_PetCarousel> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.text.withOpacity(0.6),
+                    color: AppColors.text.withValues(alpha: 0.6),
                     height: 1.4,
                   ),
                 ),

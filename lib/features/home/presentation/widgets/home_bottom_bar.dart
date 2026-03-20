@@ -22,7 +22,7 @@ class HomeBottomBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.3), // Blue shadow
+            color: AppColors.primaryBlue.withValues(alpha: 0.3), // Blue shadow
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -65,7 +65,7 @@ class HomeBottomBar extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 6),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.ctaApricot.withOpacity(0.4),
+                      color: AppColors.ctaApricot.withValues(alpha: 0.4),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -83,66 +83,6 @@ class HomeBottomBar extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SpeedDialButton extends StatelessWidget {
-  const _SpeedDialButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Material(
-          color: Colors.white,
-          shape: const CircleBorder(),
-          elevation: 4,
-          shadowColor: Colors.black.withOpacity(0.3),
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: Container(
-              width: 56,
-              height: 56,
-              alignment: Alignment.center,
-              child: Icon(icon, color: color, size: 28),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
-              ],
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

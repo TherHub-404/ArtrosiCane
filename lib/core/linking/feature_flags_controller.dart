@@ -131,6 +131,7 @@ class FeatureFlagsController extends StateNotifier<FeatureFlagsState> {
 
     // Accept common variants/typos and map them to one canonical location.
     if (normalized == 'bibbione' ||
+        normalized == 'bibione' ||
         normalized == 'bibbine' ||
         normalized == 'bibiobe' ||
         normalized.startsWith('bibb')) {
