@@ -11,6 +11,8 @@ import 'package:artrosi_cane/features/onboarding/presentation/screens/onboarding
 import 'package:artrosi_cane/features/onboarding/presentation/screens/splash_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_flow_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_result_screen.dart';
+import 'package:artrosi_cane/features/quiz/presentation/screens/diagnosis_priority_result_screen.dart';
+import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 import 'package:artrosi_cane/features/walks/presentation/screens/walks_overview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +49,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/quiz/result',
         name: 'quizResult',
         builder: (context, state) => QuizResultScreen(result: state.extra),
+      ),
+      GoRoute(
+        path: '/quiz/diagnosis-result',
+        name: 'quizDiagnosisResult',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! DiagnosisPriorityResult) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Mappa Priorita')),
+              body: const Center(
+                child: Text('Risultato priorita non disponibile.'),
+              ),
+            );
+          }
+          return DiagnosisPriorityResultScreen(result: extra);
+        },
       ),
       GoRoute(
         path: '/auth',

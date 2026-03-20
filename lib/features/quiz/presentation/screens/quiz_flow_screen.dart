@@ -10,6 +10,9 @@ import 'package:artrosi_cane/features/onboarding/presentation/screens/dog_profil
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
+import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
+import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_priority_engine.dart';
+import 'package:artrosi_cane/features/quiz/domain/entities/quiz_answer.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
@@ -30,9 +33,13 @@ class QuizFlowScreen extends ConsumerStatefulWidget {
 }
 
 class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
+  static const int _confirmedDiagnosisQuestionCount = 7;
+
   late final PageController _pageController = PageController(
     initialPage: widget.skipIntro ? 0 : 0,
   );
+  final DiagnosisPriorityEngine _diagnosisPriorityEngine =
+      const DiagnosisPriorityEngine();
   int _currentPage = 0;
   DogProfile? _profileDraft;
   DogProfile? _latestProfile;
@@ -47,6 +54,19 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   String? _dogImage;
   double? _dogAge;
   double? _dogWeight;
+  final Set<DiagnosisJoint> _diagnosisJoints = <DiagnosisJoint>{};
+  DiagnosisMobility? _diagnosisMobility;
+  DiagnosisRigidityFrequency? _diagnosisRigidityFrequency;
+  DiagnosisRecovery? _diagnosisRecovery;
+  bool? _diagnosisHomeRiskFactors;
+  DiagnosisWeightTrend? _diagnosisWeightTrend;
+  DiagnosisMovementRhythm? _diagnosisMovementRhythm;
+  bool _submittingDiagnosisFlow = false;
+
+  bool get _isConfirmedDiagnosisFlow =>
+      !widget.skipIntro &&
+      !_shouldAskDiagnosis &&
+      _diagnosisStatus == ArthrosisDiagnosisStatus.confirmed;
 
   @override
   void dispose() {
@@ -135,11 +155,22 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     );
   }
 
+  void _resetConfirmedDiagnosisAnswers() {
+    _diagnosisJoints.clear();
+    _diagnosisMobility = null;
+    _diagnosisRigidityFrequency = null;
+    _diagnosisRecovery = null;
+    _diagnosisHomeRiskFactors = null;
+    _diagnosisWeightTrend = null;
+    _diagnosisMovementRhythm = null;
+  }
+
   void _updateDiagnosis({
     required ArthrosisDiagnosisStatus diagnosisStatus,
     String? diagnosisDate,
     String? diagnosisVet,
   }) {
+    final previousStatus = _diagnosisStatus;
     _diagnosisStatus = diagnosisStatus;
     _diagnosisAnsweredAt ??= DateTime.now();
     if (diagnosisStatus == ArthrosisDiagnosisStatus.confirmed) {
@@ -148,6 +179,11 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     } else {
       _diagnosisDate = null;
       _diagnosisVet = null;
+      _resetConfirmedDiagnosisAnswers();
+    }
+    if (previousStatus != diagnosisStatus &&
+        diagnosisStatus == ArthrosisDiagnosisStatus.confirmed) {
+      _resetConfirmedDiagnosisAnswers();
     }
     _syncProfile();
   }
@@ -207,13 +243,107 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
   int _questionStartIndex() => _introPages();
 
-  Future<void> _persistResultRemote(QuizResult result) async {
+  int _contentPageCount(QuizState state) {
+    if (_isConfirmedDiagnosisFlow) return _confirmedDiagnosisQuestionCount;
+    return state.questions.length;
+  }
+
+  int _totalPages(QuizState state) => _introPages() + _contentPageCount(state);
+
+  bool _isConfirmedDiagnosisStepAnswered(int step) {
+    switch (step) {
+      case 0:
+        return _diagnosisJoints.isNotEmpty;
+      case 1:
+        return _diagnosisMobility != null;
+      case 2:
+        return _diagnosisRigidityFrequency != null;
+      case 3:
+        return _diagnosisRecovery != null;
+      case 4:
+        return _diagnosisHomeRiskFactors != null;
+      case 5:
+        return _diagnosisWeightTrend != null;
+      case 6:
+        return _diagnosisMovementRhythm != null;
+      default:
+        return false;
+    }
+  }
+
+  Future<void> _advanceConfirmedDiagnosisFlowFrom(int step) async {
+    if (!_isConfirmedDiagnosisStepAnswered(step)) return;
+    final state = ref.read(quizControllerProvider);
+    final totalPages = _totalPages(state);
+    final isLastStep = step == _confirmedDiagnosisQuestionCount - 1;
+    if (isLastStep || _currentPage == totalPages - 1) {
+      await _submitConfirmedDiagnosisFlow();
+      return;
+    }
+    if (!mounted) return;
+    await _pageController.nextPage(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Future<void> _persistResultRemote(
+    QuizResult result, {
+    List<QuizAnswer>? answers,
+  }) async {
     if (_isDemoUser()) return;
-    final answers = ref.read(quizControllerProvider).answers;
+    final payloadAnswers = answers ?? ref.read(quizControllerProvider).answers;
     final dogId = _dogId;
     await ref
         .read(quizRemoteDataSourceProvider)
-        .saveResult(result: result, dogId: dogId, answers: answers);
+        .saveResult(result: result, dogId: dogId, answers: payloadAnswers);
+  }
+
+  QuizResult _toLegacyQuizResult(DiagnosisPriorityResult result) {
+    final areas = PriorityArea.values.map(result.area).toList();
+    final hasHigh = areas.any((item) => item.level == PriorityLevel.alta);
+    final hasMedium = areas.any((item) => item.level == PriorityLevel.media);
+    final riskLevel = hasHigh
+        ? RiskLevel.alto
+        : hasMedium
+        ? RiskLevel.medio
+        : RiskLevel.basso;
+    return QuizResult(riskLevel: riskLevel, score: result.totalScore);
+  }
+
+  Future<void> _submitConfirmedDiagnosisFlow() async {
+    if (_submittingDiagnosisFlow) return;
+    if (_diagnosisMobility == null ||
+        _diagnosisRigidityFrequency == null ||
+        _diagnosisRecovery == null ||
+        _diagnosisHomeRiskFactors == null ||
+        _diagnosisWeightTrend == null ||
+        _diagnosisMovementRhythm == null ||
+        _diagnosisJoints.isEmpty) {
+      return;
+    }
+
+    setState(() => _submittingDiagnosisFlow = true);
+    try {
+      final input = DiagnosisPriorityInput(
+        joints: {..._diagnosisJoints},
+        mobility: _diagnosisMobility!,
+        rigidityFrequency: _diagnosisRigidityFrequency!,
+        recovery: _diagnosisRecovery!,
+        hasHomeRiskFactors: _diagnosisHomeRiskFactors!,
+        weightTrend: _diagnosisWeightTrend!,
+        movementRhythm: _diagnosisMovementRhythm!,
+      );
+
+      final priorityResult = _diagnosisPriorityEngine.evaluate(input);
+      final legacyResult = _toLegacyQuizResult(priorityResult);
+      await _persistResultRemote(legacyResult, answers: const []);
+      await ref.read(completeOnboardingUseCaseProvider).call();
+      if (!mounted) return;
+      context.go('/quiz/diagnosis-result', extra: priorityResult);
+    } finally {
+      if (mounted) setState(() => _submittingDiagnosisFlow = false);
+    }
   }
 
   bool _isDemoUser() {
@@ -278,9 +408,8 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       );
     }
 
-    final introPages = _introPages();
     final questionStartIndex = _questionStartIndex();
-    final totalPages = state.questions.length + introPages;
+    final totalPages = _totalPages(state);
 
     return AppScaffold(
       appBar: AppBar(
@@ -312,11 +441,14 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
             child: PageView.builder(
               controller: _pageController,
               itemCount: totalPages,
-              physics: const AlwaysScrollableScrollPhysics(), // Allow swipe
+              physics: _isConfirmedDiagnosisFlow
+                  ? const NeverScrollableScrollPhysics()
+                  : const AlwaysScrollableScrollPhysics(),
               onPageChanged: (index) {
                 setState(() {
                   _currentPage = index;
                 });
+                if (_isConfirmedDiagnosisFlow) return;
                 if (!widget.skipIntro && index >= questionStartIndex) {
                   ref
                       .read(quizControllerProvider.notifier)
@@ -347,6 +479,11 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                       onProceedTest: _goToQuestions,
                     );
                   }
+                }
+
+                if (_isConfirmedDiagnosisFlow) {
+                  final diagnosisStep = index - questionStartIndex;
+                  return _buildConfirmedDiagnosisQuestion(diagnosisStep);
                 }
 
                 final questionIndex = widget.skipIntro
@@ -427,6 +564,387 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               hideOnDiagnosisStep: false,
             )
           : const SizedBox.shrink(),
+    );
+  }
+
+  void _selectAndAdvance({required int step, required VoidCallback update}) {
+    if (_submittingDiagnosisFlow) return;
+    setState(update);
+    Future<void>.delayed(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      _advanceConfirmedDiagnosisFlowFrom(step);
+    });
+  }
+
+  Widget _buildConfirmedDiagnosisQuestion(int step) {
+    switch (step) {
+      case 0:
+        return _buildDiagnosisJointsStep(step);
+      case 1:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question: 'Come descriveresti la mobilita oggi?',
+          subtitle: 'Pensando alla giornata tipo.',
+          options: [
+            (
+              label: 'Lieve',
+              detail: 'Cammina ma con rigidita leggera.',
+              selected: _diagnosisMobility == DiagnosisMobility.lieve,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMobility = DiagnosisMobility.lieve,
+              ),
+            ),
+            (
+              label: 'Moderata',
+              detail: 'Rallenta ed evita alcuni movimenti.',
+              selected: _diagnosisMobility == DiagnosisMobility.moderata,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMobility = DiagnosisMobility.moderata,
+              ),
+            ),
+            (
+              label: 'Avanzata',
+              detail: 'Difficolta evidente, fatica ad alzarsi.',
+              selected: _diagnosisMobility == DiagnosisMobility.avanzata,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMobility = DiagnosisMobility.avanzata,
+              ),
+            ),
+          ],
+        );
+      case 2:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question:
+              'Nell’ultima settimana quante volte hai notato rigidita o zoppia?',
+          options: [
+            (
+              label: 'Mai',
+              detail: null,
+              selected:
+                  _diagnosisRigidityFrequency == DiagnosisRigidityFrequency.mai,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRigidityFrequency =
+                    DiagnosisRigidityFrequency.mai,
+              ),
+            ),
+            (
+              label: '1-2 giorni',
+              detail: null,
+              selected:
+                  _diagnosisRigidityFrequency ==
+                  DiagnosisRigidityFrequency.unoDue,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRigidityFrequency =
+                    DiagnosisRigidityFrequency.unoDue,
+              ),
+            ),
+            (
+              label: '3-4 giorni',
+              detail: null,
+              selected:
+                  _diagnosisRigidityFrequency ==
+                  DiagnosisRigidityFrequency.treQuattro,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRigidityFrequency =
+                    DiagnosisRigidityFrequency.treQuattro,
+              ),
+            ),
+            (
+              label: '5-7 giorni',
+              detail: null,
+              selected:
+                  _diagnosisRigidityFrequency ==
+                  DiagnosisRigidityFrequency.cinqueSette,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRigidityFrequency =
+                    DiagnosisRigidityFrequency.cinqueSette,
+              ),
+            ),
+          ],
+        );
+      case 3:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question: 'Il giorno dopo una passeggiata normale, com’e?',
+          subtitle: 'Non considerare escursioni lunghe.',
+          options: [
+            (
+              label: 'Uguale',
+              detail: null,
+              selected: _diagnosisRecovery == DiagnosisRecovery.uguale,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRecovery = DiagnosisRecovery.uguale,
+              ),
+            ),
+            (
+              label: 'Un po peggio',
+              detail: null,
+              selected: _diagnosisRecovery == DiagnosisRecovery.unPoPeggio,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisRecovery = DiagnosisRecovery.unPoPeggio,
+              ),
+            ),
+            (
+              label: 'Molto peggio',
+              detail: null,
+              selected: _diagnosisRecovery == DiagnosisRecovery.moltoPeggio,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () =>
+                    _diagnosisRecovery = DiagnosisRecovery.moltoPeggio,
+              ),
+            ),
+          ],
+        );
+      case 4:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question: 'In casa sono presenti 2 o piu fattori di rischio?',
+          subtitle: 'Scale, pavimenti scivolosi, salti o auto difficile.',
+          options: [
+            (
+              label: 'Si',
+              detail: null,
+              selected: _diagnosisHomeRiskFactors == true,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisHomeRiskFactors = true,
+              ),
+            ),
+            (
+              label: 'No',
+              detail: null,
+              selected: _diagnosisHomeRiskFactors == false,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisHomeRiskFactors = false,
+              ),
+            ),
+          ],
+        );
+      case 5:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question: 'Negli ultimi 3 mesi il peso e...',
+          options: [
+            (
+              label: 'Stabile',
+              detail: null,
+              selected: _diagnosisWeightTrend == DiagnosisWeightTrend.stabile,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () =>
+                    _diagnosisWeightTrend = DiagnosisWeightTrend.stabile,
+              ),
+            ),
+            (
+              label: 'In aumento',
+              detail: null,
+              selected: _diagnosisWeightTrend == DiagnosisWeightTrend.inAumento,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () =>
+                    _diagnosisWeightTrend = DiagnosisWeightTrend.inAumento,
+              ),
+            ),
+            (
+              label: 'Non so',
+              detail: null,
+              selected: _diagnosisWeightTrend == DiagnosisWeightTrend.nonSo,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () =>
+                    _diagnosisWeightTrend = DiagnosisWeightTrend.nonSo,
+              ),
+            ),
+          ],
+        );
+      case 6:
+        return _buildDiagnosisSingleChoiceStep(
+          step: step,
+          question: 'Il movimento settimanale e...',
+          subtitle: 'La regolarita e piu importante della quantita.',
+          options: [
+            (
+              label: 'Regolare ogni giorno',
+              detail: null,
+              selected:
+                  _diagnosisMovementRhythm ==
+                  DiagnosisMovementRhythm.regolareOgniGiorno,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMovementRhythm =
+                    DiagnosisMovementRhythm.regolareOgniGiorno,
+              ),
+            ),
+            (
+              label: 'A giorni alterni tanto',
+              detail: null,
+              selected:
+                  _diagnosisMovementRhythm ==
+                  DiagnosisMovementRhythm.giorniAlterniTanto,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMovementRhythm =
+                    DiagnosisMovementRhythm.giorniAlterniTanto,
+              ),
+            ),
+            (
+              label: 'Irregolare (weekend lunghi)',
+              detail: null,
+              selected:
+                  _diagnosisMovementRhythm ==
+                  DiagnosisMovementRhythm.irregolareWeekend,
+              onTap: () => _selectAndAdvance(
+                step: step,
+                update: () => _diagnosisMovementRhythm =
+                    DiagnosisMovementRhythm.irregolareWeekend,
+              ),
+            ),
+          ],
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildDiagnosisJointsStep(int step) {
+    const jointOptions = <(DiagnosisJoint value, String label)>[
+      (DiagnosisJoint.colonna, 'Colonna'),
+      (DiagnosisJoint.anca, 'Anca'),
+      (DiagnosisJoint.ginocchio, 'Ginocchio'),
+      (DiagnosisJoint.gomito, 'Gomito'),
+      (DiagnosisJoint.spalla, 'Spalla'),
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText.body(
+                  'Domanda ${step + 1}/$_confirmedDiagnosisQuestionCount',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Quali articolazioni sono coinvolte?',
+                  style: AppTypography.h1.copyWith(fontSize: 22, height: 1.2),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                AppText.body('Seleziona tutte quelle indicate nella diagnosi.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ...jointOptions.map(
+            (option) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _OptionTile(
+                label: option.$2,
+                isSelected: _diagnosisJoints.contains(option.$1),
+                onTap: () {
+                  if (_submittingDiagnosisFlow) return;
+                  setState(() {
+                    if (_diagnosisJoints.contains(option.$1)) {
+                      _diagnosisJoints.remove(option.$1);
+                    } else {
+                      _diagnosisJoints.add(option.$1);
+                    }
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _diagnosisJoints.isEmpty || _submittingDiagnosisFlow
+                  ? null
+                  : () => _advanceConfirmedDiagnosisFlowFrom(step),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.ctaApricot,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text('Continua'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiagnosisSingleChoiceStep({
+    required int step,
+    required String question,
+    String? subtitle,
+    required List<
+      ({String label, String? detail, bool selected, VoidCallback onTap})
+    >
+    options,
+  }) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText.body(
+                  'Domanda ${step + 1}/$_confirmedDiagnosisQuestionCount',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  question,
+                  style: AppTypography.h1.copyWith(fontSize: 22, height: 1.2),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  AppText.body(subtitle),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ...options.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _OptionTile(
+                label: entry.detail == null
+                    ? entry.label
+                    : '${entry.label}\n${entry.detail}',
+                isSelected: entry.selected,
+                onTap: entry.onTap,
+              ),
+            ),
+          ),
+          if (_submittingDiagnosisFlow &&
+              step == _confirmedDiagnosisQuestionCount - 1)
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.sm),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primaryBlue),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
