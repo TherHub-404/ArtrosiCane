@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.artrosicane.artrosicane",
+      "sha256_cert_fingerprints": [
+        "08:B7:87:90:98:05:D7:60:14:8D:4C:7F:9B:90:0F:8F:89:7E:F3:F6:A7:96:6D:E1:C6:E1:B3:EB:0E:87:82:35"
+      ]
+    }
+  }
+]
