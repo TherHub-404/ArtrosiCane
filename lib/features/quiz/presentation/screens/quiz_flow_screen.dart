@@ -84,11 +84,17 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       final restoredAnsweredAt = isLegacyUnknown
           ? null
           : saved.diagnosisAnsweredAt;
+      final restoredDate = restoredStatus == ArthrosisDiagnosisStatus.confirmed
+          ? saved.diagnosisDate
+          : null;
+      final restoredVet = restoredStatus == ArthrosisDiagnosisStatus.confirmed
+          ? saved.diagnosisVet
+          : null;
       setState(() {
         _diagnosisStatus = restoredStatus;
         _diagnosisAnsweredAt = restoredAnsweredAt;
-        _diagnosisDate = saved.diagnosisDate;
-        _diagnosisVet = saved.diagnosisVet;
+        _diagnosisDate = restoredDate;
+        _diagnosisVet = restoredVet;
         _shouldAskDiagnosis =
             restoredAnsweredAt == null || restoredStatus == null;
       });
@@ -136,8 +142,13 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   }) {
     _diagnosisStatus = diagnosisStatus;
     _diagnosisAnsweredAt ??= DateTime.now();
-    _diagnosisDate = diagnosisDate;
-    _diagnosisVet = diagnosisVet;
+    if (diagnosisStatus == ArthrosisDiagnosisStatus.confirmed) {
+      _diagnosisDate = diagnosisDate;
+      _diagnosisVet = diagnosisVet;
+    } else {
+      _diagnosisDate = null;
+      _diagnosisVet = null;
+    }
     _syncProfile();
   }
 
@@ -560,10 +571,15 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
 
   void _notifyChange() {
     if (_status == null) return;
+    final hasConfirmedDiagnosis = _status == ArthrosisDiagnosisStatus.confirmed;
     widget.onChange(
       _status!,
-      _dateCtrl.text.isEmpty ? null : _dateCtrl.text.trim(),
-      _vetCtrl.text.isEmpty ? null : _vetCtrl.text.trim(),
+      hasConfirmedDiagnosis && _dateCtrl.text.isNotEmpty
+          ? _dateCtrl.text.trim()
+          : null,
+      hasConfirmedDiagnosis && _vetCtrl.text.isNotEmpty
+          ? _vetCtrl.text.trim()
+          : null,
     );
   }
 
