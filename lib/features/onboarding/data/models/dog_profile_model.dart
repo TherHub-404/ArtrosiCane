@@ -15,44 +15,11 @@ class DogProfileModel {
     this.diagnosisAnsweredAt,
     this.diagnosisDate,
     this.diagnosisVet,
+    this.diagnosisFiles = const <String>[],
+    this.diagnosisCareNotes,
     required this.ageGroup,
     required this.size,
   });
-
-  final String? id;
-  final String? name;
-  final double? ageYears;
-  final double? weightKg;
-  final String? breedId;
-  final String? breedName;
-  final String? breedImageUrl;
-  final String? riskLevel;
-  final int? riskScore;
-  final ArthrosisDiagnosisStatus? diagnosisStatus;
-  final String? diagnosisAnsweredAt;
-  final String? diagnosisDate;
-  final String? diagnosisVet;
-  final AgeGroup ageGroup;
-  final DogSize size;
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'ageYears': ageYears,
-        'weightKg': weightKg,
-        'breedId': breedId,
-        'breedName': breedName,
-        'breedImageUrl': breedImageUrl,
-        'riskLevel': riskLevel,
-        'riskScore': riskScore,
-        'diagnosisStatus': diagnosisStatus?.name,
-        'hasDiagnosis': diagnosisStatus == ArthrosisDiagnosisStatus.confirmed,
-        'diagnosisAnsweredAt': diagnosisAnsweredAt,
-        'diagnosisDate': diagnosisDate,
-        'diagnosisVet': diagnosisVet,
-        'ageGroup': ageGroup.name,
-        'size': size.name,
-      };
 
   factory DogProfileModel.fromJson(Map<String, dynamic> json) {
     return DogProfileModel(
@@ -69,8 +36,13 @@ class DogProfileModel {
       diagnosisAnsweredAt: json['diagnosisAnsweredAt'] as String?,
       diagnosisDate: json['diagnosisDate'] as String?,
       diagnosisVet: json['diagnosisVet'] as String?,
+      diagnosisFiles: (json['diagnosisFiles'] as List<dynamic>? ?? <dynamic>[])
+          .map((item) => item.toString())
+          .toList(),
+      diagnosisCareNotes: json['diagnosisCareNotes'] as String?,
       ageGroup: AgeGroup.values.firstWhere(
-        (age) => age.name == (json['ageGroup'] as String? ?? AgeGroup.adulto.name),
+        (age) =>
+            age.name == (json['ageGroup'] as String? ?? AgeGroup.adulto.name),
         orElse: () => AgeGroup.adulto,
       ),
       size: DogSize.values.firstWhere(
@@ -95,30 +67,73 @@ class DogProfileModel {
       diagnosisAnsweredAt: profile.diagnosisAnsweredAt?.toIso8601String(),
       diagnosisDate: profile.diagnosisDate,
       diagnosisVet: profile.diagnosisVet,
+      diagnosisFiles: profile.diagnosisFiles,
+      diagnosisCareNotes: profile.diagnosisCareNotes,
       ageGroup: profile.ageGroup,
       size: profile.size,
     );
   }
 
+  final String? id;
+  final String? name;
+  final double? ageYears;
+  final double? weightKg;
+  final String? breedId;
+  final String? breedName;
+  final String? breedImageUrl;
+  final String? riskLevel;
+  final int? riskScore;
+  final ArthrosisDiagnosisStatus? diagnosisStatus;
+  final String? diagnosisAnsweredAt;
+  final String? diagnosisDate;
+  final String? diagnosisVet;
+  final List<String> diagnosisFiles;
+  final String? diagnosisCareNotes;
+  final AgeGroup ageGroup;
+  final DogSize size;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'ageYears': ageYears,
+    'weightKg': weightKg,
+    'breedId': breedId,
+    'breedName': breedName,
+    'breedImageUrl': breedImageUrl,
+    'riskLevel': riskLevel,
+    'riskScore': riskScore,
+    'diagnosisStatus': diagnosisStatus?.name,
+    'hasDiagnosis': diagnosisStatus == ArthrosisDiagnosisStatus.confirmed,
+    'diagnosisAnsweredAt': diagnosisAnsweredAt,
+    'diagnosisDate': diagnosisDate,
+    'diagnosisVet': diagnosisVet,
+    'diagnosisFiles': diagnosisFiles,
+    'diagnosisCareNotes': diagnosisCareNotes,
+    'ageGroup': ageGroup.name,
+    'size': size.name,
+  };
+
   DogProfile toEntity() => DogProfile(
-        id: id,
-        name: name,
-        ageYears: ageYears,
-        weightKg: weightKg,
-        breedId: breedId,
-        breedName: breedName,
-        breedImageUrl: breedImageUrl,
-        riskLevel: riskLevel,
-        riskScore: riskScore,
-        diagnosisStatus: diagnosisStatus,
-        diagnosisAnsweredAt: diagnosisAnsweredAt == null
-            ? null
-            : DateTime.tryParse(diagnosisAnsweredAt!),
-        diagnosisDate: diagnosisDate,
-        diagnosisVet: diagnosisVet,
-        ageGroup: ageGroup,
-        size: size,
-      );
+    id: id,
+    name: name,
+    ageYears: ageYears,
+    weightKg: weightKg,
+    breedId: breedId,
+    breedName: breedName,
+    breedImageUrl: breedImageUrl,
+    riskLevel: riskLevel,
+    riskScore: riskScore,
+    diagnosisStatus: diagnosisStatus,
+    diagnosisAnsweredAt: diagnosisAnsweredAt == null
+        ? null
+        : DateTime.tryParse(diagnosisAnsweredAt!),
+    diagnosisDate: diagnosisDate,
+    diagnosisVet: diagnosisVet,
+    diagnosisFiles: diagnosisFiles,
+    diagnosisCareNotes: diagnosisCareNotes,
+    ageGroup: ageGroup,
+    size: size,
+  );
 
   static ArthrosisDiagnosisStatus? _parseDiagnosisStatus(
     Map<String, dynamic> json,

@@ -25,6 +25,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
   String? _selectedBreedId;
   String? _selectedBreedLabel;
   bool _isLoading = false;
+  bool _startDiagnosisAfterCreate = false;
 
   @override
   void dispose() {
@@ -35,9 +36,12 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
   }
 
   Future<void> _addPet() async {
-    if (_nameController.text.isEmpty || _ageController.text.isEmpty || _weightController.text.isEmpty) {
+    final name = _nameController.text.trim();
+    final age = double.tryParse(_ageController.text.replaceAll(',', '.'));
+    final weight = double.tryParse(_weightController.text.replaceAll(',', '.'));
+    if (name.isEmpty || age == null || weight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Compila tutti i campi obbligatori')),
+        const SnackBar(content: Text('Compila correttamente nome, età e peso')),
       );
       return;
     }
@@ -46,25 +50,45 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
 
     try {
       final repo = ref.read(dogRemoteRepositoryProvider);
-      await repo.addDog(
-        name: _nameController.text,
-        ageYears: double.tryParse(_ageController.text) ?? 0,
-        weightKg: double.tryParse(_weightController.text) ?? 0,
+      final dog = await repo.addDog(
+        name: name,
+        ageYears: age,
+        weightKg: weight,
         breedId: _selectedBreedId,
       );
 
       // Refresh the list
       ref.invalidate(userDogsProvider);
 
-      if (mounted) {
-        context.pop();
+      if (!mounted) return;
+      final router = GoRouter.of(context);
+      context.pop();
+
+      if (_startDiagnosisAfterCreate) {
+        await router.push(
+          '/quiz',
+          extra: {
+            'skipIntro': false,
+            'startFromDiagnosis': true,
+            'dog': {
+              'id': dog.id,
+              'name': dog.name,
+              'breed': dog.breedName,
+              'breedId': dog.breedId,
+              'imagePath': dog.breedImageUrl,
+              'age': dog.ageYears,
+              'weight': dog.weightKg,
+            },
+          },
+        );
+      } else {
         AppBanner.showSuccess(context, 'Cane aggiunto con successo!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Errore: $e')));
       }
     } finally {
       if (mounted) {
@@ -88,7 +112,12 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  AppText.custom('Aggiungi Cane', fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryBlue),
+                  AppText.custom(
+                    'Aggiungi Cane',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close, color: AppColors.text),
                     onPressed: () => context.pop(),
@@ -96,7 +125,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              
+
               _buildTextField('Nome', _nameController),
               const SizedBox(height: AppSpacing.md),
               _BreedPickerField(
@@ -107,10 +136,52 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  Expanded(child: _buildTextField('Età (anni)', _ageController, isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Età (anni)',
+                      _ageController,
+                      isNumber: true,
+                    ),
+                  ),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: _buildTextField('Peso (kg)', _weightController, isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Peso (kg)',
+                      _weightController,
+                      isNumber: true,
+                    ),
+                  ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: CheckboxListTile(
+                  value: _startDiagnosisAfterCreate,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _startDiagnosisAfterCreate = value ?? false;
+                          });
+                        },
+                  title: const Text(
+                    'Avvia subito nuova diagnosi',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Dopo il salvataggio ti porto alle domande diagnostiche.',
+                  ),
+                  activeColor: AppColors.ctaApricot,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -129,11 +200,20 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
-                      : const Text(
-                          'Aggiungi',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      : Text(
+                          _startDiagnosisAfterCreate
+                              ? 'Aggiungi e fai diagnosi'
+                              : 'Aggiungi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),
@@ -144,11 +224,19 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText.custom(label, color: AppColors.text.withOpacity(0.6), fontSize: 12),
+        AppText.custom(
+          label,
+          color: AppColors.text.withOpacity(0.6),
+          fontSize: 12,
+        ),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -160,7 +248,10 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -183,20 +274,24 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
       if (picked != null) {
         setState(() {
           _selectedBreedId = picked.id;
-          _selectedBreedLabel =
-              picked.nameIt?.isNotEmpty == true ? picked.nameIt : picked.name;
+          _selectedBreedLabel = picked.nameIt?.isNotEmpty == true
+              ? picked.nameIt
+              : picked.name;
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore caricamento razze: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Errore caricamento razze: $e')));
       }
     }
   }
 
-  Future<Breed?> _showBreedPicker(BuildContext context, List<Breed> breeds) async {
+  Future<Breed?> _showBreedPicker(
+    BuildContext context,
+    List<Breed> breeds,
+  ) async {
     return showModalBottomSheet<Breed>(
       context: context,
       isScrollControlled: true,
@@ -238,7 +333,10 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: 'Digita per cercare',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.ctaApricot),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.ctaApricot,
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(
@@ -252,7 +350,9 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                     valueNotifier.value = breeds;
                   } else {
                     valueNotifier.value = breeds
-                        .where((b) => (b.nameIt ?? '').toLowerCase().contains(q))
+                        .where(
+                          (b) => (b.nameIt ?? '').toLowerCase().contains(q),
+                        )
                         .toList();
                   }
                 },
@@ -276,12 +376,15 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final breed = filtered[index];
-                        final label =
-                            breed.nameIt?.isNotEmpty == true ? breed.nameIt! : breed.name;
+                        final label = breed.nameIt?.isNotEmpty == true
+                            ? breed.nameIt!
+                            : breed.name;
                         return ListTile(
                           title: Text(
                             label,
-                            style: AppTypography.bodyBold.copyWith(fontSize: 16),
+                            style: AppTypography.bodyBold.copyWith(
+                              fontSize: 16,
+                            ),
                           ),
                           onTap: () => Navigator.of(context).pop(breed),
                         );
@@ -315,7 +418,11 @@ class _BreedPickerField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText.custom(label, color: AppColors.text.withOpacity(0.6), fontSize: 12),
+        AppText.custom(
+          label,
+          color: AppColors.text.withOpacity(0.6),
+          fontSize: 12,
+        ),
         const SizedBox(height: 4),
         GestureDetector(
           onTap: onTap,
@@ -327,7 +434,10 @@ class _BreedPickerField extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.pets_rounded, color: AppColors.ctaApricot.withOpacity(0.9)),
+                Icon(
+                  Icons.pets_rounded,
+                  color: AppColors.ctaApricot.withOpacity(0.9),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

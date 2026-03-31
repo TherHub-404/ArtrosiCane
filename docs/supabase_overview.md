@@ -82,6 +82,36 @@ Risposte dettagliate associate a un `quiz_results`.
     - `question_id`
     - `answer_value`
 
+### `monthly_sentence`
+
+Contenuti editoriali mensili mostrati nel carosello home.
+
+- Lettura: `lib/features/home/data/monthly_sentence_repository.dart`
+  - select: `month_number, month_name, title, focus, objective, areas`
+  - filtro: `.eq('month_number', DateTime.now().month)`
+- Seed schema+dati:
+  - `docs/monthly_sentence_seed.sql`
+
+### `daily_logs` (quick check giornaliero)
+
+Stato giornaliero usato per semaforo + micro-azioni.
+
+- Scrittura (best effort): `lib/features/daily_check/data/daily_check_repository.dart`
+  - insert campi: `symptom_level, load_planned, risk_factors, recovery_delta, diagnosis_status, raw_score, score, semaphore, actions, avoid, route_tag, video_label, video_url`
+  - la persistenza locale su SharedPreferences resta fallback principale
+- Seed schema/policy:
+  - `docs/daily_check_seed.sql`
+
+### `actions` + `factor_sensitivity`
+
+Tabelle previste per il motore a regole e la personalizzazione dei fattori.
+
+- Seed schema/policy + set base di azioni:
+  - `docs/daily_check_seed.sql`
+- Nota implementativa attuale:
+  - il ranking engine oggi usa regole locali hardcoded in `lib/features/daily_check/domain/services/daily_recommendation_engine.dart`
+  - la tabella `actions` e' pronta per futura esternalizzazione lato backend.
+
 ## Relazioni (inferite dal codice)
 
 - `dogs.breed_id -> breeds.id`
@@ -115,4 +145,3 @@ Checklist rapida in Supabase:
     - `profiles.id = auth.uid()` per select/update
 - API keys:
   - service role key non deve stare nel client (qui e' usata solo dallo script tool).
-

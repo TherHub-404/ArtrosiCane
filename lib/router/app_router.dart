@@ -1,5 +1,6 @@
 import 'package:artrosi_cane/features/auth/presentation/screens/auth_prompt_screen.dart';
 import 'package:artrosi_cane/features/auth/presentation/screens/entry_screen.dart';
+import 'package:artrosi_cane/features/auth/presentation/screens/video_call_request_screen.dart';
 import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
 import 'package:artrosi_cane/features/daily_check/presentation/screens/daily_check_result_screen.dart';
 import 'package:artrosi_cane/features/daily_check/presentation/screens/daily_check_screen.dart';
@@ -9,10 +10,10 @@ import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/walks_a
 import 'package:artrosi_cane/features/home/presentation/screens/home_screen.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/screens/onboarding_welcome_screen.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/screens/splash_screen.dart';
+import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
+import 'package:artrosi_cane/features/quiz/presentation/screens/diagnosis_priority_result_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_flow_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_result_screen.dart';
-import 'package:artrosi_cane/features/quiz/presentation/screens/diagnosis_priority_result_screen.dart';
-import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 import 'package:artrosi_cane/features/walks/presentation/screens/walks_overview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,23 +40,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra;
           final skipIntro = extra is Map && extra['skipIntro'] == true;
+          final startFromDiagnosis =
+              extra is Map && extra['startFromDiagnosis'] == true;
           final dogData = extra is Map
               ? extra['dog'] as Map<String, dynamic>?
               : null;
-          return QuizFlowScreen(skipIntro: skipIntro, dogData: dogData);
+          return QuizFlowScreen(
+            skipIntro: skipIntro,
+            startFromDiagnosis: startFromDiagnosis,
+            dogData: dogData,
+          );
         },
       ),
       GoRoute(
         path: '/quiz/result',
         name: 'quizResult',
-        builder: (context, state) => QuizResultScreen(result: state.extra),
+        builder: (context, state) {
+          final extra = state.extra;
+          final result = extra is Map<String, dynamic>
+              ? extra['result']
+              : extra;
+          final dogData = extra is Map<String, dynamic>
+              ? extra['dog'] as Map<String, dynamic>?
+              : null;
+          return QuizResultScreen(result: result, dogData: dogData);
+        },
       ),
       GoRoute(
         path: '/quiz/diagnosis-result',
         name: 'quizDiagnosisResult',
         builder: (context, state) {
           final extra = state.extra;
-          if (extra is! DiagnosisPriorityResult) {
+          final showJourneyOnly =
+              extra is Map<String, dynamic> && extra['showJourneyOnly'] == true;
+          final result = extra is Map<String, dynamic>
+              ? extra['result']
+              : extra;
+          final dogData = extra is Map<String, dynamic>
+              ? extra['dog'] as Map<String, dynamic>?
+              : null;
+
+          if (!showJourneyOnly && result is! DiagnosisPriorityResult) {
             return Scaffold(
               appBar: AppBar(title: const Text('Mappa Priorita')),
               body: const Center(
@@ -63,7 +88,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             );
           }
-          return DiagnosisPriorityResultScreen(result: extra);
+          return DiagnosisPriorityResultScreen(
+            result: result is DiagnosisPriorityResult ? result : null,
+            dogData: dogData,
+            showJourneyOnly: showJourneyOnly,
+          );
         },
       ),
       GoRoute(
@@ -72,13 +101,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final entryContext = extra?['entryContext'] as String?;
-          return AuthPromptScreen(entryContext: entryContext);
+          final dogData = extra?['dog'] as Map<String, dynamic>?;
+          return AuthPromptScreen(entryContext: entryContext, dogData: dogData);
         },
       ),
       GoRoute(
         path: '/entry',
         name: 'entry',
-        builder: (context, state) => const EntryScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final dogData = extra?['dog'] as Map<String, dynamic>?;
+          return EntryScreen(dogData: dogData);
+        },
+      ),
+      GoRoute(
+        path: '/videocall-request',
+        name: 'videocallRequest',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final dogData = extra?['dog'] as Map<String, dynamic>?;
+          return VideoCallRequestScreen(dogData: dogData);
+        },
       ),
       GoRoute(
         path: '/home',

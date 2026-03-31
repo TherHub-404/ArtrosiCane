@@ -4,6 +4,7 @@ import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_mo
 import 'package:artrosi_cane/features/daily_check/presentation/providers/daily_check_providers.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
+import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,11 @@ class DailyCheckScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
+  static const int _totalPages = 4;
+
+  late final PageController _pageController = PageController();
+  int _currentPage = 0;
+
   DailySymptomLevel? _symptomLevel;
   PlannedLoad? _plannedLoad;
   RecoveryDelta? _recoveryDelta;
@@ -28,6 +34,57 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
 
   bool get _canSubmit =>
       _symptomLevel != null && _plannedLoad != null && _recoveryDelta != null;
+
+  bool get _isLastPage => _currentPage == _totalPages - 1;
+
+  bool _isStepAnswered(int step) {
+    switch (step) {
+      case 0:
+        return _symptomLevel != null;
+      case 1:
+        return _plannedLoad != null;
+      case 2:
+        return true; // Risk factors are optional.
+      case 3:
+        return _recoveryDelta != null;
+      default:
+        return false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _goToNextPage() async {
+    if (_isLastPage) {
+      await _submit();
+      return;
+    }
+    if (_saving || !_isStepAnswered(_currentPage)) return;
+    await _pageController.nextPage(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Future<void> _goToPreviousPage() async {
+    if (_saving) return;
+    if (_currentPage == 0) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/home');
+      }
+      return;
+    }
+    await _pageController.previousPage(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOut,
+    );
+  }
 
   Future<void> _submit() async {
     if (!_canSubmit || _saving) return;
@@ -72,18 +129,10 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
     }
   }
 
-  Widget _sectionTitle(String text) {
-    return Text(
-      text,
-      style: AppTypography.bodyBold.copyWith(
-        fontSize: 17,
-        color: AppColors.primaryBlue,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final progress = (_currentPage + 1) / _totalPages;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
       appBar: AppBar(
@@ -100,12 +149,234 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          children: [
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: AppColors.borderSoft,
+                color: AppColors.ctaApricot,
+                minHeight: 6,
+              ),
+            ),
+          ),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              children: [
+                _buildSingleChoiceStep<DailySymptomLevel>(
+                  stepIndex: 0,
+                  questionTitle: 'Oggi come e andata?',
+                  questionSubtitle: 'Hai notato rigidita o zoppia oggi?',
+                  value: _symptomLevel,
+                  options: const {
+                    DailySymptomLevel.no: 'No',
+                    DailySymptomLevel.lieve: 'Lieve',
+                    DailySymptomLevel.marcata: 'Marcata',
+                  },
+                  onChanged: (value) => setState(() => _symptomLevel = value),
+                ),
+                _buildSingleChoiceStep<PlannedLoad>(
+                  stepIndex: 1,
+                  questionTitle: 'Carico previsto',
+                  questionSubtitle: 'Quanto movimento fara oggi?',
+                  value: _plannedLoad,
+                  options: const {
+                    PlannedLoad.breve: 'Breve (0-10 min)',
+                    PlannedLoad.medio: 'Medio (10-20 min)',
+                    PlannedLoad.lungo: 'Lungo (20+ min)',
+                  },
+                  onChanged: (value) => setState(() => _plannedLoad = value),
+                ),
+                _buildRiskFactorStep(),
+                _buildSingleChoiceStep<RecoveryDelta>(
+                  stepIndex: 3,
+                  questionTitle: 'Recupero vs ieri',
+                  questionSubtitle: 'Stamattina rispetto a ieri com\'era?',
+                  value: _recoveryDelta,
+                  options: const {
+                    RecoveryDelta.uguale: 'Uguale',
+                    RecoveryDelta.pocoPiuRigido: 'Un po piu rigido',
+                    RecoveryDelta.moltoPiuRigido: 'Molto piu rigido',
+                  },
+                  onChanged: (value) => setState(() => _recoveryDelta = value),
+                  footer: const Padding(
+                    padding: EdgeInsets.only(top: AppSpacing.md),
+                    child: NonMedicalDisclaimer(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _saving ? null : _goToPreviousPage,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Indietro'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryBlue,
+                        side: const BorderSide(color: AppColors.borderSoft),
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        overlayColor: AppColors.primaryBlue.withValues(
+                          alpha: 0.08,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isStepAnswered(_currentPage) && !_saving
+                          ? _goToNextPage
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.ctaApricot,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        overlayColor: Colors.black.withValues(alpha: 0.08),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _isLastPage
+                                  ? 'Calcola stato di oggi'
+                                  : 'Continua',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleChoiceStep<T>({
+    required int stepIndex,
+    required String questionTitle,
+    required String questionSubtitle,
+    required T? value,
+    required Map<T, String> options,
+    required ValueChanged<T> onChanged,
+    Widget? footer,
+  }) {
+    return _buildStepContainer(
+      stepIndex: stepIndex,
+      questionTitle: questionTitle,
+      questionSubtitle: questionSubtitle,
+      child: Column(
+        children: options.entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _OptionTile(
+              label: entry.value,
+              isSelected: value == entry.key,
+              onTap: () => onChanged(entry.key),
+            ),
+          );
+        }).toList(),
+      ),
+      footer: footer,
+    );
+  }
+
+  Widget _buildRiskFactorStep() {
+    return _buildStepContainer(
+      stepIndex: 2,
+      questionTitle: 'Fattori vacanza',
+      questionSubtitle: 'Seleziona tutti quelli presenti oggi.',
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: DailyRiskFactor.values.map((factor) {
+          final selected = _riskFactors.contains(factor);
+          return FilterChip(
+            selected: selected,
+            label: Text(dailyRiskFactorLabel(factor)),
+            selectedColor: AppColors.ctaApricot.withValues(alpha: 0.22),
+            onSelected: (value) {
+              setState(() {
+                if (value) {
+                  _riskFactors.add(factor);
+                } else {
+                  _riskFactors.remove(factor);
+                }
+              });
+            },
+            checkmarkColor: AppColors.ctaApricot,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? AppColors.primaryBlue
+                  : AppColors.text.withValues(alpha: 0.9),
+            ),
+            side: BorderSide(
+              color: selected
+                  ? AppColors.ctaApricot
+                  : AppColors.primaryBlue.withValues(alpha: 0.16),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStepContainer({
+    required int stepIndex,
+    required String questionTitle,
+    required String questionSubtitle,
+    required Widget child,
+    Widget? footer,
+  }) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (stepIndex == 0) ...[
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
@@ -122,188 +393,122 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            _questionCard(
-              title: 'Q1 · Oggi com’è andata?',
-              subtitle: 'Hai notato rigidità o zoppia oggi?',
-              child: _buildRadioGroup<DailySymptomLevel>(
-                value: _symptomLevel,
-                options: const {
-                  DailySymptomLevel.no: 'No',
-                  DailySymptomLevel.lieve: 'Lieve',
-                  DailySymptomLevel.marcata: 'Marcata',
-                },
-                onChanged: (value) => setState(() => _symptomLevel = value),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primaryBlue.withValues(alpha: 0.08),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            _questionCard(
-              title: 'Q2 · Carico previsto',
-              subtitle: 'Quanto movimento farà oggi?',
-              child: _buildRadioGroup<PlannedLoad>(
-                value: _plannedLoad,
-                options: const {
-                  PlannedLoad.breve: 'Breve (0–10 min)',
-                  PlannedLoad.medio: 'Medio (10–20 min)',
-                  PlannedLoad.lungo: 'Lungo (20+ min)',
-                },
-                onChanged: (value) => setState(() => _plannedLoad = value),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _questionCard(
-              title: 'Q3 · Fattori vacanza',
-              subtitle: 'Seleziona tutti quelli presenti oggi.',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: DailyRiskFactor.values.map((factor) {
-                  final selected = _riskFactors.contains(factor);
-                  return FilterChip(
-                    selected: selected,
-                    label: Text(dailyRiskFactorLabel(factor)),
-                    selectedColor: AppColors.ctaApricot.withValues(alpha: 0.22),
-                    onSelected: (value) {
-                      setState(() {
-                        if (value) {
-                          _riskFactors.add(factor);
-                        } else {
-                          _riskFactors.remove(factor);
-                        }
-                      });
-                    },
-                    checkmarkColor: AppColors.ctaApricot,
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: selected
-                          ? AppColors.primaryBlue
-                          : AppColors.text.withValues(alpha: 0.9),
-                    ),
-                    side: BorderSide(
-                      color: selected
-                          ? AppColors.ctaApricot
-                          : AppColors.primaryBlue.withValues(alpha: 0.16),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _questionCard(
-              title: 'Q4 · Recupero vs ieri',
-              subtitle: 'Stamattina rispetto a ieri com’era?',
-              child: _buildRadioGroup<RecoveryDelta>(
-                value: _recoveryDelta,
-                options: const {
-                  RecoveryDelta.uguale: 'Uguale',
-                  RecoveryDelta.pocoPiuRigido: 'Un po’ più rigido',
-                  RecoveryDelta.moltoPiuRigido: 'Molto più rigido',
-                },
-                onChanged: (value) => setState(() => _recoveryDelta = value),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const NonMedicalDisclaimer(),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _canSubmit && !_saving ? _submit : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.ctaApricot,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Domanda ${stepIndex + 1}/$_totalPages',
+                  style: AppTypography.bodyBold.copyWith(
+                    fontSize: 13,
+                    color: AppColors.ctaApricot,
                   ),
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Calcola stato di oggi',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  questionTitle,
+                  style: AppTypography.bodyBold.copyWith(
+                    fontSize: 20,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  questionSubtitle,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.text.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                child,
+              ],
+            ),
+          ),
+          if (footer != null) footer,
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  const _OptionTile({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.pressed)) {
+          return Colors.transparent;
+        }
+        return isSelected
+            ? Colors.black.withValues(alpha: 0.08)
+            : AppColors.primaryBlue.withValues(alpha: 0.08);
+      }),
+      child: Ink(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.ctaApricot : AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.ctaApricot : AppColors.borderSoft,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: isSelected ? Colors.white : AppColors.borderSoft,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.text,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _questionCard({
-    required String title,
-    required String subtitle,
-    required Widget child,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primaryBlue.withValues(alpha: 0.08),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(title),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.text.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 8),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRadioGroup<T>({
-    required T? value,
-    required Map<T, String> options,
-    required ValueChanged<T> onChanged,
-  }) {
-    return Column(
-      children: options.entries.map((entry) {
-        return RadioListTile<T>(
-          value: entry.key,
-          groupValue: value,
-          activeColor: AppColors.ctaApricot,
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            entry.value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          onChanged: (next) {
-            if (next != null) onChanged(next);
-          },
-        );
-      }).toList(),
     );
   }
 }

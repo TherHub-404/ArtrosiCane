@@ -1,21 +1,23 @@
 import 'dart:async';
 
-import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
+import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 
-class OnboardingWelcomeScreen extends StatefulWidget {
+class OnboardingWelcomeScreen extends ConsumerStatefulWidget {
   const OnboardingWelcomeScreen({super.key});
 
   @override
-  State<OnboardingWelcomeScreen> createState() =>
+  ConsumerState<OnboardingWelcomeScreen> createState() =>
       _OnboardingWelcomeScreenState();
 }
 
-class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
+class _OnboardingWelcomeScreenState
+    extends ConsumerState<OnboardingWelcomeScreen>
     with SingleTickerProviderStateMixin {
   bool _starting = false;
   late final AnimationController _pawSpinController;
@@ -63,6 +65,15 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final showVacationCopy =
+        inviteLocation == 'bibbione' || inviteLocation == 'bibione';
+    final subtitle = showVacationCopy
+        ? 'Ti aiutiamo a proteggere le articolazioni del tuo cane in vacanza'
+        : 'Ti aiutiamo a proteggere le articolazioni del tuo cane';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -134,43 +145,27 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
                     duration: const Duration(milliseconds: 420),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    ),
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
                     child: _starting
                         ? SizedBox.expand(
                             key: const ValueKey('welcome-loading'),
-                            child: Column(
-                              children: [
-                                const Spacer(flex: 2),
-                                Lottie.asset(
-                                  'assets/paw.json',
-                                  controller: _pawSpinController,
-                                  width: 150,
-                                  repeat: false,
-                                  onLoaded: (composition) {
-                                    _pawSpinController.duration =
-                                        composition.duration;
-                                    if (!_pawLoadedCompleter.isCompleted) {
-                                      _pawLoadedCompleter.complete();
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: AppSpacing.lg),
-                                Expanded(
-                                  flex: 4,
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Image.asset(
-                                      'assets/first-dog.png',
-                                      width: 285,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                              ],
+                            child: FractionallySizedBox(
+                              widthFactor: 0.95,
+                              heightFactor: 0.95,
+                              child: Lottie.asset(
+                                'assets/paw.json',
+                                controller: _pawSpinController,
+                                fit: BoxFit.contain,
+                                repeat: false,
+                                onLoaded: (composition) {
+                                  _pawSpinController.duration =
+                                      composition.duration;
+                                  if (!_pawLoadedCompleter.isCompleted) {
+                                    _pawLoadedCompleter.complete();
+                                  }
+                                },
+                              ),
                             ),
                           )
                         : Column(
@@ -189,7 +184,7 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
                               ),
                               const SizedBox(height: AppSpacing.md),
                               Text(
-                                'Ti aiutiamo a proteggere le articolazioni del tuo cane in vacanza.',
+                                subtitle,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 17,
@@ -198,7 +193,21 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(height: AppSpacing.sm),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.center,
+                                  child: Transform.translate(
+                                    offset: const Offset(0, -26),
+                                    child: Image.asset(
+                                      'assets/first-dog.png',
+                                      width: 308,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -221,8 +230,6 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.md),
-                              const NonMedicalDisclaimer(compact: true),
                             ],
                           ),
                   ),

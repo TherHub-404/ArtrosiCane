@@ -12,11 +12,15 @@ tasks:
       - flutter run -d chrome
 
   run-pixel9-pro:
-    desc: Avvia l'app Flutter sull'emulatore Android Pixel 9 Pro
+    desc: Pulisce tutto e avvia da zero l'app Flutter sull'emulatore Android Pixel 9 Pro
     cmds:
+      - flutter clean
+      - rm -rf build .dart_tool
+      - flutter pub get
       - flutter emulators --launch Pixel_9_Pro || true
       - |
         ADB_BIN="${ADB:-${ANDROID_SDK_ROOT:+${ANDROID_SDK_ROOT}/platform-tools/adb}}"
+        APP_ID="com.artrosicane.artrosicane"
         if [ -z "$ADB_BIN" ]; then
           ADB_BIN="${HOME}/Library/Android/sdk/platform-tools/adb"
         fi
@@ -28,7 +32,10 @@ tasks:
             AVD_NAME="$($ADB_BIN -s "$SERIAL" emu avd name 2>/dev/null | head -n 1 | tr -d '\r')"
             if [ "$AVD_NAME" = "Pixel_9_Pro" ]; then
               echo "Uso device $SERIAL ($AVD_NAME)"
-              flutter run -d "$SERIAL"
+              echo "Reset app Android ($APP_ID) sul device..."
+              $ADB_BIN -s "$SERIAL" uninstall "$APP_ID" >/dev/null 2>&1 || true
+              $ADB_BIN -s "$SERIAL" shell pm clear "$APP_ID" >/dev/null 2>&1 || true
+              flutter run -d "$SERIAL" --dart-define=RESET_FLOW=true
               exit $?
             fi
           done

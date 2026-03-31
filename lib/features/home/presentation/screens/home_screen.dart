@@ -1,19 +1,23 @@
 import 'dart:ui';
-import 'package:artrosi_cane/core/widgets/app_text.dart';
-import 'package:artrosi_cane/features/home/presentation/widgets/home_bottom_bar.dart';
-import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
-import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
-import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
-import 'package:artrosi_cane/features/home/data/monthly_sentence_repository.dart';
 import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
+import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
+import 'package:artrosi_cane/features/home/data/monthly_sentence_repository.dart';
+import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
+import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
+import 'package:artrosi_cane/features/home/presentation/widgets/delete_pet_dialog.dart';
+import 'package:artrosi_cane/features/home/presentation/widgets/home_bottom_bar.dart';
+import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+enum _DrawerTab { home, settings }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +29,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
   bool _isSpeedDialOpen = false;
+  bool _pushNotificationsEnabled = true;
+  _DrawerTab _drawerTab = _DrawerTab.home;
   late AnimationController _speedDialController;
   late Animation<double> _speedDialAnimation;
 
@@ -40,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       curve: Curves.easeOutBack,
       reverseCurve: Curves.easeIn,
     );
+    _loadSettings();
   }
 
   @override
@@ -72,23 +79,120 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     showDialog(context: context, builder: (context) => const AddPetDialog());
   }
 
-  Future<void> _handleLogout() async {
+  Future<void> _loadSettings() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final value = prefs.getBool('pushNotificationsEnabled');
+    if (!mounted || value == null) return;
+    setState(() {
+      _pushNotificationsEnabled = value;
+    });
+  }
+
+  Future<void> _setPushNotificationsEnabled(bool value) async {
+    setState(() {
+      _pushNotificationsEnabled = value;
+    });
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool('pushNotificationsEnabled', value);
+  }
+
+  void _switchDrawerTab(_DrawerTab tab) {
     Navigator.of(context).pop();
+    setState(() {
+      _drawerTab = tab;
+      if (tab != _DrawerTab.home) {
+        _isSpeedDialOpen = false;
+        _speedDialController.reverse();
+      }
+    });
+  }
+
+  void _goToHomeTab() {
+    setState(() {
+      _drawerTab = _DrawerTab.home;
+      _isSpeedDialOpen = false;
+      _speedDialController.reverse();
+    });
+  }
+
+  Future<void> _clearSessionData() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove('onboardingCompleted');
+    await prefs.remove('dogProfile');
+    await prefs.remove('quizProgress');
+    await prefs.remove('lastResult');
+    await prefs.remove('lastResultSyncedSignature');
+    await prefs.remove('lastUserId');
+    ref.invalidate(userDogsProvider);
+  }
+
+  Future<void> _performLogout() async {
+    await ref.read(supabaseClientProvider).auth.signOut();
+    await _clearSessionData();
+    if (mounted) context.go('/auth');
+  }
+
+  Future<bool> _showDangerConfirmationDialog({
+    required String message,
+    required String confirmLabel,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sei Sicuro?'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _handleLogout() async {
+    final confirmed = await _showDangerConfirmationDialog(
+      message: 'Vuoi davvero uscire dal tuo account?',
+      confirmLabel: 'Logout',
+    );
+    if (!confirmed) return;
+
     try {
-      await ref.read(supabaseClientProvider).auth.signOut();
-      final prefs = ref.read(sharedPreferencesProvider);
-      await prefs.remove('onboardingCompleted');
-      await prefs.remove('dogProfile');
-      await prefs.remove('quizProgress');
-      await prefs.remove('lastResult');
-      await prefs.remove('lastUserId');
-      ref.invalidate(userDogsProvider);
-      if (mounted) context.go('/auth');
+      await _performLogout();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Logout fallito: $e')));
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await _showDangerConfirmationDialog(
+      message:
+          'Questa azione mette in soft delete il tuo account e tutti i cani associati. Vuoi continuare?',
+      confirmLabel: 'Elimina utenza',
+    );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(authRepositoryProvider).softDeleteAccountWithDogs();
+      await _performLogout();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Eliminazione utenza fallita: $e')),
+      );
     }
   }
 
@@ -100,6 +204,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     await ref
         .read(featureFlagsControllerProvider.notifier)
         .persistInviteLocationFromLink(normalized);
+  }
+
+  Widget _buildUserAvatar(
+    _AuthUserDisplay userDisplay, {
+    required double radius,
+    Color iconColor = AppColors.primaryBlue,
+  }) {
+    final avatarUrl = userDisplay.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+    return CircleAvatar(
+      backgroundColor: Colors.white,
+      radius: radius,
+      foregroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+      child: hasAvatar ? null : Icon(Icons.person, color: iconColor),
+    );
   }
 
   Widget _buildModeCard({
@@ -198,6 +317,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(supabaseClientProvider).auth.currentUser;
+    final userDisplay = _AuthUserDisplay.fromUser(currentUser);
     final inviteLocation = ref.watch(
       featureFlagsControllerProvider.select((state) => state.inviteLocation),
     );
@@ -209,567 +330,865 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final speedDialBottomOffset = 90.0 + 40.0 + 16.0 + bottomInset;
     const appBarHeight = 110.0;
     final contentTopPadding = appBarHeight + topInset;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(110),
-        child: ClipPath(
-          clipper: _AppBarWaveClipper(),
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.ctaApricot, // Apricot
-                  Color(0xFFFFCC80), // Lighter orange
+    return PopScope(
+      canPop: _drawerTab == _DrawerTab.home,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_drawerTab != _DrawerTab.home) {
+          _goToHomeTab();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        extendBody: true,
+        extendBodyBehindAppBar: true,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(110),
+          child: ClipPath(
+            clipper: _AppBarWaveClipper(),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.ctaApricot, // Apricot
+                    Color(0xFFFFCC80), // Lighter orange
+                  ],
+                ),
+              ),
+              child: AppBar(
+                backgroundColor: Colors.transparent, // Important for gradient
+                elevation: 0,
+                toolbarHeight: 80,
+                leading: _drawerTab == _DrawerTab.settings
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: AppColors.primaryBlue,
+                          size: 30,
+                        ),
+                        onPressed: _goToHomeTab,
+                      )
+                    : Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            Icons.menu_rounded,
+                            color: AppColors.primaryBlue,
+                            size: 32,
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                title: _drawerTab == _DrawerTab.settings
+                    ? const Text(
+                        'Impostazioni',
+                        style: TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Montserrat',
+                          fontSize: 24,
+                        ),
+                      )
+                    : null,
+                actions: [
+                  Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: _buildUserAvatar(userDisplay, radius: 20),
+                  ),
                 ],
               ),
             ),
-            child: AppBar(
-              backgroundColor: Colors.transparent, // Important for gradient
-              elevation: 0,
-              toolbarHeight: 80,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(
-                    Icons.menu_rounded,
-                    color: AppColors.primaryBlue,
-                    size: 32,
-                  ),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              ),
-              actions: [
-                Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          ),
+        ),
+        drawer: Drawer(
+          child: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      DrawerHeader(
+                        decoration: BoxDecoration(color: AppColors.ctaApricot),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _buildUserAvatar(
+                              userDisplay,
+                              radius: 30,
+                              iconColor: AppColors.ctaApricot,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              userDisplay.displayName,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                            if (userDisplay.subtitle.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                userDisplay.subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFF),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: AppColors.primaryBlue.withValues(
+                                alpha: 0.12,
+                              ),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Modalità esperienza',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Scegli il percorso da approfondire adesso.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.text.withValues(alpha: 0.75),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  _buildModeCard(
+                                    isSelected: isBibbioneMode,
+                                    icon: Icons.beach_access_rounded,
+                                    title: 'Passeggiate Bibione',
+                                    subtitle: 'Focus Passeggiate',
+                                    accentColor: AppColors.ctaApricot,
+                                    onTap: () => _setExperienceMode('bibbione'),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _buildModeCard(
+                                    isSelected: !isBibbioneMode,
+                                    icon: Icons.favorite_rounded,
+                                    title: 'Percorso Salute',
+                                    subtitle: 'Focus Artrosi',
+                                    accentColor: AppColors.primaryBlue,
+                                    onTap: () => _setExperienceMode('normal'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.home_rounded,
+                          color: AppColors.primaryBlue,
+                        ),
+                        title: const Text('Home'),
+                        selected: _drawerTab == _DrawerTab.home,
+                        selectedTileColor: AppColors.primaryBlue.withValues(
+                          alpha: 0.08,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onTap: () => _switchDrawerTab(_DrawerTab.home),
+                      ),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.settings,
+                          color: AppColors.primaryBlue,
+                        ),
+                        title: const Text('Impostazioni'),
+                        selected: _drawerTab == _DrawerTab.settings,
+                        selectedTileColor: AppColors.primaryBlue.withValues(
+                          alpha: 0.08,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onTap: () => _switchDrawerTab(_DrawerTab.settings),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.logout, color: Colors.red),
+                        title: const Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        onTap: () async {
+                          Navigator.of(context).pop();
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 120),
+                          );
+                          if (!mounted) return;
+                          await _handleLogout();
+                        },
                       ),
                     ],
                   ),
-                  child: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 20,
-                    child: Icon(Icons.person, color: AppColors.primaryBlue),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                  child: Column(
+                    children: [
+                      const Divider(height: 1),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Info App',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: AppColors.text.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ArtrosiCane',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                          color: AppColors.text.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        bottomNavigationBar: _drawerTab == _DrawerTab.home
+            ? HomeBottomBar(
+                onCenterButtonTap: _toggleSpeedDial,
+                isExpanded: _isSpeedDialOpen,
+              )
+            : null,
+        body: Stack(
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: AppColors.ctaApricot),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 30,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppColors.ctaApricot,
-                    ),
-                  ),
-                  SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Menu',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFF),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.primaryBlue.withValues(alpha: 0.12),
-                    width: 1,
-                  ),
+            const Positioned.fill(child: ColoredBox(color: Colors.white)),
+            if (_drawerTab == _DrawerTab.home)
+              SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  contentTopPadding,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Modalità esperienza',
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primaryBlue,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Scegli il percorso da approfondire adesso.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.text.withValues(alpha: 0.75),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _buildModeCard(
-                          isSelected: isBibbioneMode,
-                          icon: Icons.beach_access_rounded,
-                          title: 'Passeggiate Bibione',
-                          subtitle: 'Focus Passeggiate',
-                          accentColor: AppColors.ctaApricot,
-                          onTap: () => _setExperienceMode('bibbione'),
-                        ),
-                        const SizedBox(width: 10),
-                        _buildModeCard(
-                          isSelected: !isBibbioneMode,
-                          icon: Icons.favorite_rounded,
-                          title: 'Percorso Salute',
-                          subtitle: 'Focus Artrosi',
-                          accentColor: AppColors.primaryBlue,
-                          onTap: () => _setExperienceMode('normal'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.settings, color: AppColors.primaryBlue),
-              title: const Text('Impostazioni'),
-              onTap: () {},
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: _handleLogout,
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: HomeBottomBar(
-        onCenterButtonTap: _toggleSpeedDial,
-        isExpanded: _isSpeedDialOpen,
-      ),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: ColoredBox(color: Colors.white)),
-          // Main Content
-          SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              contentTopPadding,
-              AppSpacing.lg,
-              AppSpacing.lg,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _NewsCarousel(),
-                const SizedBox(height: AppSpacing.md),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.ctaApricot.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    const _NewsCarousel(),
+                    const SizedBox(height: AppSpacing.md),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: 10,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.pets_rounded,
-                            color: AppColors.ctaApricot,
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'I tuoi Cani',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'Montserrat',
-                              color: AppColors.primaryBlue,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: AppColors.ctaApricot.withValues(
+                                alpha: 0.2,
+                              ),
+                              width: 1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                SizedBox(
-                  height: 400,
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final pets = ref.watch(userDogsProvider);
-                      return pets.when(
-                        data: (list) {
-                          if (list.isEmpty) {
-                            return Center(
-                              child: GestureDetector(
-                                onTap: _openAddPetDialog,
-                                child: CustomPaint(
-                                  painter: _DashedBorderPainter(
-                                    color: AppColors.ctaApricot.withValues(
-                                      alpha: 0.5,
-                                    ),
-                                    strokeWidth: 2,
-                                    gap: 6,
-                                    radius: 28,
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(
-                                      AppSpacing.lg,
-                                    ),
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                      borderRadius: BorderRadius.circular(28),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.ctaApricot
-                                                .withValues(alpha: 0.15),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.pets_rounded,
-                                            color: AppColors.ctaApricot,
-                                            size: 32,
-                                          ),
-                                        ),
-                                        const SizedBox(height: AppSpacing.md),
-                                        const Text(
-                                          'Nessun cane presente',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.primaryBlue,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Aggiungilo ora con un tap',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: AppColors.text.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: AppSpacing.md),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.ctaApricot,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Icon(
-                                                Icons.add,
-                                                color: Colors.white,
-                                                size: 18,
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                'Aggiungi il tuo cane',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.pets_rounded,
+                                color: AppColors.ctaApricot,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'I tuoi Cani',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Montserrat',
+                                  color: AppColors.primaryBlue,
                                 ),
                               ),
-                            );
-                          }
-                          return _PetCarousel(
-                            dogs: list,
-                            onAddTap: _openAddPetDialog,
-                          );
-                        },
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.ctaApricot,
+                            ],
                           ),
-                        ),
-                        error: (_, __) => Center(
-                          child: AppText.body(
-                            'Errore nel caricamento dei tuoi pet',
-                            color: Colors.red,
-                            align: TextAlign.center,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Consigli Section
-                const SizedBox(height: AppSpacing.lg),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF4E0), // Soft cream/yellow
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: AppColors.ctaApricot,
-                          size: 24,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(
+                      height: 400,
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final pets = ref.watch(userDogsProvider);
+                          return pets.when(
+                            data: (list) {
+                              if (list.isEmpty) {
+                                return Center(
+                                  child: GestureDetector(
+                                    onTap: _openAddPetDialog,
+                                    child: CustomPaint(
+                                      painter: _DashedBorderPainter(
+                                        color: AppColors.ctaApricot.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        strokeWidth: 2,
+                                        gap: 6,
+                                        radius: 28,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                          AppSpacing.lg,
+                                        ),
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            28,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(14),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.ctaApricot
+                                                    .withValues(alpha: 0.15),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.pets_rounded,
+                                                color: AppColors.ctaApricot,
+                                                size: 32,
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              height: AppSpacing.md,
+                                            ),
+                                            const Text(
+                                              'Nessun cane presente',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.primaryBlue,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Aggiungilo ora con un tap',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: AppColors.text
+                                                    .withValues(alpha: 0.7),
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              height: AppSpacing.md,
+                                            ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.ctaApricot,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Icon(
+                                                    Icons.add,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    'Aggiungi il tuo cane',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return _PetCarousel(
+                                dogs: list,
+                                onAddTap: _openAddPetDialog,
+                              );
+                            },
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.ctaApricot,
+                              ),
+                            ),
+                            error: (_, __) => Center(
+                              child: AppText.body(
+                                'Errore nel caricamento dei tuoi pet',
+                                color: Colors.red,
+                                align: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Consigli Section
+                    const SizedBox(height: AppSpacing.lg),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Row(
                         children: [
-                          Text(
-                            'CONSIGLI SU MISURA',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFFFF4E0,
+                              ), // Soft cream/yellow
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome,
+                              color: AppColors.ctaApricot,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'CONSIGLI SU MISURA',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                  color: AppColors.ctaApricot,
+                                ),
+                              ),
+                              Text(
+                                'Salute e Benessere',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Montserrat',
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final pets = ref.watch(userDogsProvider);
+                        return pets.when(
+                          data: (list) {
+                            if (list.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.ctaApricot.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Icon(
+                                        Icons.pets_rounded,
+                                        color: AppColors.ctaApricot,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    Expanded(
+                                      child: Text(
+                                        'Aggiungi un cane per ricevere consigli personalizzati.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: AppColors.text.withValues(
+                                            alpha: 0.75,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                for (final dog in list) ...[
+                                  _buildDogAdviceCard(context, dog),
+                                  const SizedBox(height: AppSpacing.md),
+                                ],
+                              ],
+                            );
+                          },
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(
                               color: AppColors.ctaApricot,
                             ),
                           ),
-                          Text(
-                            'Salute e Benessere',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'Montserrat',
-                              color: AppColors.primaryBlue,
+                          error: (_, __) => Center(
+                            child: AppText.body(
+                              'Errore nel caricamento dei consigli',
+                              color: Colors.red,
+                              align: TextAlign.center,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final pets = ref.watch(userDogsProvider);
-                    return pets.when(
-                      data: (list) {
-                        if (list.isEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.ctaApricot.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(
-                                    Icons.pets_rounded,
-                                    color: AppColors.ctaApricot,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: Text(
-                                    'Aggiungi un cane per ricevere consigli personalizzati.',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.text.withValues(
-                                        alpha: 0.75,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: [
-                            for (final dog in list) ...[
-                              _buildDogAdviceCard(context, dog),
-                              const SizedBox(height: AppSpacing.md),
-                            ],
-                          ],
                         );
                       },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.ctaApricot,
-                        ),
-                      ),
-                      error: (_, __) => Center(
-                        child: AppText.body(
-                          'Errore nel caricamento dei consigli',
-                          color: Colors.red,
-                          align: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  },
+                    ),
+                    const SizedBox(
+                      height: 140,
+                    ), // Extra space for bottom navigation bar
+                  ],
                 ),
-                const SizedBox(
-                  height: 140,
-                ), // Extra space for bottom navigation bar
+              )
+            else
+              _buildSettingsContent(contentTopPadding),
+
+            // Speed Dial Buttons Overlay
+            if (_drawerTab == _DrawerTab.home && _isSpeedDialOpen)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: _closeSpeedDial,
+                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
+                ),
+              ),
+
+            // Add Button
+            if (_drawerTab == _DrawerTab.home)
+              AnimatedBuilder(
+                animation: _speedDialAnimation,
+                builder: (context, child) {
+                  final opacity = _speedDialAnimation.value.clamp(0.0, 1.0);
+                  return Positioned(
+                    bottom: speedDialBottomOffset,
+                    left: MediaQuery.of(context).size.width / 2 - 80,
+                    child: IgnorePointer(
+                      ignoring: !_isSpeedDialOpen,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.scale(
+                          scale: _speedDialAnimation.value,
+                          child: _buildSpeedDialButton(
+                            icon: Icons.add,
+                            label: 'Aggiungi',
+                            color: AppColors.primaryBlue,
+                            onTap: () {
+                              _closeSpeedDial();
+                              showDialog(
+                                context: context,
+                                builder: (context) => const AddPetDialog(),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+            // Remove Button
+            if (_drawerTab == _DrawerTab.home)
+              AnimatedBuilder(
+                animation: _speedDialAnimation,
+                builder: (context, child) {
+                  final opacity = _speedDialAnimation.value.clamp(0.0, 1.0);
+                  return Positioned(
+                    bottom: speedDialBottomOffset,
+                    right: MediaQuery.of(context).size.width / 2 - 80,
+                    child: IgnorePointer(
+                      ignoring: !_isSpeedDialOpen,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.scale(
+                          scale: _speedDialAnimation.value,
+                          child: _buildSpeedDialButton(
+                            icon: Icons.delete_outline,
+                            label: 'Rimuovi',
+                            color: Colors.redAccent,
+                            onTap: () {
+                              _closeSpeedDial();
+                              showDialog(
+                                context: context,
+                                builder: (context) => const DeletePetDialog(),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsContent(double contentTopPadding) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        contentTopPadding,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSettingsSectionLabel('Generali'),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.primaryBlue.withValues(alpha: 0.1),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: SwitchListTile.adaptive(
+              value: _pushNotificationsEnabled,
+              onChanged: _setPushNotificationsEnabled,
+              activeThumbColor: AppColors.primaryBlue,
+              activeTrackColor: AppColors.primaryBlue.withValues(alpha: 0.35),
+              title: const Text(
+                'Notifiche push',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryBlue,
+                ),
+              ),
+              subtitle: Text(
+                _pushNotificationsEnabled
+                    ? 'Attive: ricevi aggiornamenti importanti.'
+                    : 'Disattivate: nessuna notifica push.',
+                style: TextStyle(color: AppColors.text.withValues(alpha: 0.75)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+          _buildDangerZoneCard(),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSectionLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 19,
+        fontWeight: FontWeight.w900,
+        color: AppColors.primaryBlue.withValues(alpha: 0.95),
+      ),
+    );
+  }
+
+  Widget _buildDangerZoneCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF7F7), Color(0xFFFFEEEE)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text(
+                      'Area account',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Gestione account avanzata con conferma di sicurezza.',
+                  style: TextStyle(
+                    color: AppColors.text.withValues(alpha: 0.75),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
-
-          // Speed Dial Buttons Overlay
-          if (_isSpeedDialOpen)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: _closeSpeedDial,
-                child: Container(color: Colors.black.withValues(alpha: 0.3)),
-              ),
-            ),
-
-          // Add Button
-          AnimatedBuilder(
-            animation: _speedDialAnimation,
-            builder: (context, child) {
-              final opacity = _speedDialAnimation.value.clamp(0.0, 1.0);
-              return Positioned(
-                bottom: speedDialBottomOffset,
-                left: MediaQuery.of(context).size.width / 2 - 80,
-                child: IgnorePointer(
-                  ignoring: !_isSpeedDialOpen,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: _speedDialAnimation.value,
-                      child: _buildSpeedDialButton(
-                        icon: Icons.add,
-                        label: 'Aggiungi',
-                        color: AppColors.primaryBlue,
-                        onTap: () {
-                          _closeSpeedDial();
-                          showDialog(
-                            context: context,
-                            builder: (context) => const AddPetDialog(),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Remove Button
-          AnimatedBuilder(
-            animation: _speedDialAnimation,
-            builder: (context, child) {
-              final opacity = _speedDialAnimation.value.clamp(0.0, 1.0);
-              return Positioned(
-                bottom: speedDialBottomOffset,
-                right: MediaQuery.of(context).size.width / 2 - 80,
-                child: IgnorePointer(
-                  ignoring: !_isSpeedDialOpen,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: _speedDialAnimation.value,
-                      child: _buildSpeedDialButton(
-                        icon: Icons.delete_outline,
-                        label: 'Rimuovi',
-                        color: Colors.redAccent,
-                        onTap: () {
-                          _closeSpeedDial();
-                          showDialog(
-                            context: context,
-                            builder: (context) => const DeletePetDialog(),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+          const Divider(height: 1, color: Color(0x33FF0000)),
+          _buildDangerActionTile(
+            icon: Icons.delete_forever_rounded,
+            title: 'Eliminazione utenza',
+            subtitle: 'Soft delete account e cani associati.',
+            onTap: _handleDeleteAccount,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDangerActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: Colors.red, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.red,
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: Colors.red.withValues(alpha: 0.75),
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: Colors.red.withValues(alpha: 0.75),
       ),
     );
   }
@@ -1819,6 +2238,170 @@ class _PetCarouselState extends State<_PetCarousel> {
       default:
         return null;
     }
+  }
+}
+
+class _AuthUserDisplay {
+  const _AuthUserDisplay({
+    required this.displayName,
+    required this.subtitle,
+    this.avatarUrl,
+  });
+
+  final String displayName;
+  final String subtitle;
+  final String? avatarUrl;
+
+  static _AuthUserDisplay fromUser(User? user) {
+    if (user == null) {
+      return const _AuthUserDisplay(displayName: 'Utente', subtitle: '');
+    }
+
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    final appMetadata = user.appMetadata;
+    final identityName = _identityName(user);
+
+    final givenName = (metadata['given_name'] as String?)?.trim();
+    final familyName = (metadata['family_name'] as String?)?.trim();
+    final fullName = (metadata['full_name'] as String?)?.trim();
+    final genericName = (metadata['name'] as String?)?.trim();
+
+    final composedName = [
+      givenName,
+      familyName,
+    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+
+    final email = (user.email ?? '').trim();
+    final fallbackName = email.contains('@')
+        ? email.split('@').first
+        : 'Utente';
+
+    final displayName = _firstNonEmpty([
+      fullName,
+      genericName,
+      composedName,
+      identityName,
+      fallbackName,
+    ]);
+
+    final provider = _firstNonEmpty([
+      (appMetadata['provider'] as String?)?.trim(),
+      _identityProvider(user),
+    ]).toLowerCase();
+
+    final providerLabel = switch (provider) {
+      'google' => 'Google',
+      'apple' => 'Apple',
+      _ => '',
+    };
+
+    final avatarUrl = _firstNonEmpty([
+      (metadata['avatar_url'] as String?)?.trim(),
+      (metadata['picture'] as String?)?.trim(),
+      (metadata['photo_url'] as String?)?.trim(),
+      (metadata['avatarUrl'] as String?)?.trim(),
+      (metadata['profile_image_url'] as String?)?.trim(),
+      (metadata['profileImage'] as String?)?.trim(),
+      _identityAvatar(user),
+    ]);
+
+    final subtitle = providerLabel;
+
+    return _AuthUserDisplay(
+      displayName: displayName,
+      subtitle: subtitle,
+      avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+    );
+  }
+
+  static String _firstNonEmpty(List<String?> values) {
+    for (final value in values) {
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  static String? _identityProvider(User user) {
+    final identities = user.identities;
+    if (identities == null || identities.isEmpty) return null;
+    final provider = identities.first.provider.trim();
+    if (provider.isEmpty) return null;
+    return provider;
+  }
+
+  static String? _identityAvatar(User user) {
+    final identities = user.identities;
+    if (identities == null || identities.isEmpty) return null;
+    for (final identity in identities) {
+      final data = identity.identityData;
+      final avatar =
+          _readIdentityString(data, 'avatar_url') ??
+          _readIdentityString(data, 'picture') ??
+          _readIdentityString(data, 'photo_url') ??
+          _readIdentityString(data, 'avatarUrl') ??
+          _readIdentityString(data, 'profile_image_url') ??
+          _readIdentityString(data, 'profileImage');
+      if (avatar != null) return avatar;
+    }
+    return null;
+  }
+
+  static String? _identityName(User user) {
+    final identities = user.identities;
+    if (identities == null || identities.isEmpty) return null;
+    for (final identity in identities) {
+      final data = identity.identityData;
+      final fullName =
+          _readIdentityString(data, 'full_name') ??
+          _readIdentityString(data, 'name');
+      if (fullName != null) return fullName;
+      final givenName = _readIdentityString(data, 'given_name');
+      final familyName = _readIdentityString(data, 'family_name');
+      final composed = [
+        givenName,
+        familyName,
+      ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+      if (composed.isNotEmpty) return composed;
+    }
+    return null;
+  }
+
+  static String? _readIdentityString(dynamic source, String key) {
+    if (source is Map<String, dynamic>) {
+      return _coerceString(source[key]);
+    }
+    if (source is Map) {
+      return _coerceString(source[key]);
+    }
+    return null;
+  }
+
+  static String? _coerceString(dynamic value) {
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+      return null;
+    }
+    if (value is Uri) {
+      final trimmed = value.toString().trim();
+      if (trimmed.isNotEmpty) return trimmed;
+      return null;
+    }
+    if (value is Map<String, dynamic>) {
+      final nested = value['url'] ?? value['value'];
+      if (nested is String && nested.trim().isNotEmpty) {
+        return nested.trim();
+      }
+      return null;
+    }
+    if (value is Map) {
+      final nested = value['url'] ?? value['value'];
+      if (nested is String && nested.trim().isNotEmpty) {
+        return nested.trim();
+      }
+      return null;
+    }
+    return null;
   }
 }
 

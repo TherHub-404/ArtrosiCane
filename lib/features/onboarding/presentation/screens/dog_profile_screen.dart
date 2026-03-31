@@ -9,9 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DogProfilePage extends ConsumerStatefulWidget {
-  const DogProfilePage({super.key, this.onProfileChanged});
+  const DogProfilePage({
+    super.key,
+    this.onProfileChanged,
+    this.showValidationErrors = false,
+  });
 
   final Function(DogProfile)? onProfileChanged;
+  final bool showValidationErrors;
 
   @override
   ConsumerState<DogProfilePage> createState() => _DogProfilePageState();
@@ -22,7 +27,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
   final _nameController = TextEditingController();
 
   AgeGroup _ageGroup = AgeGroup.adulto;
-  DogSize _size = DogSize.media;
+  final DogSize _size = DogSize.media;
   double _weightKg = 20;
   String? _selectedBreedId;
   String? _selectedBreedName;
@@ -33,12 +38,11 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
   @override
   void initState() {
     super.initState();
-    _nameController.addListener(_notifyChanges);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _notifyChanges());
   }
 
   @override
   void dispose() {
-    _nameController.removeListener(_notifyChanges);
     _nameController.dispose();
     super.dispose();
   }
@@ -75,6 +79,11 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
         final isCompact = constraints.maxHeight < 700;
         final verticalGap = isCompact ? AppSpacing.md : AppSpacing.xl;
         final bottomSafeInset = MediaQuery.of(context).padding.bottom;
+        final missingName =
+            widget.showValidationErrors && _nameController.text.trim().isEmpty;
+        final missingBreed =
+            widget.showValidationErrors &&
+            (_selectedBreedId == null || _selectedBreedId!.trim().isEmpty);
 
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -103,13 +112,39 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               TextFormField(
                 controller: _nameController,
                 autofocus: true,
+                onChanged: (_) {
+                  setState(() {});
+                  _notifyChanges();
+                },
                 decoration: InputDecoration(
                   hintText: '🐶 Come si chiama il tuo cane?',
+                  errorText: missingName ? 'Campo obbligatorio' : null,
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(
+                      color: missingName
+                          ? Colors.red.shade400
+                          : AppColors.borderSoft,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: missingName
+                          ? Colors.red.shade400
+                          : AppColors.borderSoft,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: missingName
+                          ? Colors.red.shade500
+                          : AppColors.primaryBlue,
+                      width: 1.4,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
@@ -188,12 +223,14 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               const SizedBox(height: AppSpacing.sm),
               _BreedPickerField(
                 selectedLabel: _selectedBreedName,
+                hasError: missingBreed,
                 onTap: () async {
                   final breeds = await ref
                       .read(breedListProvider.future)
                       .catchError((_) => <Breed>[]);
                   if (!mounted || breeds.isEmpty) return;
-                  final picked = await _showBreedPicker(context, breeds);
+                  final picked = await _showBreedPicker(this.context, breeds);
+                  if (!mounted) return;
                   if (picked != null) {
                     setState(() {
                       _selectedBreedId = picked.id;
@@ -205,6 +242,17 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                   }
                 },
               ),
+              if (missingBreed) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Seleziona una razza per continuare.',
+                  style: TextStyle(
+                    color: Colors.red.shade600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               SizedBox(height: verticalGap),
             ],
           ),
@@ -399,10 +447,15 @@ class _AgeGroupOption extends StatelessWidget {
 }
 
 class _BreedPickerField extends StatelessWidget {
-  const _BreedPickerField({required this.selectedLabel, required this.onTap});
+  const _BreedPickerField({
+    required this.selectedLabel,
+    required this.onTap,
+    this.hasError = false,
+  });
 
   final String? selectedLabel;
   final VoidCallback onTap;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -416,7 +469,10 @@ class _BreedPickerField extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.borderSoft, width: 1.2),
+          border: Border.all(
+            color: hasError ? Colors.red.shade400 : AppColors.borderSoft,
+            width: 1.2,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),

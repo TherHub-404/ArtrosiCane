@@ -38,9 +38,9 @@ class HomeBottomBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _BottomBarItem(
-                  icon: Icons.edit_note_rounded,
-                  label: 'Blog',
-                  onTap: () {},
+                  icon: Icons.video_call_rounded,
+                  label: 'Video call',
+                  onTap: () => context.push('/videocall-request'),
                 ),
                 _BottomBarItem(
                   icon: Icons.map_rounded,

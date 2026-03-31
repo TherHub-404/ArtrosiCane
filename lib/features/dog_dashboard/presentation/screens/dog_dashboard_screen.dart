@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:artrosi_cane/core/widgets/app_banner.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/widgets/dog_edit_sheet.dart';
 import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
@@ -109,11 +111,12 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
 
                     try {
                       final repo = ref.read(dogRemoteRepositoryProvider);
-                      await repo.updateDog(
+                      final uploadedImageUrl = await repo.updateDog(
                         dogId: dogId,
                         name: newName.trim(),
                         ageYears: parsedAge,
                         weightKg: parsedWeight,
+                        imagePath: newImage,
                       );
                       ref.invalidate(userDogsProvider);
                       if (!context.mounted) return true;
@@ -121,8 +124,9 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                         _name = newName.trim();
                         _ageText = newAge.trim();
                         _weightText = newWeight.trim();
-                        if (newImage != null) {
-                          _imagePath = newImage;
+                        if (uploadedImageUrl != null &&
+                            uploadedImageUrl.isNotEmpty) {
+                          _imagePath = uploadedImageUrl;
                         }
                       });
                       AppBanner.showSuccess(context, 'Profilo aggiornato.');
@@ -285,9 +289,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
         children: [
           Positioned.fill(
             bottom: 20, // Leave space for the wave overlap
-            child: imagePath.startsWith('http')
-                ? Image.network(imagePath, fit: BoxFit.cover)
-                : Image.asset(imagePath, fit: BoxFit.cover),
+            child: _buildHeaderImage(imagePath),
           ),
           Positioned.fill(
             bottom: 20,
@@ -319,6 +321,36 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeaderImage(String imagePath) {
+    final placeholder = Container(
+      color: AppColors.background,
+      child: const Icon(Icons.pets, color: AppColors.primaryBlue, size: 56),
+    );
+
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+      );
+    }
+
+    final localImage = File(imagePath);
+    if (localImage.existsSync()) {
+      return Image.file(
+        localImage,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => placeholder,
     );
   }
 

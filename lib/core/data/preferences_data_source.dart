@@ -16,6 +16,7 @@ class PreferencesDataSource {
   static const _dogProfileKey = 'dogProfile';
   static const _quizProgressKey = 'quizProgress';
   static const _lastResultKey = 'lastResult';
+  static const _lastResultSyncedSignatureKey = 'lastResultSyncedSignature';
   static const _lastDiagnosisPriorityResultKey = 'lastDiagnosisPriorityResult';
   static const _onboardingEventsKey = 'onboardingEvents';
 
@@ -67,6 +68,7 @@ class PreferencesDataSource {
     if (!saved) {
       throw CacheException('Impossibile salvare il risultato del quiz');
     }
+    await _prefs.remove(_lastResultSyncedSignatureKey);
   }
 
   Future<QuizResultModel?> loadLastResult() async {

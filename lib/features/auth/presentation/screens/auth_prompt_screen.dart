@@ -1,8 +1,7 @@
-import 'package:artrosi_cane/core/config/app_config.dart';
-import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
-import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
+import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
+import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -10,15 +9,18 @@ import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_sou
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthPromptScreen extends ConsumerStatefulWidget {
-  const AuthPromptScreen({super.key, this.entryContext});
+  const AuthPromptScreen({super.key, this.entryContext, this.dogData});
 
   final String? entryContext;
+  final Map<String, dynamic>? dogData;
 
   @override
   ConsumerState<AuthPromptScreen> createState() => _AuthPromptScreenState();
@@ -66,6 +68,10 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       _showSnack('Inserisci email e password');
       return;
     }
+    if (!_isLogin && nickname.isEmpty) {
+      _showSnack('Inserisci almeno un nickname per creare il tuo account');
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     try {
@@ -82,7 +88,9 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
           'auth_submit_success',
           payload: {'entryContext': widget.entryContext, 'isLogin': true},
         );
-        if (mounted) context.go('/entry');
+        if (mounted) {
+          context.go('/entry', extra: {'dog': widget.dogData});
+        }
       } else {
         final needsEmailConfirm = await authRepo.signUp(
           email: email,
@@ -101,7 +109,9 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
             'auth_submit_success',
             payload: {'entryContext': widget.entryContext, 'isLogin': false},
           );
-          if (mounted) context.go('/entry');
+          if (mounted) {
+            context.go('/entry', extra: {'dog': widget.dogData});
+          }
         }
       }
     } on AuthException catch (e) {
@@ -141,11 +151,16 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
 
   Future<void> _syncDogProfileToRemote() async {
     try {
-      if (_isDemoUser()) return;
       final loadProfile = ref.read(loadDogProfileUseCaseProvider);
-      final profile = await loadProfile.call();
+      var profile = await loadProfile.call();
       if (profile == null) return;
-      await ref.read(dogSupabaseRepositoryProvider).upsertDog(profile);
+      final repository = ref.read(dogSupabaseRepositoryProvider);
+      profile = await repository.resolvePendingDiagnosisFiles(profile);
+      await ref.read(saveDogProfileUseCaseProvider).call(profile);
+      final id = await repository.upsertDog(profile);
+      await ref
+          .read(saveDogProfileUseCaseProvider)
+          .call(profile.copyWith(id: id ?? profile.id));
     } catch (_) {
       // non blocking sync
     }
@@ -166,21 +181,17 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
     return e.message;
   }
 
-  bool _isDemoUser() {
-    final demoEmail = AppConfig.demoEmail;
-    final currentEmail = Supabase.instance.client.auth.currentUser?.email;
-    if (demoEmail == null || currentEmail == null) return false;
-    return currentEmail.toLowerCase() == demoEmail.toLowerCase();
-  }
-
   String _contextHeadline() {
+    if (widget.entryContext != null) {
+      return 'Login';
+    }
     switch (widget.entryContext) {
       case 'videocall':
         return 'Sblocca la videocall iniziale';
       case 'percorso_annuale':
         return 'Attiva il Percorso Annuale';
       case 'autonomia':
-        return 'Continua in autonomia';
+        return 'Login';
       default:
         return _isLogin ? 'Bentornato!' : 'Benvenuto!';
     }
@@ -211,35 +222,9 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       await prefs.remove('dogProfile');
       await prefs.remove('quizProgress');
       await prefs.remove('lastResult');
+      await prefs.remove('lastResultSyncedSignature');
     }
     await prefs.setString('lastUserId', currentUserId);
-  }
-
-  Future<void> _loginDemo() async {
-    if (_isSubmitting) return;
-    final email = AppConfig.demoEmail;
-    final password = AppConfig.demoPassword;
-    if (email == null || password == null) {
-      _showSnack('DEMO_EMAIL o DEMO_PASSWORD mancanti in .env');
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-    try {
-      final authRepo = ref.read(authRepositoryProvider);
-      await authRepo.signIn(email: email, password: password);
-      await _resetLocalDataIfUserChanged();
-      await _syncDogProfileToRemote();
-      if (mounted) context.go('/entry');
-    } on AuthException catch (e) {
-      final message = _friendlyAuthMessage(e);
-      _showSnack(message);
-      _setBanner(message, Colors.red.shade700);
-    } catch (e) {
-      _showSnack('Errore: $e');
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
   }
 
   Future<void> _signInWithGoogle() async {
@@ -251,7 +236,28 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
       await authRepo.signInWithGoogle();
       await _resetLocalDataIfUserChanged();
       await _syncDogProfileToRemote();
-      if (mounted) context.go('/entry');
+      if (mounted) context.go('/entry', extra: {'dog': widget.dogData});
+    } on AuthException catch (e) {
+      final message = _friendlyAuthMessage(e);
+      _showSnack(message);
+      _setBanner(message, Colors.red.shade700);
+    } catch (e) {
+      _showSnack('Errore: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.signInWithApple();
+      await _resetLocalDataIfUserChanged();
+      await _syncDogProfileToRemote();
+      if (mounted) context.go('/entry', extra: {'dog': widget.dogData});
     } on AuthException catch (e) {
       final message = _friendlyAuthMessage(e);
       _showSnack(message);
@@ -470,22 +476,19 @@ class _AuthPromptScreenState extends ConsumerState<AuthPromptScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.md),
-
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _loginDemo,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primaryBlue,
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 2,
-                  textStyle: AppTypography.bodyBold,
+              if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
+                const SizedBox(height: AppSpacing.md),
+                SignInWithAppleButton(
+                  onPressed: () {
+                    if (_isSubmitting) return;
+                    _signInWithApple();
+                  },
+                  style: SignInWithAppleButtonStyle.black,
+                  height: 52,
+                  borderRadius: const BorderRadius.all(Radius.circular(30)),
+                  text: 'Continua con Apple',
                 ),
-                child: const Text('ENTRA IN MODALITÀ DEMO'),
-              ),
+              ],
 
               const SizedBox(height: AppSpacing.xl),
 

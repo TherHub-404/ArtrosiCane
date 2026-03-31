@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -79,7 +81,7 @@ class PetCard extends StatelessWidget {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 220,
+                height: 236,
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(28),
@@ -122,7 +124,7 @@ class PetCard extends StatelessWidget {
 
               // Wave-shaped white border overlay
               Positioned(
-                top: 200,
+                top: 214,
                 left: 0,
                 right: 0,
                 child: ClipPath(
@@ -297,6 +299,7 @@ class _PetImage extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        alignment: const Alignment(0, 0.22),
         errorBuilder: (context, error, stackTrace) => placeholder,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -315,11 +318,24 @@ class _PetImage extends StatelessWidget {
       );
     }
 
+    final localImage = File(imagePath);
+    if (localImage.existsSync()) {
+      return Image.file(
+        localImage,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        alignment: const Alignment(0, 0.22),
+        errorBuilder: (context, error, stackTrace) => placeholder,
+      );
+    }
+
     return Image.asset(
       imagePath,
       width: double.infinity,
       height: double.infinity,
       fit: BoxFit.cover,
+      alignment: const Alignment(0, 0.22),
       errorBuilder: (context, error, stackTrace) => placeholder,
     );
   }

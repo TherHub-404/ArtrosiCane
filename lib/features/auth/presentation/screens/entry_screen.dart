@@ -1,20 +1,23 @@
 import 'dart:async';
 
-import 'package:artrosi_cane/core/widgets/app_text.dart';
-import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
+import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
+import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
+import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EntryScreen extends ConsumerStatefulWidget {
-  const EntryScreen({super.key});
+  const EntryScreen({super.key, this.dogData});
+
+  final Map<String, dynamic>? dogData;
 
   @override
   ConsumerState<EntryScreen> createState() => _EntryScreenState();
@@ -39,26 +42,45 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
     _timer?.cancel();
     final delay = Future.delayed(const Duration(milliseconds: 4500));
     await Future.wait([delay, _syncDogProfileToRemote()]);
-    if (mounted) context.go('/home');
+    if (!mounted) return;
+    context.go('/home');
   }
 
   Future<void> _syncDogProfileToRemote() async {
     try {
-      if (_isDemoUser()) return;
       final loadProfile = ref.read(loadDogProfileUseCaseProvider);
-      final profile = await loadProfile.call();
+      var profile = await loadProfile.call();
       if (profile == null) return;
-      await ref.read(dogSupabaseRepositoryProvider).upsertDog(profile);
+      final repository = ref.read(dogSupabaseRepositoryProvider);
+      profile = await repository.resolvePendingDiagnosisFiles(profile);
+      await ref.read(saveDogProfileUseCaseProvider).call(profile);
+      final id = await repository.upsertDog(profile);
+      final syncedProfile = profile.copyWith(id: id ?? profile.id);
+      await ref.read(saveDogProfileUseCaseProvider).call(syncedProfile);
+      await _syncLastQuizResultToRemote(syncedProfile.id);
     } catch (_) {
       // Non-blocking sync
     }
   }
 
-  bool _isDemoUser() {
-    final demoEmail = AppConfig.demoEmail;
-    final currentEmail = Supabase.instance.client.auth.currentUser?.email;
-    if (demoEmail == null || currentEmail == null) return false;
-    return currentEmail.toLowerCase() == demoEmail.toLowerCase();
+  Future<void> _syncLastQuizResultToRemote(String? dogId) async {
+    if (dogId == null || dogId.isEmpty) return;
+
+    final lastResult = await ref
+        .read(preferencesDataSourceProvider)
+        .loadLastResult();
+    if (lastResult == null) return;
+
+    final signature =
+        '${dogId}_${lastResult.riskLevel.name}_${lastResult.score}';
+    final prefs = ref.read(sharedPreferencesProvider);
+    final alreadySynced = prefs.getString('lastResultSyncedSignature');
+    if (alreadySynced == signature) return;
+
+    await ref
+        .read(quizRemoteDataSourceProvider)
+        .saveResult(result: lastResult.toEntity(), dogId: dogId);
+    await prefs.setString('lastResultSyncedSignature', signature);
   }
 
   @override

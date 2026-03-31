@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Artrosi Cane</string>
+	<string>ZampaSicura</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>artrosi_cane</string>
+	<string>ZampaSicura</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -39,6 +39,12 @@
 	<string>1058669899472-k1tnp52pj2o25fbn7uemtunbt18bfclp.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Usiamo la fotocamera per aggiornare la foto del profilo del cane.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usiamo la libreria foto per scegliere l'immagine del profilo del cane.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Permette di salvare immagini scattate durante l'aggiornamento del profilo.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

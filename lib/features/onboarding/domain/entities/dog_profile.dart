@@ -19,6 +19,8 @@ class DogProfile {
     this.diagnosisAnsweredAt,
     this.diagnosisDate,
     this.diagnosisVet,
+    this.diagnosisFiles = const <String>[],
+    this.diagnosisCareNotes,
     this.ageGroup = AgeGroup.adulto,
     this.size = DogSize.media,
   });
@@ -36,8 +38,51 @@ class DogProfile {
   final DateTime? diagnosisAnsweredAt;
   final String? diagnosisDate;
   final String? diagnosisVet;
+  final List<String> diagnosisFiles;
+  final String? diagnosisCareNotes;
   final AgeGroup ageGroup;
   final DogSize size;
 
-  bool get hasDiagnosis => diagnosisStatus == ArthrosisDiagnosisStatus.confirmed;
+  bool get hasDiagnosis =>
+      diagnosisStatus == ArthrosisDiagnosisStatus.confirmed;
+
+  DogProfile copyWith({
+    String? id,
+    String? name,
+    double? ageYears,
+    double? weightKg,
+    String? breedId,
+    String? breedName,
+    String? breedImageUrl,
+    String? riskLevel,
+    int? riskScore,
+    ArthrosisDiagnosisStatus? diagnosisStatus,
+    DateTime? diagnosisAnsweredAt,
+    String? diagnosisDate,
+    String? diagnosisVet,
+    List<String>? diagnosisFiles,
+    String? diagnosisCareNotes,
+    AgeGroup? ageGroup,
+    DogSize? size,
+  }) {
+    return DogProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      ageYears: ageYears ?? this.ageYears,
+      weightKg: weightKg ?? this.weightKg,
+      breedId: breedId ?? this.breedId,
+      breedName: breedName ?? this.breedName,
+      breedImageUrl: breedImageUrl ?? this.breedImageUrl,
+      riskLevel: riskLevel ?? this.riskLevel,
+      riskScore: riskScore ?? this.riskScore,
+      diagnosisStatus: diagnosisStatus ?? this.diagnosisStatus,
+      diagnosisAnsweredAt: diagnosisAnsweredAt ?? this.diagnosisAnsweredAt,
+      diagnosisDate: diagnosisDate ?? this.diagnosisDate,
+      diagnosisVet: diagnosisVet ?? this.diagnosisVet,
+      diagnosisFiles: diagnosisFiles ?? this.diagnosisFiles,
+      diagnosisCareNotes: diagnosisCareNotes ?? this.diagnosisCareNotes,
+      ageGroup: ageGroup ?? this.ageGroup,
+      size: size ?? this.size,
+    );
+  }
 }

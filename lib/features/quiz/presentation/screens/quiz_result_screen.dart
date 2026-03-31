@@ -11,9 +11,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 
 class QuizResultScreen extends StatefulWidget {
-  const QuizResultScreen({super.key, this.result});
+  const QuizResultScreen({super.key, this.result, this.dogData});
 
   final Object? result;
+  final Map<String, dynamic>? dogData;
 
   @override
   State<QuizResultScreen> createState() => _QuizResultScreenState();
@@ -163,12 +164,19 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                     ),
                     child: AppButton(
                       label: 'Continua',
-                      onPressed: () => context.go('/auth'),
+                      onPressed: _handleContinue,
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  void _handleContinue() {
+    context.go(
+      '/quiz/diagnosis-result',
+      extra: {'showJourneyOnly': true, 'dog': widget.dogData},
     );
   }
 

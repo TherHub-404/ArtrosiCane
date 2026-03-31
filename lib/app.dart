@@ -26,7 +26,7 @@ class _ArtrosiCaneAppState extends ConsumerState<ArtrosiCaneApp> {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
-      title: 'Artrosi Cane',
+      title: 'ZampaSicura',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       theme: AppTheme.light(),
