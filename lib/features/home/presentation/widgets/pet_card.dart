@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -20,6 +21,8 @@ class PetCard extends StatelessWidget {
     this.onTap,
   });
 
+  static const double cardHeight = 392;
+
   final String name;
   final String breed;
   final String? subtitle;
@@ -34,21 +37,22 @@ class PetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         width: 300,
-        height: 380,
+        height: cardHeight,
         margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(
-            color: AppColors.ctaApricot.withOpacity(0.18),
+            color: AppColors.ctaApricot.withValues(alpha: 0.18),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -90,47 +94,15 @@ class PetCard extends StatelessWidget {
                 ),
               ),
 
-              // Arthritis Grade Badge
-              if (arthrosisGrade != null)
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getGradeColor(arthrosisGrade!),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      arthrosisGrade!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
               // Wave-shaped white border overlay
               Positioned(
-                top: 214,
+                top: 200,
                 left: 0,
                 right: 0,
+                bottom: 0,
                 child: ClipPath(
                   clipper: _WaveClipper(),
                   child: Container(
-                    height: 200,
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.vertical(
@@ -139,9 +111,9 @@ class PetCard extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.lg,
-                      30,
+                      24,
                       AppSpacing.lg,
-                      AppSpacing.lg,
+                      AppSpacing.md,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,16 +146,83 @@ class PetCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          breed,
+                          context.l10n.text(breed),
                           style: AppTypography.body.copyWith(
-                            color: AppColors.primaryBlue.withOpacity(0.7),
+                            color: AppColors.primaryBlue.withValues(alpha: 0.7),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 12),
+                        if (arthrosisGrade != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getGradeColor(
+                                arthrosisGrade!,
+                              ).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _getGradeColor(
+                                  arthrosisGrade!,
+                                ).withValues(alpha: 0.28),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: _getGradeColor(arthrosisGrade!),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      context.l10n.text('Rischio artrosi'),
+                                      style: AppTypography.body.copyWith(
+                                        color: AppColors.primaryBlue.withValues(
+                                          alpha: 0.72,
+                                        ),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 20),
+                                  child: Text(
+                                    _displayGradeLabel(
+                                      context,
+                                      arthrosisGrade!,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.bodyBold.copyWith(
+                                      color: _getGradeColor(arthrosisGrade!),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
                         // Age and Weight Row
                         Row(
                           children: [
@@ -191,13 +230,17 @@ class PetCard extends StatelessWidget {
                               Icon(
                                 Icons.cake_outlined,
                                 size: 16,
-                                color: AppColors.ctaApricot.withOpacity(0.8),
+                                color: AppColors.ctaApricot.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${age!.toStringAsFixed(0)} anni',
+                                context.l10n.text('{{age}} anni', {
+                                  'age': age!.toStringAsFixed(0),
+                                }),
                                 style: AppTypography.body.copyWith(
-                                  color: AppColors.text.withOpacity(0.8),
+                                  color: AppColors.text.withValues(alpha: 0.8),
                                   fontSize: 13,
                                 ),
                               ),
@@ -207,13 +250,15 @@ class PetCard extends StatelessWidget {
                               Icon(
                                 Icons.monitor_weight_outlined,
                                 size: 16,
-                                color: AppColors.ctaApricot.withOpacity(0.8),
+                                color: AppColors.ctaApricot.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 '${weight!.toStringAsFixed(1)} kg',
                                 style: AppTypography.body.copyWith(
-                                  color: AppColors.text.withOpacity(0.8),
+                                  color: AppColors.text.withValues(alpha: 0.8),
                                   fontSize: 13,
                                 ),
                               ),
@@ -233,15 +278,50 @@ class PetCard extends StatelessWidget {
   }
 
   Color _getGradeColor(String grade) {
-    if (grade.toLowerCase().contains('grave') ||
-        grade.toLowerCase().contains('alto')) {
-      return Colors.red.shade400;
-    } else if (grade.toLowerCase().contains('lieve') ||
-        grade.toLowerCase().contains('medio')) {
-      return Colors.orange.shade400;
+    final normalized = grade.toLowerCase();
+    if (normalized.contains('grave') ||
+        normalized.contains('alto') ||
+        normalized.contains('high') ||
+        normalized.contains('élevé') ||
+        normalized.contains('hohes') ||
+        normalized.contains('hoch')) {
+      return Colors.red.shade500;
+    } else if (normalized.contains('lieve') ||
+        normalized.contains('medio') ||
+        normalized.contains('medium') ||
+        normalized.contains('moyen') ||
+        normalized.contains('mittel')) {
+      return Colors.yellow.shade700;
     } else {
-      return Colors.green.shade400;
+      return Colors.green.shade600;
     }
+  }
+
+  String _displayGradeLabel(BuildContext context, String grade) {
+    final normalized = grade.trim().toLowerCase();
+    if (normalized.contains('alto') ||
+        normalized.contains('grave') ||
+        normalized.contains('high') ||
+        normalized.contains('élevé') ||
+        normalized.contains('hohes') ||
+        normalized.contains('hoch')) {
+      return context.l10n.text('Alto');
+    }
+    if (normalized.contains('medio') ||
+        normalized.contains('lieve') ||
+        normalized.contains('medium') ||
+        normalized.contains('moyen') ||
+        normalized.contains('mittel')) {
+      return context.l10n.text('Medio');
+    }
+    if (normalized.contains('basso') ||
+        normalized.contains('nessun') ||
+        normalized.contains('low') ||
+        normalized.contains('faible') ||
+        normalized.contains('niedrig')) {
+      return context.l10n.text('Basso');
+    }
+    return grade.trim();
   }
 }
 

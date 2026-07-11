@@ -204,7 +204,34 @@ class DogRemoteRepository {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    await _client.from('dogs').delete().eq('id', dogId).eq('owner_id', userId);
+    final deletedAt = DateTime.now().toUtc().toIso8601String();
+    final payloadAttempts = <Map<String, dynamic>>[
+      {'deleted_at': deletedAt, 'is_deleted': true},
+      {'deleted_at': deletedAt},
+      {'is_deleted': true},
+      {'status': 'deleted'},
+      {'active': false},
+    ];
+
+    for (final payload in payloadAttempts) {
+      try {
+        await _client
+            .from('dogs')
+            .update(payload)
+            .eq('id', dogId)
+            .eq('owner_id', userId);
+        return;
+      } catch (error) {
+        if (!_isMissingColumnError(error)) {
+          rethrow;
+        }
+      }
+    }
+
+    throw Exception(
+      'Soft delete non supportata sulla tabella dogs. '
+      'Aggiungi almeno una colonna tra deleted_at o is_deleted.',
+    );
   }
 
   Future<String?> updateDog({

@@ -10,7 +10,7 @@ class BreedRepository {
   Future<List<Breed>> fetchBreeds() async {
     final response = await _client
         .from('breeds')
-        .select('id, name, name_it')
+        .select('id, name, name_it, name_fr, name_de')
         .order('name')
         .limit(500); // assicurati di ricevere tutte le razze
     final list = response as List<dynamic>;
@@ -19,6 +19,8 @@ class BreedRepository {
               id: item['id'] as String,
               name: item['name'] as String,
               nameIt: item['name_it'] as String?,
+              nameFr: item['name_fr'] as String?,
+              nameDe: item['name_de'] as String?,
             ))
         .toList();
   }

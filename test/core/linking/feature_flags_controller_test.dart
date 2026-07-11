@@ -6,18 +6,18 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('FeatureFlagsController', () {
-    test('normalizes Bibbione aliases from deep links', () async {
+    test('normalizes Bibione aliases from deep links', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final controller = FeatureFlagsController(prefs);
 
       await controller.persistInviteLocationFromLink('bibiobe');
-      expect(controller.state.inviteLocation, 'bibbione');
-      expect(prefs.getString('invite_location'), 'bibbione');
+      expect(controller.state.inviteLocation, 'bibione');
+      expect(prefs.getString('invite_location'), 'bibione');
 
       await controller.persistInviteLocationFromLink('bibbine');
-      expect(controller.state.inviteLocation, 'bibbione');
-      expect(prefs.getString('invite_location'), 'bibbione');
+      expect(controller.state.inviteLocation, 'bibione');
+      expect(prefs.getString('invite_location'), 'bibione');
     });
 
     test('clears location when the link has empty/missing location', () async {
@@ -26,7 +26,7 @@ void main() {
       final controller = FeatureFlagsController(prefs);
 
       await controller.persistInviteLocationFromLink('bibbione');
-      expect(controller.state.inviteLocation, 'bibbione');
+      expect(controller.state.inviteLocation, 'bibione');
 
       await controller.persistInviteLocationFromLink(null);
       expect(controller.state.inviteLocation, isNull);
@@ -40,7 +40,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final controller = FeatureFlagsController(prefs);
 
-      expect(controller.state.inviteLocation, 'bibbione');
+      expect(controller.state.inviteLocation, 'bibione');
     });
   });
 }

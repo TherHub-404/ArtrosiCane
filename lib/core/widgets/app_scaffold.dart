@@ -28,7 +28,9 @@ class AppScaffold extends StatelessWidget {
           child: body,
         ),
       ),
-      bottomNavigationBar: bottomNavigationBar,
+      bottomNavigationBar: bottomNavigationBar == null
+          ? null
+          : SafeArea(top: false, child: bottomNavigationBar!),
     );
   }
 }

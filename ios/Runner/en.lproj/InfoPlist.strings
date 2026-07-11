@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "ZampaSiCura";
+"CFBundleName" = "ZampaSiCura";
+"NSCameraUsageDescription" = "We use the camera to update your dog's profile photo.";
+"NSPhotoLibraryUsageDescription" = "We use the photo library so you can choose your dog's profile image.";
+"NSPhotoLibraryAddUsageDescription" = "Allows saving photos taken while updating the profile.";

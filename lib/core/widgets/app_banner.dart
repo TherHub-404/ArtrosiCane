@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -25,7 +26,7 @@ class AppBanner {
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearMaterialBanners();
-    
+
     messenger.showMaterialBanner(
       MaterialBanner(
         elevation: 6,
@@ -42,8 +43,8 @@ class AppBanner {
           if (showCloseButton)
             TextButton(
               onPressed: messenger.hideCurrentMaterialBanner,
-              child: const Text(
-                'Chiudi',
+              child: Text(
+                context.l10n.text('Chiudi'),
                 style: TextStyle(color: Colors.white),
               ),
             )

@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_answer.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,6 +68,9 @@ class QuizRemoteDataSource {
 }
 
 final quizRemoteDataSourceProvider = Provider<QuizRemoteDataSource>((ref) {
-  final client = Supabase.instance.client;
+  final client = maybeSupabaseClient();
+  if (client == null) {
+    throw StateError('Supabase non inizializzato');
+  }
   return QuizRemoteDataSource(client);
 });

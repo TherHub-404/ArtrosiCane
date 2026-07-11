@@ -1,3 +1,6 @@
+import 'package:artrosi_cane/core/utils/haptics.dart';
+import 'package:artrosi_cane/features/home/presentation/widgets/video_call_intro_dialog.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +17,12 @@ class HomeBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Keep the floating bar above the gesture navigation inset so its tap
+    // targets stay reachable on devices like the Galaxy S26+.
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
       height: 90,
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+      margin: EdgeInsets.only(left: 20, right: 20, bottom: 20 + bottomInset),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue, // Changed to Primary Blue
         borderRadius: BorderRadius.circular(30),
@@ -38,14 +44,20 @@ class HomeBottomBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _BottomBarItem(
-                  icon: Icons.video_call_rounded,
-                  label: 'Video call',
-                  onTap: () => context.push('/videocall-request'),
+                  icon: Icons.videocam_rounded,
+                  label: context.l10n.text('Videocall'),
+                  onTap: () {
+                    Haptics.tap();
+                    VideoCallIntroDialog.show(context);
+                  },
                 ),
                 _BottomBarItem(
-                  icon: Icons.map_rounded,
-                  label: 'Passeggiate',
-                  onTap: () => context.push('/walks-overview'),
+                  icon: Icons.directions_walk_rounded,
+                  label: context.l10n.text('Passeggiate'),
+                  onTap: () {
+                    Haptics.tap();
+                    context.push('/walks-overview');
+                  },
                 ),
               ],
             ),
@@ -55,7 +67,10 @@ class HomeBottomBar extends StatelessWidget {
           Positioned(
             top: -40,
             child: GestureDetector(
-              onTap: onCenterButtonTap,
+              onTap: () {
+                Haptics.tap();
+                onCenterButtonTap();
+              },
               child: Container(
                 width: 90,
                 height: 90,
@@ -87,7 +102,7 @@ class HomeBottomBar extends StatelessWidget {
   }
 }
 
-class _BottomBarItem extends StatelessWidget {
+class _BottomBarItem extends StatefulWidget {
   const _BottomBarItem({
     required this.icon,
     required this.label,
@@ -99,26 +114,64 @@ class _BottomBarItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_BottomBarItem> createState() => _BottomBarItemState();
+}
+
+class _BottomBarItemState extends State<_BottomBarItem> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 28, color: Colors.white), // White Icon
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white, // White Text
-              ),
+    final scale = _pressed ? 0.94 : 1.0;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        onHighlightChanged: _setPressed,
+        borderRadius: BorderRadius.circular(20),
+        splashColor: Colors.white.withValues(alpha: 0.10),
+        highlightColor: Colors.white.withValues(alpha: 0.06),
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(widget.icon, size: 22, color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.label,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

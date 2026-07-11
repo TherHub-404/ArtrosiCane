@@ -1,4 +1,5 @@
 import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 
 class DailyRecommendationEngine {
   DailyRecommendationEngine();
@@ -33,13 +34,23 @@ class DailyRecommendationEngine {
   }
 
   (String, String) _headerFor(DailySemaphore semaphore) {
+    final l10n = AppLocalizations.current;
     switch (semaphore) {
       case DailySemaphore.verde:
-        return ('Giornata stabile', 'Puoi muoverti, con criterio.');
+        return (
+          l10n.text('Giornata stabile'),
+          l10n.text('Puoi muoverti, con criterio.'),
+        );
       case DailySemaphore.giallo:
-        return ('Giornata da gestire', 'Riduci intensità, osserva il recupero.');
+        return (
+          l10n.text('Giornata da gestire'),
+          l10n.text('Riduci intensità, osserva il recupero.'),
+        );
       case DailySemaphore.rosso:
-        return ('Giornata di protezione', 'Oggi meno carico, più controllo.');
+        return (
+          l10n.text('Giornata di protezione'),
+          l10n.text('Oggi meno carico, più controllo.'),
+        );
     }
   }
 
@@ -48,6 +59,7 @@ class DailyRecommendationEngine {
     required DailySemaphore semaphore,
     required Map<DailyRiskFactor, int> sensitivities,
   }) {
+    final l10n = AppLocalizations.current;
     final candidates = _rules.where((rule) {
       if (!_fitsSemaphore(rule, semaphore)) return false;
       if (!_fitsLoad(rule, input.plannedLoad)) return false;
@@ -64,7 +76,8 @@ class DailyRecommendationEngine {
       score += _semaphoreBonus(semaphore);
       score += input.recoveryDelta.index;
       if (input.plannedLoad == PlannedLoad.lungo &&
-          (rule.category.contains('durata') || rule.category.contains('pause'))) {
+          (rule.category.contains('durata') ||
+              rule.category.contains('pause'))) {
         score += 2;
       }
       for (final factor in rule.riskFactorTags) {
@@ -73,15 +86,14 @@ class DailyRecommendationEngine {
         }
       }
       return (rule: rule, score: score);
-    }).toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+    }).toList()..sort((a, b) => b.score.compareTo(a.score));
 
     final topActions = <String>[];
     final usedCategories = <String>{};
     for (final item in scored) {
       if (item.rule.type != DailyActionType.action) continue;
       if (usedCategories.contains(item.rule.category)) continue;
-      topActions.add(item.rule.text);
+      topActions.add(l10n.text(item.rule.text));
       usedCategories.add(item.rule.category);
       if (topActions.length == 2) break;
     }
@@ -89,7 +101,7 @@ class DailyRecommendationEngine {
     if (topActions.length < 2) {
       final fallback = _rules
           .where((r) => r.type == DailyActionType.action)
-          .map((r) => r.text)
+          .map((r) => l10n.text(r.text))
           .where((t) => !topActions.contains(t))
           .take(2 - topActions.length);
       topActions.addAll(fallback);
@@ -98,21 +110,21 @@ class DailyRecommendationEngine {
     String? avoid;
     for (final item in scored) {
       if (item.rule.type == DailyActionType.avoid) {
-        avoid = item.rule.text;
+        avoid = l10n.text(item.rule.text);
         break;
       }
     }
-    avoid ??= 'Evita variazioni brusche di ritmo nelle passeggiate.';
+    avoid ??= l10n.text('Evita variazioni brusche di ritmo nelle passeggiate.');
 
     final routeTag = input.riskFactors.contains(DailyRiskFactor.sabbia)
-        ? 'bibbione'
+        ? 'bibione'
         : 'standard';
 
     final videoLabel = semaphore == DailySemaphore.rosso
-        ? 'Routine mobilità dolce (20s)'
+        ? l10n.text('Routine mobilità dolce (20s)')
         : semaphore == DailySemaphore.giallo
-        ? 'Routine controllo carico (30s)'
-        : 'Routine mantenimento (25s)';
+        ? l10n.text('Routine controllo carico (30s)')
+        : l10n.text('Routine mantenimento (25s)');
 
     final videoUrl = semaphore == DailySemaphore.rosso
         ? 'https://www.youtube.com/watch?v=6sM4fQn8f8Q'

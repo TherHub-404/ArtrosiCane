@@ -1,8 +1,10 @@
+import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/features/daily_check/data/daily_check_repository.dart';
 import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
 import 'package:artrosi_cane/features/daily_check/presentation/providers/daily_check_providers.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -60,10 +62,12 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
 
   Future<void> _goToNextPage() async {
     if (_isLastPage) {
+      await Haptics.strong();
       await _submit();
       return;
     }
     if (_saving || !_isStepAnswered(_currentPage)) return;
+    await Haptics.tap();
     await _pageController.nextPage(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeInOut,
@@ -72,6 +76,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
 
   Future<void> _goToPreviousPage() async {
     if (_saving) return;
+    await Haptics.tap();
     if (_currentPage == 0) {
       if (context.canPop()) {
         context.pop();
@@ -131,6 +136,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final progress = (_currentPage + 1) / _totalPages;
 
     return Scaffold(
@@ -140,7 +146,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
         foregroundColor: AppColors.primaryBlue,
         elevation: 0,
         title: Text(
-          'Quick Check · ${widget.dogName}',
+          '${l10n.text('Come stai oggi?')} · ${widget.dogName}',
           style: const TextStyle(
             color: AppColors.primaryBlue,
             fontWeight: FontWeight.w800,
@@ -171,38 +177,42 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
               children: [
                 _buildSingleChoiceStep<DailySymptomLevel>(
                   stepIndex: 0,
-                  questionTitle: 'Oggi come e andata?',
-                  questionSubtitle: 'Hai notato rigidita o zoppia oggi?',
+                  questionTitle: l10n.text('Oggi come e andata?'),
+                  questionSubtitle: l10n.text(
+                    'Hai notato rigidita o zoppia oggi?',
+                  ),
                   value: _symptomLevel,
-                  options: const {
-                    DailySymptomLevel.no: 'No',
-                    DailySymptomLevel.lieve: 'Lieve',
-                    DailySymptomLevel.marcata: 'Marcata',
+                  options: {
+                    DailySymptomLevel.no: l10n.text('No'),
+                    DailySymptomLevel.lieve: l10n.text('Lieve'),
+                    DailySymptomLevel.marcata: l10n.text('Marcata'),
                   },
                   onChanged: (value) => setState(() => _symptomLevel = value),
                 ),
                 _buildSingleChoiceStep<PlannedLoad>(
                   stepIndex: 1,
-                  questionTitle: 'Carico previsto',
-                  questionSubtitle: 'Quanto movimento fara oggi?',
+                  questionTitle: l10n.text('Carico previsto'),
+                  questionSubtitle: l10n.text('Quanto movimento fara oggi?'),
                   value: _plannedLoad,
-                  options: const {
-                    PlannedLoad.breve: 'Breve (0-10 min)',
-                    PlannedLoad.medio: 'Medio (10-20 min)',
-                    PlannedLoad.lungo: 'Lungo (20+ min)',
+                  options: {
+                    PlannedLoad.breve: l10n.text('Breve (0-10 min)'),
+                    PlannedLoad.medio: l10n.text('Medio (10-20 min)'),
+                    PlannedLoad.lungo: l10n.text('Lungo (20+ min)'),
                   },
                   onChanged: (value) => setState(() => _plannedLoad = value),
                 ),
                 _buildRiskFactorStep(),
                 _buildSingleChoiceStep<RecoveryDelta>(
                   stepIndex: 3,
-                  questionTitle: 'Recupero vs ieri',
-                  questionSubtitle: 'Stamattina rispetto a ieri com\'era?',
+                  questionTitle: l10n.text('Recupero vs ieri'),
+                  questionSubtitle: l10n.text(
+                    'Stamattina rispetto a ieri com\'era?',
+                  ),
                   value: _recoveryDelta,
-                  options: const {
-                    RecoveryDelta.uguale: 'Uguale',
-                    RecoveryDelta.pocoPiuRigido: 'Un po piu rigido',
-                    RecoveryDelta.moltoPiuRigido: 'Molto piu rigido',
+                  options: {
+                    RecoveryDelta.uguale: l10n.text('Uguale'),
+                    RecoveryDelta.pocoPiuRigido: l10n.text('Un po piu rigido'),
+                    RecoveryDelta.moltoPiuRigido: l10n.text('Molto piu rigido'),
                   },
                   onChanged: (value) => setState(() => _recoveryDelta = value),
                   footer: const Padding(
@@ -228,7 +238,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _saving ? null : _goToPreviousPage,
                       icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Indietro'),
+                      label: Text(l10n.text('Indietro')),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primaryBlue,
                         side: const BorderSide(color: AppColors.borderSoft),
@@ -268,8 +278,8 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                             )
                           : Text(
                               _isLastPage
-                                  ? 'Calcola stato di oggi'
-                                  : 'Continua',
+                                  ? l10n.text('Calcola stato di oggi')
+                                  : l10n.text('Continua'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
@@ -307,7 +317,10 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
             child: _OptionTile(
               label: entry.value,
               isSelected: value == entry.key,
-              onTap: () => onChanged(entry.key),
+              onTap: () {
+                Haptics.select();
+                onChanged(entry.key);
+              },
             ),
           );
         }).toList(),
@@ -319,8 +332,10 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
   Widget _buildRiskFactorStep() {
     return _buildStepContainer(
       stepIndex: 2,
-      questionTitle: 'Fattori vacanza',
-      questionSubtitle: 'Seleziona tutti quelli presenti oggi.',
+      questionTitle: context.l10n.text('Fattori vacanza'),
+      questionSubtitle: context.l10n.text(
+        'Seleziona tutti quelli presenti oggi.',
+      ),
       child: Wrap(
         spacing: AppSpacing.sm,
         runSpacing: AppSpacing.sm,
@@ -331,6 +346,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
             label: Text(dailyRiskFactorLabel(factor)),
             selectedColor: AppColors.ctaApricot.withValues(alpha: 0.22),
             onSelected: (value) {
+              Haptics.select();
               setState(() {
                 if (value) {
                   _riskFactors.add(factor);
@@ -385,7 +401,9 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                 ),
               ),
               child: Text(
-                'Compila il check giornaliero in pochi secondi: oggi ottieni semaforo, 2 micro-azioni e 1 cosa da evitare.',
+                context.l10n.text(
+                  'Compila il check giornaliero in pochi secondi: oggi ottieni semaforo, 2 micro-azioni e 1 cosa da evitare.',
+                ),
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.text.withValues(alpha: 0.82),
@@ -415,7 +433,10 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Domanda ${stepIndex + 1}/$_totalPages',
+                  context.l10n.text('Domanda {{current}}/{{total}}', {
+                    'current': '${stepIndex + 1}',
+                    'total': '$_totalPages',
+                  }),
                   style: AppTypography.bodyBold.copyWith(
                     fontSize: 13,
                     color: AppColors.ctaApricot,
@@ -462,51 +483,56 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
-      overlayColor: WidgetStateProperty.resolveWith((states) {
-        if (!states.contains(WidgetState.pressed)) {
-          return Colors.transparent;
-        }
-        return isSelected
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: isSelected
             ? Colors.black.withValues(alpha: 0.08)
-            : AppColors.primaryBlue.withValues(alpha: 0.08);
-      }),
-      child: Ink(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.ctaApricot : AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.ctaApricot : AppColors.borderSoft,
+            : AppColors.primaryBlue.withValues(alpha: 0.08),
+        highlightColor: Colors.transparent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.ctaApricot : AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppColors.ctaApricot : AppColors.borderSoft,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected ? Colors.white : AppColors.borderSoft,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.text,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                color: isSelected ? Colors.white : AppColors.borderSoft,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.text,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

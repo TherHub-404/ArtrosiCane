@@ -1,6 +1,9 @@
+import 'package:artrosi_cane/core/linking/video_call_booking_launcher.dart';
 import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
+import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_micro_action_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
@@ -10,7 +13,6 @@ import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DiagnosisPriorityResultScreen extends ConsumerStatefulWidget {
@@ -67,9 +69,16 @@ class _DiagnosisPriorityResultScreenState
       // Ignore local telemetry errors.
     }
 
-    await ref
-        .read(quizRemoteDataSourceProvider)
-        .saveOnboardingEvent(eventName: eventName, payload: payload);
+    final client = maybeSupabaseClient();
+    if (client == null) return;
+
+    try {
+      await ref
+          .read(quizRemoteDataSourceProvider)
+          .saveOnboardingEvent(eventName: eventName, payload: payload);
+    } catch (_) {
+      // Ignore telemetry while remote services are still bootstrapping.
+    }
   }
 
   Future<void> _openAuthWithContext(String entryContext) async {
@@ -78,13 +87,9 @@ class _DiagnosisPriorityResultScreenState
       payload: {'entryContext': entryContext},
     );
     if (!mounted) return;
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = maybeSupabaseClient()?.auth.currentUser;
     if (currentUser != null) {
-      if (widget.dogData != null) {
-        context.go('/dog-dashboard', extra: widget.dogData);
-      } else {
-        context.go('/home');
-      }
+      context.go('/entry', extra: {'dog': widget.dogData});
       return;
     }
     context.go(
@@ -100,10 +105,10 @@ class _DiagnosisPriorityResultScreenState
   Future<void> _openVideoCallRequest() async {
     await _trackEvent(
       'diagnosis_result_cta_click',
-      payload: {'entryContext': 'videocall_form'},
+      payload: {'entryContext': 'videocall_calendly'},
     );
     if (!mounted) return;
-    context.go('/videocall-request', extra: {'dog': widget.dogData});
+    await VideoCallBookingLauncher.open(context);
   }
 
   Future<void> _openAnnualPlanOptions() async {
@@ -122,7 +127,9 @@ class _DiagnosisPriorityResultScreenState
       opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
     if (!opened && mounted) {
-      _showSnackBar('Impossibile aprire il link del Percorso Annuale.');
+      _showSnackBar(
+        context.l10n.text('Impossibile aprire il link del Percorso Annuale.'),
+      );
     }
   }
 
@@ -182,8 +189,8 @@ class _DiagnosisPriorityResultScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'La tua Mappa Priorita',
+                  Text(
+                    context.l10n.text('La tua Mappa Priorita'),
                     style: TextStyle(
                       fontSize: 44,
                       fontWeight: FontWeight.w900,
@@ -193,7 +200,9 @@ class _DiagnosisPriorityResultScreenState
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Ecco le aree che oggi influenzano di piu il benessere del tuo cane.',
+                    context.l10n.text(
+                      'Ecco le aree che oggi influenzano di piu il benessere del tuo cane.',
+                    ),
                     style: TextStyle(
                       fontSize: 18,
                       color: AppColors.text.withValues(alpha: 0.82),
@@ -217,7 +226,9 @@ class _DiagnosisPriorityResultScreenState
                   if (result.compressedFromHigh.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      'Le altre aree le affrontiamo nel secondo step.',
+                      context.l10n.text(
+                        'Le altre aree le affrontiamo nel secondo step.',
+                      ),
                       style: TextStyle(
                         color: AppColors.text.withValues(alpha: 0.68),
                         fontStyle: FontStyle.italic,
@@ -225,9 +236,9 @@ class _DiagnosisPriorityResultScreenState
                     ),
                   ],
                   const Spacer(),
-                  const Center(
+                  Center(
                     child: _DownScrollHint(
-                      label: 'Scorri verso le microazioni',
+                      label: context.l10n.text('Scorri verso le microazioni'),
                     ),
                   ),
                 ],
@@ -247,8 +258,8 @@ class _DiagnosisPriorityResultScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Microazioni',
+                  Text(
+                    context.l10n.text('Microazioni'),
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.w900,
@@ -258,7 +269,9 @@ class _DiagnosisPriorityResultScreenState
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Scorri orizzontalmente e applica una microazione per volta.',
+                    context.l10n.text(
+                      'Scorri orizzontalmente e applica una microazione per volta.',
+                    ),
                     style: TextStyle(
                       fontSize: 17,
                       color: AppColors.text.withValues(alpha: 0.8),
@@ -279,7 +292,11 @@ class _DiagnosisPriorityResultScreenState
                       ),
                     ),
                     child: Text(
-                      'Focus: ${microPlan.focusAreas.map(priorityAreaLabel).join(' + ')}',
+                      context.l10n.text('Focus: {{focus}}', {
+                        'focus': microPlan.focusAreas
+                            .map((area) => _priorityAreaLabel(context, area))
+                            .join(' + '),
+                      }),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -300,9 +317,9 @@ class _DiagnosisPriorityResultScreenState
                     ),
                   ),
                   const Spacer(),
-                  const Center(
+                  Center(
                     child: _DownScrollHint(
-                      label: 'Scendi verso i prossimi passi',
+                      label: context.l10n.text('Scendi verso i prossimi passi'),
                     ),
                   ),
                 ],
@@ -335,8 +352,8 @@ class _DiagnosisPriorityResultScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Scegli il tuo prossimo passo',
+            Text(
+              context.l10n.text('Scegli il tuo prossimo passo'),
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
@@ -346,27 +363,30 @@ class _DiagnosisPriorityResultScreenState
             const SizedBox(height: AppSpacing.lg),
             _JourneyCard(
               icon: Icons.videocam_rounded,
-              title: 'Prenota video Call',
-              description:
-                  'Un confronto iniziale con supporto guidato sulle priorita emerse.',
+              title: context.l10n.text('Prenota video Call'),
+              description: context.l10n.text(
+                'Un confronto iniziale con supporto guidato sulle priorita emerse.',
+              ),
               accent: const Color(0xFF4A84F4),
               onTap: _openVideoCallRequest,
             ),
             const SizedBox(height: AppSpacing.md),
             _JourneyCard(
               icon: Icons.calendar_month_rounded,
-              title: 'Scegli il piano più adatto a te',
-              description:
-                  'Confronta le opzioni disponibili e scegli quella migliore al checkout.',
+              title: context.l10n.text('Scegli il piano più adatto a te'),
+              description: context.l10n.text(
+                'Confronta le opzioni disponibili e scegli quella migliore al checkout.',
+              ),
               accent: AppColors.ctaApricot,
               onTap: _openAnnualPlanOptions,
             ),
             const SizedBox(height: AppSpacing.md),
             _JourneyCard(
               icon: Icons.directions_walk_rounded,
-              title: 'Continua in autonomia',
-              description:
-                  'Prosegui in autonomia con consigli pratici e progressivi.',
+              title: context.l10n.text('Continua in autonomia'),
+              description: context.l10n.text(
+                'Prosegui in autonomia con consigli pratici e progressivi.',
+              ),
               accent: const Color(0xFF2E9D65),
               onTap: () => _openAuthWithContext('autonomia'),
             ),
@@ -415,7 +435,7 @@ class _PriorityBadge extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  priorityAreaLabel(item.area),
+                  _priorityAreaLabel(context, item.area),
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
@@ -423,7 +443,7 @@ class _PriorityBadge extends StatelessWidget {
                 ),
               ),
               Text(
-                priorityLevelLabel(item.level),
+                _priorityLevelLabel(context, item.level),
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w800,
@@ -475,7 +495,7 @@ class _MicroActionCarouselCard extends StatelessWidget {
     final isAction = item.type == DiagnosisMicroActionType.action;
     final accent = isAction ? const Color(0xFF2E9D65) : const Color(0xFFD64545);
     final icon = isAction ? Icons.check_circle_rounded : Icons.block_rounded;
-    final prefix = isAction ? 'Azione' : 'Evita';
+    final prefix = context.l10n.text(isAction ? 'Azione' : 'Evita');
 
     return Container(
       width: 300,
@@ -510,7 +530,7 @@ class _MicroActionCarouselCard extends StatelessWidget {
                 Icon(icon, color: accent, size: 18),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
-                  '$prefix · ${priorityAreaLabel(item.primaryArea)}',
+                  '$prefix · ${_priorityAreaLabel(context, item.primaryArea)}',
                   style: TextStyle(
                     color: accent,
                     fontWeight: FontWeight.w800,
@@ -533,7 +553,7 @@ class _MicroActionCarouselCard extends StatelessWidget {
             ),
           ),
           Text(
-            'Micro-passaggio pratico da applicare oggi.',
+            context.l10n.text('Micro-passaggio pratico da applicare oggi.'),
             style: TextStyle(
               fontSize: 13,
               color: AppColors.text.withValues(alpha: 0.72),
@@ -621,4 +641,24 @@ class _JourneyCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _priorityAreaLabel(BuildContext context, PriorityArea area) {
+  final key = switch (area) {
+    PriorityArea.dolore => 'Dolore',
+    PriorityArea.ambiente => 'Ambiente',
+    PriorityArea.peso => 'Peso',
+    PriorityArea.movimento => 'Movimento',
+    PriorityArea.routineCarico => 'Routine/Carico',
+  };
+  return context.l10n.text(key);
+}
+
+String _priorityLevelLabel(BuildContext context, PriorityLevel level) {
+  final key = switch (level) {
+    PriorityLevel.alta => 'Alta',
+    PriorityLevel.media => 'Media',
+    PriorityLevel.bassa => 'Bassa',
+  };
+  return context.l10n.text(key);
 }

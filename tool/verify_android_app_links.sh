@@ -3,7 +3,7 @@ set -euo pipefail
 
 PACKAGE_NAME="${1:-com.artrosicane.artrosicane}"
 DOMAIN="${2:-artrosicane.vercel.app}"
-TEST_URL="${3:-https://${DOMAIN}/i?t=TESTTOKEN&location=bibbione}"
+TEST_URL="${3:-https://${DOMAIN}/i?t=TESTTOKEN&location=bibione}"
 
 die() {
   echo "ERROR: $*" >&2

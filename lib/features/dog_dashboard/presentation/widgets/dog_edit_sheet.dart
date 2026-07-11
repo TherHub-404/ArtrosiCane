@@ -1,8 +1,10 @@
-import 'package:artrosi_cane/core/widgets/app_text.dart';
-import 'package:artrosi_cane/theme/app_colors.dart';
-import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'dart:io';
 
+import 'package:artrosi_cane/core/utils/haptics.dart';
+import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
+import 'package:artrosi_cane/theme/app_colors.dart';
+import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -35,6 +37,8 @@ class _DogEditSheetState extends State<DogEditSheet> {
   late TextEditingController _ageController;
   late TextEditingController _weightController;
   String? _imagePath;
+
+  bool get _supportsCamera => !Platform.isAndroid;
 
   @override
   void initState() {
@@ -73,7 +77,11 @@ class _DogEditSheetState extends State<DogEditSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              AppText.custom('Modifica Profilo', fontSize: 24, fontWeight: FontWeight.bold),
+              AppText.custom(
+                context.l10n.text('Modifica Profilo'),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => context.pop(),
@@ -94,27 +102,43 @@ class _DogEditSheetState extends State<DogEditSheet> {
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
+                      border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.2)),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _buildAvatar(),
                   ),
                 ),
                 const SizedBox(height: 8),
-                AppText.custom('Cambia foto', color: AppColors.primaryBlue, fontSize: 12),
+                AppText.custom(
+                  context.l10n.text('Cambia foto'),
+                  color: AppColors.primaryBlue,
+                  fontSize: 12,
+                ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
 
           // Form Fields
-          _buildTextField('Nome', _nameController),
+          _buildTextField(context.l10n.text('Nome'), _nameController),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Expanded(child: _buildTextField('Età (anni)', _ageController, isNumber: true)),
+              Expanded(
+                child: _buildTextField(
+                  context.l10n.text('Età (anni)'),
+                  _ageController,
+                  isNumber: true,
+                ),
+              ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _buildTextField('Peso (kg)', _weightController, isNumber: true)),
+              Expanded(
+                child: _buildTextField(
+                  context.l10n.text('Peso (kg)'),
+                  _weightController,
+                  isNumber: true,
+                ),
+              ),
             ],
           ),
           
@@ -125,15 +149,15 @@ class _DogEditSheetState extends State<DogEditSheet> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
+                Haptics.strong();
                 final ok = await widget.onSave(
                   _nameController.text,
                   _ageController.text,
                   _weightController.text,
                   _imagePath,
                 );
-                if (ok && mounted) {
-                  context.pop();
-                }
+                if (!context.mounted || !ok) return;
+                context.pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
@@ -142,8 +166,8 @@ class _DogEditSheetState extends State<DogEditSheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Salva Modifiche',
+              child: Text(
+                context.l10n.text('Salva Modifiche'),
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
@@ -153,9 +177,12 @@ class _DogEditSheetState extends State<DogEditSheet> {
           // Delete Button
           Center(
             child: TextButton(
-              onPressed: widget.onDelete,
-              child: const Text(
-                'Elimina profilo',
+              onPressed: () {
+                Haptics.strong();
+                widget.onDelete();
+              },
+              child: Text(
+                context.l10n.text('Elimina profilo'),
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w600,
@@ -174,7 +201,7 @@ class _DogEditSheetState extends State<DogEditSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText.custom(label, color: AppColors.text.withOpacity(0.6), fontSize: 12),
+        AppText.custom(label, color: AppColors.text.withValues(alpha: 0.6), fontSize: 12),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -219,6 +246,31 @@ class _DogEditSheetState extends State<DogEditSheet> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final actions = <Widget>[
+          IconButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _pickImage(ImageSource.gallery);
+            },
+            icon: const Icon(Icons.photo_library_rounded, color: AppColors.primaryBlue),
+            tooltip: context.l10n.text('Galleria'),
+          ),
+        ];
+
+        if (_supportsCamera) {
+          actions.insert(
+            0,
+            IconButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _pickImage(ImageSource.camera);
+              },
+              icon: const Icon(Icons.photo_camera_rounded, color: AppColors.primaryBlue),
+              tooltip: context.l10n.text('Fotocamera'),
+            ),
+          );
+        }
+
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: const BoxDecoration(
@@ -227,22 +279,7 @@ class _DogEditSheetState extends State<DogEditSheet> {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
-                icon: const Icon(Icons.photo_camera_rounded, color: AppColors.primaryBlue),
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-                icon: const Icon(Icons.photo_library_rounded, color: AppColors.primaryBlue),
-              ),
-            ],
+            children: actions,
           ),
         );
       },
@@ -263,8 +300,8 @@ class _DogEditSheetState extends State<DogEditSheet> {
       final isPermissionDenied =
           e.code == 'camera_access_denied' || e.code == 'photo_access_denied';
       final msg = isPermissionDenied
-          ? 'Serve il permesso per usare fotocamera o libreria.'
-          : 'Impossibile aprire fotocamera/galleria.';
+          ? context.l10n.text('Serve il permesso per accedere alle foto.')
+          : context.l10n.text('Impossibile aprire la galleria.');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg)),
       );

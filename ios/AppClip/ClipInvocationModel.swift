@@ -16,8 +16,10 @@ final class ClipInvocationModel: ObservableObject {
   private let validateBaseUrl: String?
   private let appGroupId: String
   private let fullAppAppStoreId: String?
+  private let clipBundleIdentifier: String?
   private let pendingTokenKey = "pending_invite_token"
   private let pendingLocationKey = "pending_invite_location"
+  private let defaultLinkHosts = Set(["appclip.apple.com", "apps.apple.com"])
 
   init() {
     let info = Bundle.main.infoDictionary ?? [:]
@@ -34,6 +36,7 @@ final class ClipInvocationModel: ObservableObject {
     let rawStoreId = (info["FULL_APP_APP_STORE_ID"] as? String)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
     fullAppAppStoreId = (rawStoreId?.isEmpty ?? true) ? nil : rawStoreId
+    clipBundleIdentifier = Bundle.main.bundleIdentifier?.lowercased()
   }
 
   func handle(userActivity: NSUserActivity) {
@@ -78,33 +81,47 @@ final class ClipInvocationModel: ObservableObject {
     openURL(appStoreUrl)
   }
 
-  private func validateAndPersist(token: String, location: String?) async {
+  private func validateAndPersist(token: String?, location: String?) async {
     isValidating = true
     errorText = nil
-    statusText = "Verifica token in corso..."
+    statusText = token == nil
+      ? "Registrazione contesto in corso..."
+      : "Verifica token in corso..."
 
-    do {
-      let isValid = try await validate(token: token)
-      guard isValid else {
-        statusText = "Token non valido"
-        errorText = "Il token potrebbe essere scaduto o già usato"
-        isValidating = false
-        return
+    if let token, !token.isEmpty {
+      do {
+        let isValid = try await validate(token: token)
+        guard isValid else {
+          statusText = "Token non valido"
+          errorText = "Il token potrebbe essere scaduto o già usato"
+          isValidating = false
+          return
+        }
+      } catch {
+        // In caso di rete non disponibile continuiamo il deferred handoff.
+        statusText = "Validazione non disponibile, procedo con installazione app."
+        errorText = nil
       }
-    } catch {
-      // In caso di rete non disponibile continuiamo il deferred handoff.
-      statusText = "Validazione non disponibile, procedo con installazione app."
-      errorText = nil
     }
 
     let defaults = UserDefaults(suiteName: appGroupId)
-    defaults?.set(token, forKey: pendingTokenKey)
-    defaults?.set(location, forKey: pendingLocationKey)
+    if let token, !token.isEmpty {
+      defaults?.set(token, forKey: pendingTokenKey)
+    } else {
+      defaults?.removeObject(forKey: pendingTokenKey)
+    }
+    if let location, !location.isEmpty {
+      defaults?.set(location, forKey: pendingLocationKey)
+    } else {
+      defaults?.removeObject(forKey: pendingLocationKey)
+    }
     defaults?.set(Date().timeIntervalSince1970, forKey: "pending_invite_token_saved_at")
     defaults?.synchronize()
 
     if errorText == nil {
-      statusText = "Token registrato. Installa l'app completa."
+      statusText = token == nil
+        ? "Contesto registrato. Installa l'app completa."
+        : "Token registrato. Installa l'app completa."
     }
 
     isValidating = false
@@ -147,20 +164,11 @@ final class ClipInvocationModel: ObservableObject {
     return valid
   }
 
-  private func parseInviteLink(from url: URL) -> (token: String, location: String?)? {
+  private func parseInviteLink(from url: URL) -> (token: String?, location: String?)? {
     guard
       url.scheme?.lowercased() == "https",
-      url.host?.lowercased() == inviteHost
+      let host = url.host?.lowercased()
     else {
-      return nil
-    }
-
-    let normalizedPath = url.path.hasSuffix("/") && url.path.count > 1
-      ? String(url.path.dropLast())
-      : url.path
-    let isInviteRoot = normalizedPath == invitePath
-    let isInviteSubpath = normalizedPath.hasPrefix("\(invitePath)/")
-    guard isInviteRoot || isInviteSubpath else {
       return nil
     }
 
@@ -182,28 +190,61 @@ final class ClipInvocationModel: ObservableObject {
       .trimmingCharacters(in: .whitespacesAndNewlines)
       .lowercased()
 
-    // Fallback: support path-based format /i/{token}/{location?}
-    if (token == nil || token?.isEmpty == true), isInviteSubpath {
-      let inviteSegments = invitePath.split(separator: "/").filter { !$0.isEmpty }.count
-      let tailSegments = url.pathComponents
-        .filter { $0 != "/" }
-        .dropFirst(inviteSegments)
-      if let first = tailSegments.first {
-        token = String(first).removingPercentEncoding?.trimmingCharacters(in: .whitespacesAndNewlines) ?? String(first)
+    if host == inviteHost {
+      let normalizedPath = url.path.hasSuffix("/") && url.path.count > 1
+        ? String(url.path.dropLast())
+        : url.path
+      let isInviteRoot = normalizedPath == invitePath
+      let isInviteSubpath = normalizedPath.hasPrefix("\(invitePath)/")
+      guard isInviteRoot || isInviteSubpath else {
+        return nil
       }
-      if (location == nil || location?.isEmpty == true), tailSegments.count > 1 {
-        let second = tailSegments[tailSegments.index(tailSegments.startIndex, offsetBy: 1)]
-        location =
-          (String(second).removingPercentEncoding ?? String(second))
-          .trimmingCharacters(in: .whitespacesAndNewlines)
-          .lowercased()
-      }
-    }
 
-    guard let token, !token.isEmpty else {
+      // Fallback: support path-based format /i/{token}/{location?}
+      if (token == nil || token?.isEmpty == true), isInviteSubpath {
+        let inviteSegments = invitePath.split(separator: "/").filter { !$0.isEmpty }.count
+        let tailSegments = url.pathComponents
+          .filter { $0 != "/" }
+          .dropFirst(inviteSegments)
+        if let first = tailSegments.first {
+          token = String(first).removingPercentEncoding?.trimmingCharacters(in: .whitespacesAndNewlines) ?? String(first)
+        }
+        if (location == nil || location?.isEmpty == true), tailSegments.count > 1 {
+          let second = tailSegments[tailSegments.index(tailSegments.startIndex, offsetBy: 1)]
+          location =
+            (String(second).removingPercentEncoding ?? String(second))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        }
+      }
+    } else if defaultLinkHosts.contains(host) {
+      guard isRecognizedAppleAppClipLink(from: components) else {
+        return nil
+      }
+    } else {
       return nil
     }
 
-    return (token, (location?.isEmpty ?? true) ? nil : location)
+    let normalizedToken = token?.isEmpty == true ? nil : token
+    let normalizedLocation = location?.isEmpty == true ? nil : location
+    guard normalizedToken != nil || normalizedLocation != nil else {
+      return nil
+    }
+
+    return (normalizedToken, normalizedLocation)
+  }
+
+  private func isRecognizedAppleAppClipLink(from components: URLComponents) -> Bool {
+    let queryItems = components.queryItems ?? []
+    let bundleId =
+      queryItems.first(where: { $0.name == "p" })?.value ??
+      queryItems.first(where: { $0.name == "app-clip-bundle-id" })?.value
+    guard let bundleId = bundleId?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+      return false
+    }
+    guard let clipBundleIdentifier else {
+      return true
+    }
+    return bundleId == clipBundleIdentifier
   }
 }

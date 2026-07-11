@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -20,7 +21,9 @@ class NonMedicalDisclaimer extends StatelessWidget {
         border: Border.all(color: AppColors.ctaApricot.withValues(alpha: 0.35)),
       ),
       child: Text(
-        'Questo strumento supporta la gestione quotidiana e non sostituisce la visita veterinaria né fornisce diagnosi o prescrizioni.',
+        context.l10n.text(
+          'Questo strumento supporta la gestione quotidiana e non sostituisce la visita veterinaria né fornisce diagnosi o prescrizioni.',
+        ),
         style: TextStyle(
           fontSize: compact ? 11 : 12,
           height: 1.25,

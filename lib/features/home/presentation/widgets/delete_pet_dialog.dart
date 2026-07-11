@@ -1,6 +1,7 @@
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +27,12 @@ class DeletePetDialog extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                AppText.custom('Rimuovi Cane', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                AppText.custom(
+                  context.l10n.text('Rimuovi Cane'),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                ),
                 IconButton(
                   icon: const Icon(Icons.close, color: AppColors.text),
                   onPressed: () => context.pop(),
@@ -34,7 +40,7 @@ class DeletePetDialog extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
-            
+
             dogsAsync.when(
               data: (dogs) {
                 if (dogs.isEmpty) {
@@ -55,26 +61,47 @@ class DeletePetDialog extends ConsumerWidget {
                       final dog = dogs[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: dog.breedImageUrl != null ? NetworkImage(dog.breedImageUrl!) : null,
-                          child: dog.breedImageUrl == null ? const Icon(Icons.pets) : null,
+                          backgroundImage: dog.breedImageUrl != null
+                              ? NetworkImage(dog.breedImageUrl!)
+                              : null,
+                          child: dog.breedImageUrl == null
+                              ? const Icon(Icons.pets)
+                              : null,
                         ),
-                        title: Text(dog.name ?? 'Senza nome'),
+                        title: Text(
+                          dog.name ?? context.l10n.text('Senza nome'),
+                        ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
                           onPressed: () async {
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Conferma eliminazione'),
-                                content: Text('Sei sicuro di voler eliminare ${dog.name}?'),
+                                title: Text(
+                                  context.l10n.text('Conferma eliminazione'),
+                                ),
+                                content: Text(
+                                  context.l10n.text(
+                                    'Sei sicuro di voler eliminare {{dogName}}?',
+                                    {'dogName': dog.name ?? ''},
+                                  ),
+                                ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('Annulla'),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: Text(context.l10n.text('Annulla')),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: Text(
+                                      context.l10n.text('Elimina'),
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -82,21 +109,37 @@ class DeletePetDialog extends ConsumerWidget {
 
                             if (confirm == true) {
                               try {
-                                final repo = ref.read(dogRemoteRepositoryProvider);
+                                final repo = ref.read(
+                                  dogRemoteRepositoryProvider,
+                                );
                                 await repo.deleteDog(dog.id!);
                                 ref.invalidate(userDogsProvider);
-                                
+
                                 if (context.mounted) {
-                                  context.pop(); // Close the dialog after delete
+                                  context
+                                      .pop(); // Close the dialog after delete
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('${dog.name} rimosso.')),
+                                    SnackBar(
+                                      content: Text(
+                                        context.l10n.text(
+                                          '{{dogName}} rimosso.',
+                                          {'dogName': dog.name ?? ''},
+                                        ),
+                                      ),
+                                    ),
                                   );
                                   // If it was the last dog, we might want to close the dialog or show empty state
                                 }
                               } catch (e) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Errore: $e')),
+                                    SnackBar(
+                                      content: Text(
+                                        context.l10n.text('Errore: {{error}}', {
+                                          'error': e.toString(),
+                                        }),
+                                      ),
+                                    ),
                                   );
                                 }
                               }
@@ -109,7 +152,9 @@ class DeletePetDialog extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => const Center(child: Text('Errore nel caricamento.')),
+              error: (_, __) => Center(
+                child: Text(context.l10n.text('Errore nel caricamento.')),
+              ),
             ),
           ],
         ),

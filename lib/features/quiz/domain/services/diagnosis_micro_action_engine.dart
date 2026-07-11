@@ -1,5 +1,6 @@
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_micro_action_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 
 class DiagnosisMicroActionEngine {
   const DiagnosisMicroActionEngine();
@@ -9,6 +10,7 @@ class DiagnosisMicroActionEngine {
     int minItems = 3,
     int maxItems = 5,
   }) {
+    final l10n = AppLocalizations.current;
     final focusAreas = _focusAreas(result);
     final areaLevels = {
       for (final area in PriorityArea.values) area: result.area(area).level,
@@ -78,8 +80,9 @@ class DiagnosisMicroActionEngine {
       for (final item in fallback) {
         if (items.length >= minItems) break;
         if (used.contains(item.id)) continue;
-        if (items.isNotEmpty && items.last.primaryArea == item.primaryArea)
+        if (items.isNotEmpty && items.last.primaryArea == item.primaryArea) {
           continue;
+        }
         items.add(item);
         used.add(item.id);
       }
@@ -87,7 +90,18 @@ class DiagnosisMicroActionEngine {
 
     return DiagnosisMicroActionPlan(
       focusAreas: focusAreas,
-      items: items.take(maxItems).toList(),
+      items: items
+          .take(maxItems)
+          .map(
+            (item) => DiagnosisMicroAction(
+              id: item.id,
+              text: l10n.text(item.text),
+              type: item.type,
+              primaryArea: item.primaryArea,
+              areas: item.areas,
+            ),
+          )
+          .toList(),
     );
   }
 

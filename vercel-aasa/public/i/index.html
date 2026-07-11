@@ -1,52 +1,244 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta
-    name="apple-itunes-app"
-    content="app-id=6758579385, app-clip-bundle-id=com.artrosicase.artrosicane.Clip, app-clip-display=card"
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#4B5D9E" />
+  <link rel="icon" type="image/png" href="/i/assets/app-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap"
+    rel="stylesheet"
   />
-  <title>Artrosi Cane</title>
+  <title>ZampaSiCura</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin:0; background:#fff; color:#111; }
-    main { max-width: 680px; margin: 0 auto; padding: 40px 20px; }
-    h1 { margin: 0 0 12px 0; font-size: 28px; }
-    p { line-height: 1.5; }
-    .box { border:1px solid #eee; border-radius: 12px; padding:16px; background:#fafafa; }
-    code { background:#f0f0f0; border-radius:4px; padding:2px 6px; }
+    :root {
+      --brand: #4B5D9E;
+      --brand-soft: #EEF1FA;
+      --cta: #D58B45;
+      --cta-press: #BC7637;
+      --bg: #FAFAFC;
+      --card: #FFFFFF;
+      --border: #E9ECF3;
+      --beige: #F8E0D0;
+      --text: #0B0B0B;
+      --muted: #5C6275;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 0% -10%, rgba(75, 93, 158, 0.18), transparent 60%),
+        radial-gradient(900px 600px at 100% 0%, rgba(248, 224, 208, 0.55), transparent 60%),
+        var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
+    }
+    .stage {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .card {
+      width: 100%;
+      background: var(--card);
+      border-radius: 28px;
+      box-shadow:
+        0 24px 60px -28px rgba(15, 23, 60, 0.35),
+        0 8px 22px -12px rgba(15, 23, 60, 0.18);
+      padding: 28px 24px 24px;
+      text-align: center;
+      animation: rise 480ms cubic-bezier(.2,.8,.2,1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px) scale(.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .icon {
+      width: 88px;
+      height: 88px;
+      border-radius: 22px;
+      margin: 0 auto 16px;
+      box-shadow:
+        0 18px 36px -16px rgba(75, 93, 158, 0.55),
+        0 0 0 1px rgba(255,255,255,0.5) inset;
+      background-image: url('/i/assets/app-icon.png');
+      background-size: cover;
+      background-position: center;
+    }
+    .name {
+      font-weight: 800;
+      font-size: 26px;
+      letter-spacing: -0.01em;
+      margin: 0;
+      color: var(--text);
+    }
+    .tagline {
+      font-weight: 500;
+      font-size: 14.5px;
+      color: var(--muted);
+      margin: 6px 0 22px;
+      line-height: 1.45;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 0 4px rgba(75, 93, 158, 0.18);
+    }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 18px;
+      background: var(--cta);
+      color: #fff;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 16px;
+      border: none;
+      border-radius: 16px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform .12s ease, background-color .12s ease, box-shadow .2s ease;
+      box-shadow: 0 14px 26px -14px rgba(213, 139, 69, 0.7);
+    }
+    .cta:hover { background: var(--cta-press); }
+    .cta:active { transform: translateY(1px); }
+    .footer {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.5;
+    }
+    .loader {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 14px;
+    }
+    .loader .spin {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--brand);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .show { display: inline-flex; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0E1018;
+        --card: #161A26;
+        --border: #232838;
+        --text: #F2F3F7;
+        --muted: #9AA0B4;
+        --brand-soft: rgba(75, 93, 158, 0.18);
+      }
+      body {
+        background:
+          radial-gradient(1200px 600px at 0% -10%, rgba(75, 93, 158, 0.35), transparent 60%),
+          radial-gradient(900px 600px at 100% 0%, rgba(213, 139, 69, 0.18), transparent 60%),
+          var(--bg);
+      }
+      .icon { box-shadow: 0 18px 36px -16px rgba(75, 93, 158, 0.7), 0 0 0 1px rgba(255,255,255,0.06) inset; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Artrosi Cane</h1>
-    <p>Se hai l'app installata, questo link apre automaticamente l'app.</p>
-    <div class="box">
-      <p><strong>Parametri link rilevati</strong></p>
-      <p id="params">Nessun parametro.</p>
-      <p style="margin-top:12px;"><strong>URL ricevuta</strong></p>
-      <p id="url"><code>-</code></p>
+  <main class="stage">
+    <div class="card">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>Experience</span>
+      </div>
+      <div class="icon" role="img" aria-label="ZampaSiCura"></div>
+      <h1 class="name">ZampaSiCura</h1>
+      <p class="tagline">
+        Wellness and prevention for your dog, every day.
+      </p>
+      <a id="primary" class="cta" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l9.4-9.7L3.6 2.3zm10.8 10.5l2.6 2.6-9.7 5.5c-.4.2-.8.2-1.1 0l8.2-8.1zm5.7-3.2l-3.1-1.8-2.9 3 2.9 3 3.1-1.8c.9-.5.9-1.9 0-2.4zM5.2 1.9l9.7 5.5-2.6 2.6L4.1 1.9c.3-.2.7-.2 1.1 0z"/>
+        </svg>
+        <span>Get it on Google Play</span>
+      </a>
+      <div id="loader" class="loader" aria-live="polite">
+        <span class="spin"></span>
+        <span>Opening Google Play...</span>
+      </div>
     </div>
+    <p class="footer">
+      If the app is already installed it will open automatically. Otherwise you'll be redirected to Google Play.
+    </p>
   </main>
   <script>
-    const qs = new URLSearchParams(window.location.search);
-    let t = qs.get('t') || qs.get('token');
-    let locationParam = qs.get('location') || qs.get('loc');
-    if (!t) {
-      const seg = window.location.pathname.split('/').filter(Boolean);
-      // /i/{token}/{location?}
-      if (seg.length >= 2 && seg[0] === 'i') {
-        t = decodeURIComponent(seg[1]);
+    (function () {
+      var qs = new URLSearchParams(window.location.search);
+      var t = qs.get('t') || qs.get('token');
+      var locationParam = qs.get('location') || qs.get('loc');
+      var seg = window.location.pathname.split('/').filter(Boolean);
+      if (!t && seg.length >= 2 && seg[0] === 'i') t = decodeURIComponent(seg[1]);
+      if (!locationParam && seg.length >= 3 && seg[0] === 'i') locationParam = decodeURIComponent(seg[2]);
+
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+
+      var referrerParts = [];
+      if (t) referrerParts.push('token=' + encodeURIComponent(t));
+      if (locationParam) referrerParts.push('location=' + encodeURIComponent(locationParam));
+      var referrer = referrerParts.join('&');
+      var playStoreUrl = 'https://play.google.com/store/apps/details?id=com.artrosicane.artrosicane'
+        + (referrer ? '&referrer=' + encodeURIComponent(referrer) : '');
+
+      var primary = document.getElementById('primary');
+      var loader = document.getElementById('loader');
+
+      primary.setAttribute('href', playStoreUrl);
+
+      if (isAndroid) {
+        // Auto-redirect Android visitors to the Play Store with referrer so the
+        // app can read the deferred deep link via Play Install Referrer API.
+        loader.classList.add('show');
+        setTimeout(function () { window.location.replace(playStoreUrl); }, 600);
       }
-      if (!locationParam && seg.length >= 3 && seg[0] === 'i') {
-        locationParam = decodeURIComponent(seg[2]);
-      }
-    }
-    const parts = [];
-    if (t) parts.push('t=' + t);
-    if (locationParam) parts.push('location=' + locationParam);
-    document.getElementById('params').textContent = parts.length ? parts.join(' | ') : 'Nessun parametro.';
-    document.getElementById('url').textContent = window.location.href;
+    })();
   </script>
 </body>
 </html>

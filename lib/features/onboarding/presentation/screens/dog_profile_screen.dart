@@ -2,6 +2,8 @@ import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/breed.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/l10n/app_locale.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -24,6 +26,7 @@ class DogProfilePage extends ConsumerStatefulWidget {
 
 class _DogProfilePageState extends ConsumerState<DogProfilePage>
     with AutomaticKeepAliveClientMixin {
+  static const bool _screenshotMode = bool.fromEnvironment('SCREENSHOT_MODE');
   final _nameController = TextEditingController();
 
   AgeGroup _ageGroup = AgeGroup.adulto;
@@ -31,6 +34,34 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
   double _weightKg = 20;
   String? _selectedBreedId;
   String? _selectedBreedName;
+  bool _isMixedBreed = false;
+
+  Future<void> _toggleMixedBreed(bool checked) async {
+    if (checked) {
+      try {
+        final breeds = await ref.read(breedListProvider.future);
+        final mixed = breeds.where((b) => b.isMixedBreed).firstOrNull;
+        if (mixed == null || !mounted) return;
+        final language = AppLanguage.fromLocale(
+          Localizations.localeOf(context),
+        );
+        setState(() {
+          _isMixedBreed = true;
+          _selectedBreedId = mixed.id;
+          _selectedBreedName = mixed.localizedName(language);
+        });
+      } catch (_) {
+        return;
+      }
+    } else {
+      setState(() {
+        _isMixedBreed = false;
+        _selectedBreedId = null;
+        _selectedBreedName = null;
+      });
+    }
+    _notifyChanges();
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -74,6 +105,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final l10n = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxHeight < 700;
@@ -98,12 +130,14 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
             children: [
               const SizedBox(height: AppSpacing.xl),
               AppText.h1(
-                'Raccontaci del tuo cane',
+                l10n.text('Raccontaci del tuo cane'),
                 color: AppColors.primaryBlue,
               ),
               const SizedBox(height: AppSpacing.sm),
               AppText.body(
-                'Queste informazioni ci aiuteranno a personalizzare i consigli per il tuo amico a quattro zampe.',
+                l10n.text(
+                  'Queste informazioni ci aiuteranno a personalizzare i consigli per il tuo amico a quattro zampe.',
+                ),
                 color: AppColors.text.withValues(alpha: 0.6),
               ),
               SizedBox(height: verticalGap),
@@ -111,14 +145,16 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               // Name Field
               TextFormField(
                 controller: _nameController,
-                autofocus: true,
+                autofocus: !_screenshotMode,
                 onChanged: (_) {
                   setState(() {});
                   _notifyChanges();
                 },
                 decoration: InputDecoration(
-                  hintText: '🐶 Come si chiama il tuo cane?',
-                  errorText: missingName ? 'Campo obbligatorio' : null,
+                  hintText: l10n.text('🐶 Come si chiama il tuo cane?'),
+                  errorText: missingName
+                      ? l10n.text('Campo obbligatorio')
+                      : null,
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -155,13 +191,13 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               SizedBox(height: verticalGap),
 
               // Age group
-              AppText.body('Età', bold: true, color: AppColors.text),
+              AppText.body(l10n.text('Età'), bold: true, color: AppColors.text),
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Expanded(
                     child: _AgeGroupOption(
-                      title: 'Cucciolo',
+                      title: l10n.text('Cucciolo'),
                       subtitle: '(0–1)',
                       selected: _ageGroup == AgeGroup.cucciolo,
                       onTap: () {
@@ -173,7 +209,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _AgeGroupOption(
-                      title: 'Adulto',
+                      title: l10n.text('Adulto'),
                       subtitle: '(1–7)',
                       selected: _ageGroup == AgeGroup.adulto,
                       onTap: () {
@@ -185,7 +221,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _AgeGroupOption(
-                      title: 'Senior',
+                      title: l10n.text('Senior'),
                       subtitle: '(7+)',
                       selected: _ageGroup == AgeGroup.senior,
                       onTap: () {
@@ -200,7 +236,9 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
 
               // Weight slider
               AppText.body(
-                'Peso: ${_weightKg.toStringAsFixed(1)} kg',
+                l10n.text('Peso: {{weight}} kg', {
+                  'weight': _weightKg.toStringAsFixed(1),
+                }),
                 bold: true,
                 color: AppColors.text,
               ),
@@ -219,11 +257,21 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               SizedBox(height: verticalGap),
 
               // Breed selector bottom sheet
-              AppText.body('Razza', bold: true, color: AppColors.text),
-              const SizedBox(height: AppSpacing.sm),
+              AppText.body(
+                l10n.text('Razza'),
+                bold: true,
+                color: AppColors.text,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _MixedBreedCheckbox(
+                value: _isMixedBreed,
+                onChanged: _toggleMixedBreed,
+              ),
+              const SizedBox(height: AppSpacing.xs),
               _BreedPickerField(
                 selectedLabel: _selectedBreedName,
                 hasError: missingBreed,
+                disabled: _isMixedBreed,
                 onTap: () async {
                   final breeds = await ref
                       .read(breedListProvider.future)
@@ -232,11 +280,12 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                   final picked = await _showBreedPicker(this.context, breeds);
                   if (!mounted) return;
                   if (picked != null) {
+                    final language = AppLanguage.fromLocale(
+                      Localizations.localeOf(context),
+                    );
                     setState(() {
                       _selectedBreedId = picked.id;
-                      _selectedBreedName = picked.nameIt?.isNotEmpty == true
-                          ? picked.nameIt
-                          : picked.name;
+                      _selectedBreedName = picked.localizedName(language);
                     });
                     _notifyChanges();
                   }
@@ -245,7 +294,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               if (missingBreed) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Seleziona una razza per continuare.',
+                  l10n.text('Seleziona una razza per continuare.'),
                   style: TextStyle(
                     color: Colors.red.shade600,
                     fontSize: 12,
@@ -265,6 +314,14 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
     BuildContext context,
     List<Breed> breeds,
   ) async {
+    final language = AppLanguage.fromLocale(Localizations.localeOf(context));
+    final sortedBreeds = [...breeds]
+      ..sort(
+        (a, b) => a
+            .localizedName(language)
+            .toLowerCase()
+            .compareTo(b.localizedName(language).toLowerCase()),
+      );
     return showModalBottomSheet<Breed>(
       context: context,
       isScrollControlled: true,
@@ -274,7 +331,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
       ),
       builder: (context) {
         final controller = TextEditingController();
-        final valueNotifier = ValueNotifier<List<Breed>>(breeds);
+        final valueNotifier = ValueNotifier<List<Breed>>(sortedBreeds);
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -298,14 +355,14 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'Cerca la razza',
+                context.l10n.text('Razza'),
                 style: AppTypography.h1.copyWith(fontSize: 20),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller,
                 decoration: InputDecoration(
-                  hintText: 'Digita per cercare',
+                  hintText: context.l10n.text('Digita per cercare'),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: AppColors.ctaApricot,
@@ -320,11 +377,14 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                 onChanged: (query) {
                   final q = query.toLowerCase().trim();
                   if (q.isEmpty) {
-                    valueNotifier.value = breeds;
+                    valueNotifier.value = sortedBreeds;
                   } else {
-                    valueNotifier.value = breeds
+                    valueNotifier.value = sortedBreeds
                         .where(
-                          (b) => (b.nameIt ?? '').toLowerCase().contains(q),
+                          (b) => b
+                              .localizedName(language)
+                              .toLowerCase()
+                              .contains(q),
                         )
                         .toList();
                   }
@@ -349,9 +409,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final breed = filtered[index];
-                        final label = breed.nameIt?.isNotEmpty == true
-                            ? breed.nameIt!
-                            : breed.name;
+                        final label = breed.localizedName(language);
                         return ListTile(
                           title: Text(
                             label,
@@ -446,59 +504,111 @@ class _AgeGroupOption extends StatelessWidget {
   }
 }
 
+class _MixedBreedCheckbox extends StatelessWidget {
+  const _MixedBreedCheckbox({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: value,
+                onChanged: (v) => onChanged(v ?? false),
+                activeColor: AppColors.ctaApricot,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              context.l10n.text('Razza mista'),
+              style: AppTypography.body.copyWith(
+                color: AppColors.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BreedPickerField extends StatelessWidget {
   const _BreedPickerField({
     required this.selectedLabel,
     required this.onTap,
     this.hasError = false,
+    this.disabled = false,
   });
 
   final String? selectedLabel;
   final VoidCallback onTap;
   final bool hasError;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasError ? Colors.red.shade400 : AppColors.borderSoft,
-            width: 1.2,
+    final isPlaceholder = selectedLabel == null;
+    return Opacity(
+      opacity: disabled ? 0.55 : 1,
+      child: GestureDetector(
+        onTap: disabled ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+          decoration: BoxDecoration(
+            color: disabled ? const Color(0xFFF1F2F6) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasError ? Colors.red.shade400 : AppColors.borderSoft,
+              width: 1.2,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                selectedLabel ?? 'Seleziona razza',
-                style: AppTypography.body.copyWith(
-                  color: selectedLabel == null
-                      ? AppColors.text.withValues(alpha: 0.6)
-                      : AppColors.text,
-                  fontWeight: selectedLabel == null
-                      ? FontWeight.w500
-                      : FontWeight.w600,
+            boxShadow: disabled
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  selectedLabel ?? context.l10n.text('Seleziona razza'),
+                  style: AppTypography.body.copyWith(
+                    color: isPlaceholder
+                        ? AppColors.text.withValues(alpha: 0.6)
+                        : AppColors.text,
+                    fontWeight: isPlaceholder
+                        ? FontWeight.w500
+                        : FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const Icon(Icons.keyboard_arrow_down, color: AppColors.ctaApricot),
-          ],
+              const Icon(
+                Icons.keyboard_arrow_down,
+                color: AppColors.ctaApricot,
+              ),
+            ],
+          ),
         ),
       ),
     );

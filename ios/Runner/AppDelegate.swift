@@ -4,11 +4,13 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private let deepLinkChannelName = "com.company.app/deeplink"
-  private let appGroupId = "group.com.artrosicase.artrosicane"
   private let pendingInviteTokenKey = "pending_invite_token"
   private let pendingInviteLocationKey = "pending_invite_location"
   private let inviteHost = "artrosicane.vercel.app"
   private let invitePath = "/i"
+  private let appGroupInfoKey = "APP_GROUP_ID"
+  private let defaultAppGroupId = "group.com.artrosicase.artrosicane"
+  private let appleAppClipHosts: Set<String> = ["appclip.apple.com", "apps.apple.com"]
 
   private var deepLinkChannel: FlutterMethodChannel?
   private var pendingDeepLinks: [String] = []
@@ -99,16 +101,20 @@ import UIKit
   }
 
   private func enqueuePendingTokenFromAppGroupIfNeeded() {
-    let defaults = UserDefaults(suiteName: appGroupId) ?? .standard
+    let defaults = UserDefaults(suiteName: appGroupId()) ?? UserDefaults.standard
+    let token = defaults.string(forKey: pendingInviteTokenKey)
+    let pendingLocation = defaults.string(forKey: pendingInviteLocationKey)
+    let normalizedToken = token?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalizedLocation = pendingLocation?.trimmingCharacters(in: .whitespacesAndNewlines)
+
     guard
-      let token = defaults.string(forKey: pendingInviteTokenKey),
-      !token.isEmpty
+      (normalizedToken?.isEmpty == false) ||
+      (normalizedLocation?.isEmpty == false)
     else {
       return
     }
 
     defaults.removeObject(forKey: pendingInviteTokenKey)
-    let pendingLocation = defaults.string(forKey: pendingInviteLocationKey)
     defaults.removeObject(forKey: pendingInviteLocationKey)
     defaults.synchronize()
 
@@ -118,11 +124,13 @@ import UIKit
       return
     }
 
-    var queryItems = [URLQueryItem(name: "t", value: token)]
-    if let pendingLocation = pendingLocation?.trimmingCharacters(in: .whitespacesAndNewlines),
-      !pendingLocation.isEmpty
+    var queryItems: [URLQueryItem] = []
+    if let normalizedToken, !normalizedToken.isEmpty {
+      queryItems.append(URLQueryItem(name: "t", value: normalizedToken))
+    }
+    if let normalizedLocation, !normalizedLocation.isEmpty
     {
-      queryItems.append(URLQueryItem(name: "location", value: pendingLocation.lowercased()))
+      queryItems.append(URLQueryItem(name: "location", value: normalizedLocation.lowercased()))
     }
 
     components.queryItems = queryItems
@@ -133,18 +141,34 @@ import UIKit
     emitOrQueueDeepLink(url)
   }
 
+  private func appGroupId() -> String {
+    let info = Bundle.main.infoDictionary ?? [:]
+    let raw = (info[appGroupInfoKey] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if let raw, !raw.isEmpty {
+      return raw
+    }
+    return defaultAppGroupId
+  }
+
   private func emitOrQueueDeepLink(_ url: URL) {
     _ = ensureDeepLinkChannel()
 
-    guard url.scheme?.lowercased() == "https", url.host?.lowercased() == inviteHost else {
+    guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else {
       return
     }
 
-    let path = url.path
-    let isInviteRoot = (path == invitePath || path == "\(invitePath)/")
-    let isInviteSubpath = path.hasPrefix("\(invitePath)/")
-    guard isInviteRoot || isInviteSubpath else {
-      return
+    if host == inviteHost {
+      let path = url.path
+      let isInviteRoot = (path == invitePath || path == "\(invitePath)/")
+      let isInviteSubpath = path.hasPrefix("\(invitePath)/")
+      guard isInviteRoot || isInviteSubpath else {
+        return
+      }
+    } else {
+      guard appleAppClipHosts.contains(host), isRecognizedAppleAppClipLink(url) else {
+        return
+      }
     }
 
     let urlString = url.absoluteString
@@ -153,5 +177,17 @@ import UIKit
     } else {
       pendingDeepLinks.append(urlString)
     }
+  }
+
+  private func isRecognizedAppleAppClipLink(_ url: URL) -> Bool {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+      return false
+    }
+
+    let bundleId = components.queryItems?.first(where: { item in
+      item.name == "p" || item.name == "app-clip-bundle-id"
+    })?.value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+    return bundleId == "com.artrosicase.artrosicane.clip"
   }
 }

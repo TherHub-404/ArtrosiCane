@@ -63,7 +63,7 @@ class DailyCheckRepository {
               .toList();
 
     list.add({
-      'ts': DateTime.now().toIso8601String(),
+      'ts': DateTime.now().toUtc().toIso8601String(),
       'symptom': input.symptomLevel.index,
       'load': input.plannedLoad.index,
       'recovery': input.recoveryDelta.index,
@@ -156,7 +156,7 @@ class DailyCheckRepository {
       'route_tag': result.recommendation.routeTag,
       'video_label': result.recommendation.videoLabel,
       'video_url': result.recommendation.videoUrl,
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toUtc().toIso8601String(),
     };
 
     final existingRaw = _prefs.getString(_remoteQueueKey);
@@ -211,6 +211,112 @@ class DailyCheckRepository {
     }
 
     await _prefs.setString(_remoteQueueKey, json.encode(remaining));
+  }
+
+  /// Fetch all persisted daily check logs for the given dog (most recent first).
+  /// Falls back to the local cache when the remote query fails or when the
+  /// device is offline. Returns an empty list when nothing is available.
+  Future<List<DailyLogEntry>> fetchHistory({required String dogId}) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return _localHistory(dogId);
+
+    // Try to flush any pending local writes before reading, so the remote
+    // history reflects the most recent local checks.
+    try {
+      await _flushRemoteQueue();
+    } catch (_) {}
+
+    try {
+      final rows = await _client
+          .from('daily_logs')
+          .select(
+            'created_at, semaphore, score, raw_score, actions, avoid, '
+            'video_label, video_url, route_tag, dog_id, owner_id',
+          )
+          .eq('owner_id', userId)
+          .eq('dog_id', dogId)
+          .order('created_at', ascending: false);
+      final list = <DailyLogEntry>[];
+      for (final row in (rows as List<dynamic>? ?? const <dynamic>[])) {
+        final entry = _entryFromRow(Map<String, dynamic>.from(row as Map));
+        if (entry != null) list.add(entry);
+      }
+      if (list.isNotEmpty) return list;
+      return _localHistory(dogId);
+    } catch (error) {
+      AppLogger.debug('Failed to fetch daily history: $error');
+      return _localHistory(dogId);
+    }
+  }
+
+  List<DailyLogEntry> _localHistory(String dogId) {
+    final raw = _prefs.getString(_dailyLogKey(dogId));
+    if (raw == null || raw.isEmpty) return const <DailyLogEntry>[];
+    try {
+      final list = (json.decode(raw) as List<dynamic>)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      final out = <DailyLogEntry>[];
+      for (final item in list) {
+        final entry = _entryFromLocal(item);
+        if (entry != null) out.add(entry);
+      }
+      out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return out;
+    } catch (_) {
+      return const <DailyLogEntry>[];
+    }
+  }
+
+  DailyLogEntry? _entryFromRow(Map<String, dynamic> row) {
+    final createdRaw = row['created_at'] as String?;
+    final created = createdRaw == null
+        ? null
+        : DateTime.tryParse(createdRaw)?.toLocal();
+    final semaphore = _parseSemaphore(row['semaphore']?.toString());
+    if (created == null || semaphore == null) return null;
+    final actions = (row['actions'] as List<dynamic>? ?? const <dynamic>[])
+        .map((e) => e.toString())
+        .toList();
+    return DailyLogEntry(
+      createdAt: created,
+      semaphore: semaphore,
+      score: (row['score'] as num?)?.toInt() ?? 0,
+      rawScore: (row['raw_score'] as num?)?.toInt() ?? 0,
+      actions: actions,
+      avoid: (row['avoid'] as String?) ?? '',
+      videoLabel: (row['video_label'] as String?) ?? '',
+      videoUrl: (row['video_url'] as String?) ?? '',
+      routeTag: (row['route_tag'] as String?) ?? 'standard',
+    );
+  }
+
+  DailyLogEntry? _entryFromLocal(Map<String, dynamic> item) {
+    final createdRaw = item['ts'] as String?;
+    final created = createdRaw == null
+        ? null
+        : DateTime.tryParse(createdRaw)?.toLocal();
+    final semaphore = _parseSemaphore(item['semaphore']?.toString());
+    if (created == null || semaphore == null) return null;
+    return DailyLogEntry(
+      createdAt: created,
+      semaphore: semaphore,
+      score: (item['score'] as num?)?.toInt() ?? 0,
+      rawScore: (item['rawScore'] as num?)?.toInt() ?? 0,
+      actions: const <String>[],
+      avoid: '',
+      videoLabel: '',
+      videoUrl: '',
+      routeTag: 'standard',
+    );
+  }
+
+  DailySemaphore? _parseSemaphore(String? value) {
+    if (value == null) return null;
+    for (final s in DailySemaphore.values) {
+      if (s.name == value) return s;
+    }
+    return null;
   }
 
   String _sensitivityKey(String? dogId) =>

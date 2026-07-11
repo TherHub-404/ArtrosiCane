@@ -1,4 +1,5 @@
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 
 enum DailySymptomLevel { no, lieve, marcata }
 
@@ -114,32 +115,60 @@ class DailyCheckResult {
   final DailyRecommendation recommendation;
 }
 
+/// A persisted daily log entry as fetched from the remote `daily_logs` table.
+/// Used by the history screen and chart.
+class DailyLogEntry {
+  const DailyLogEntry({
+    required this.createdAt,
+    required this.semaphore,
+    required this.score,
+    required this.rawScore,
+    required this.actions,
+    required this.avoid,
+    required this.videoLabel,
+    required this.videoUrl,
+    required this.routeTag,
+  });
+
+  final DateTime createdAt;
+  final DailySemaphore semaphore;
+  final int score;
+  final int rawScore;
+  final List<String> actions;
+  final String avoid;
+  final String videoLabel;
+  final String videoUrl;
+  final String routeTag;
+}
+
 String dailyRiskFactorLabel(DailyRiskFactor factor) {
+  final l10n = AppLocalizations.current;
   switch (factor) {
     case DailyRiskFactor.caldo:
-      return 'Caldo forte';
+      return l10n.text('Caldo forte');
     case DailyRiskFactor.sabbia:
-      return 'Sabbia';
+      return l10n.text('Sabbia');
     case DailyRiskFactor.scale:
-      return 'Scale';
+      return l10n.text('Scale');
     case DailyRiskFactor.scivoloso:
-      return 'Superfici scivolose';
+      return l10n.text('Superfici scivolose');
     case DailyRiskFactor.auto:
-      return 'Auto frequente';
+      return l10n.text('Auto frequente');
     case DailyRiskFactor.acqua:
-      return 'Acqua';
+      return l10n.text('Acqua');
   }
 }
 
 String diagnosisStatusLabel(ArthrosisDiagnosisStatus? status) {
+  final l10n = AppLocalizations.current;
   switch (status) {
     case ArthrosisDiagnosisStatus.confirmed:
-      return 'Diagnosi confermata';
+      return l10n.text('Diagnosi confermata');
     case ArthrosisDiagnosisStatus.notDiagnosed:
-      return 'Nessuna diagnosi';
+      return l10n.text('Nessuna diagnosi');
     case ArthrosisDiagnosisStatus.unknown:
-      return 'Diagnosi non certa';
+      return l10n.text('Diagnosi non certa');
     case null:
-      return 'Non indicato';
+      return l10n.text('Non indicato');
   }
 }

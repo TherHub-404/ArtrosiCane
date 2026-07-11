@@ -4,6 +4,7 @@ import 'package:artrosi_cane/core/widgets/app_button.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -57,6 +58,7 @@ class _QuizResultScreenState extends State<QuizResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final quizResult = widget.result is QuizResult
         ? widget.result as QuizResult
         : null;
@@ -83,19 +85,7 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                   const SizedBox(height: AppSpacing.xl),
 
                   // Spinner
-                  Lottie.asset('assets/paw.json', height: 90, repeat: true),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Text
-                  Text(
-                    'Stiamo analizzando\nle risposte...',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
+                  Lottie.asset('assets/paw.json', height: 130, repeat: true),
                 ],
               ),
             )
@@ -104,7 +94,10 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: AppSpacing.lg),
-                  AppText.h1('Il rischio artrosi è:', align: TextAlign.center),
+                  AppText.h1(
+                    l10n.text('Il rischio artrosi è:'),
+                    align: TextAlign.center,
+                  ),
                   const SizedBox(height: AppSpacing.xl),
 
                   // Gauge/Indicator Animation
@@ -124,18 +117,30 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              _riskLabel(riskLevel),
-                              style: Theme.of(context).textTheme.displayMedium
-                                  ?.copyWith(
-                                    color: _riskColor(riskLevel),
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Montserrat', // Requested font
-                                  ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _riskLabel(riskLevel),
+                                  maxLines: 1,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayMedium
+                                      ?.copyWith(
+                                        color: _riskColor(riskLevel),
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily:
+                                            'Montserrat', // Requested font
+                                      ),
+                                ),
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
-                              'RISCHIO',
+                              l10n.text('RISCHIO'),
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ],
@@ -151,7 +156,9 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                       horizontal: AppSpacing.lg,
                     ),
                     child: AppText.body(
-                      'Continua per tenere un diario, ricevere consigli personalizzati e prevenire l\'artrosi.',
+                      l10n.text(
+                        'Continua per tenere un diario, ricevere consigli personalizzati e prevenire l\'artrosi.',
+                      ),
                       align: TextAlign.center,
                     ),
                   ),
@@ -163,7 +170,7 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                       horizontal: AppSpacing.lg,
                     ),
                     child: AppButton(
-                      label: 'Continua',
+                      label: l10n.text('Continua'),
                       onPressed: _handleContinue,
                     ),
                   ),
@@ -181,13 +188,14 @@ class _QuizResultScreenState extends State<QuizResultScreen>
   }
 
   String _riskLabel(RiskLevel level) {
+    final l10n = context.l10n;
     switch (level) {
       case RiskLevel.basso:
-        return 'BASSO';
+        return l10n.text('BASSO');
       case RiskLevel.medio:
-        return 'MEDIO';
+        return l10n.text('MEDIO');
       case RiskLevel.alto:
-        return 'ALTO';
+        return l10n.text('ALTO');
     }
   }
 

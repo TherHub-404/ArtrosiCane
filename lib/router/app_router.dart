@@ -1,13 +1,16 @@
 import 'package:artrosi_cane/features/auth/presentation/screens/auth_prompt_screen.dart';
+import 'package:artrosi_cane/features/auth/presentation/screens/change_temp_password_screen.dart';
 import 'package:artrosi_cane/features/auth/presentation/screens/entry_screen.dart';
 import 'package:artrosi_cane/features/auth/presentation/screens/video_call_request_screen.dart';
 import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/features/daily_check/presentation/screens/daily_check_history_screen.dart';
 import 'package:artrosi_cane/features/daily_check/presentation/screens/daily_check_result_screen.dart';
 import 'package:artrosi_cane/features/daily_check/presentation/screens/daily_check_screen.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/dog_dashboard_screen.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/exercise_advice_screen.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/screens/walks_advice_screen.dart';
 import 'package:artrosi_cane/features/home/presentation/screens/home_screen.dart';
+import 'package:artrosi_cane/features/onboarding/presentation/screens/context_bibione_screen.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/screens/onboarding_welcome_screen.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/screens/splash_screen.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
@@ -15,13 +18,25 @@ import 'package:artrosi_cane/features/quiz/presentation/screens/diagnosis_priori
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_flow_screen.dart';
 import 'package:artrosi_cane/features/quiz/presentation/screens/quiz_result_screen.dart';
 import 'package:artrosi_cane/features/walks/presentation/screens/walks_overview_screen.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  const initialLocation = String.fromEnvironment(
+    'INITIAL_LOCATION',
+    defaultValue: '/',
+  );
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: initialLocation,
+    redirect: (context, state) {
+      final path = state.uri.path;
+      if (path == '/i' || path.startsWith('/i/')) {
+        return '/';
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -33,14 +48,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'onboarding',
         builder: (context, state) => const OnboardingWelcomeScreen(),
       ),
+      GoRoute(
+        path: '/context-bibione',
+        name: 'contextBibione',
+        builder: (context, state) => const ContextBibioneScreen(),
+      ),
 
       GoRoute(
         path: '/quiz',
         name: 'quiz',
         builder: (context, state) {
           final extra = state.extra;
-          final skipIntro = extra is Map && extra['skipIntro'] == true;
+          final skipIntro =
+              state.uri.queryParameters['skipIntro'] == 'true' ||
+              (extra is Map && extra['skipIntro'] == true);
           final startFromDiagnosis =
+              state.uri.queryParameters['startFromDiagnosis'] == 'true' ||
               extra is Map && extra['startFromDiagnosis'] == true;
           final dogData = extra is Map
               ? extra['dog'] as Map<String, dynamic>?
@@ -72,6 +95,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra;
           final showJourneyOnly =
+              state.uri.queryParameters['showJourneyOnly'] == 'true' ||
               extra is Map<String, dynamic> && extra['showJourneyOnly'] == true;
           final result = extra is Map<String, dynamic>
               ? extra['result']
@@ -82,9 +106,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
           if (!showJourneyOnly && result is! DiagnosisPriorityResult) {
             return Scaffold(
-              appBar: AppBar(title: const Text('Mappa Priorita')),
-              body: const Center(
-                child: Text('Risultato priorita non disponibile.'),
+              appBar: AppBar(title: Text(context.l10n.text('Mappa Priorita'))),
+              body: Center(
+                child: Text(
+                  context.l10n.text('Risultato priorita non disponibile.'),
+                ),
               ),
             );
           }
@@ -102,8 +128,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>?;
           final entryContext = extra?['entryContext'] as String?;
           final dogData = extra?['dog'] as Map<String, dynamic>?;
-          return AuthPromptScreen(entryContext: entryContext, dogData: dogData);
+          final startInLoginMode = extra?['isLogin'] as bool? ?? false;
+          return AuthPromptScreen(
+            entryContext: entryContext,
+            dogData: dogData,
+            startInLoginMode: startInLoginMode,
+          );
         },
+      ),
+      GoRoute(
+        path: '/change-temp-password',
+        name: 'changeTempPassword',
+        builder: (context, state) => const ChangeTempPasswordScreen(),
       ),
       GoRoute(
         path: '/entry',
@@ -120,7 +156,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final dogData = extra?['dog'] as Map<String, dynamic>?;
-          return VideoCallRequestScreen(dogData: dogData);
+          final source = extra?['source'] as String?;
+          return VideoCallRequestScreen(dogData: dogData, source: source);
         },
       ),
       GoRoute(
@@ -145,10 +182,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final dogId = extra['dogId'] as String?;
           return DailyCheckScreen(
             dogName: (dogName == null || dogName.isEmpty)
-                ? 'Il tuo cane'
+                ? context.l10n.text('Il tuo cane')
                 : dogName,
             dogId: dogId,
           );
+        },
+      ),
+      GoRoute(
+        path: '/daily-check/history',
+        name: 'dailyCheckHistory',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final dogId = extra['dogId'] as String?;
+          final dogName =
+              (extra['dogName'] as String?)?.trim() ??
+              context.l10n.text('Il tuo cane');
+          if (dogId == null || dogId.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: Text(context.l10n.text('Diario'))),
+              body: Center(
+                child: Text(context.l10n.text('Cane non disponibile.')),
+              ),
+            );
+          }
+          return DailyCheckHistoryScreen(dogId: dogId, dogName: dogName);
         },
       ),
       GoRoute(
@@ -157,12 +214,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final result = extra['result'];
-          final dogName = extra['dogName'] as String? ?? 'Il tuo cane';
+          final dogName =
+              extra['dogName'] as String? ?? context.l10n.text('Il tuo cane');
           if (result is! DailyCheckResult) {
             return Scaffold(
-              appBar: AppBar(title: const Text('Quick Check')),
-              body: const Center(
-                child: Text('Risultato quick check non disponibile.'),
+              appBar: AppBar(title: Text(context.l10n.text('Come stai oggi?'))),
+              body: Center(
+                child: Text(
+                  context.l10n.text('Risultato non disponibile.'),
+                ),
               ),
             );
           }
@@ -203,7 +263,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return WalksAdviceScreen(
             grade: extra['grade'] as String? ?? '',
-            dogName: extra['name'] as String? ?? 'Il tuo cane',
+            dogName:
+                extra['name'] as String? ?? context.l10n.text('Il tuo cane'),
           );
         },
       ),
@@ -214,7 +275,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return ExerciseAdviceScreen(
             grade: extra['grade'] as String? ?? '',
-            dogName: extra['name'] as String? ?? 'Il tuo cane',
+            dogName:
+                extra['name'] as String? ?? context.l10n.text('Il tuo cane'),
           );
         },
       ),

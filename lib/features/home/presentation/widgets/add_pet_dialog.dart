@@ -1,9 +1,12 @@
+import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/core/widgets/app_banner.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/breed.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:artrosi_cane/l10n/app_locale.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
@@ -24,8 +27,35 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
   final _weightController = TextEditingController();
   String? _selectedBreedId;
   String? _selectedBreedLabel;
+  bool _isMixedBreed = false;
   bool _isLoading = false;
   bool _startDiagnosisAfterCreate = false;
+
+  Future<void> _toggleMixedBreed(bool checked) async {
+    if (checked) {
+      try {
+        final breeds = await ref.read(breedListProvider.future);
+        final mixed = breeds.where((b) => b.isMixedBreed).firstOrNull;
+        if (mixed == null || !mounted) return;
+        final language = AppLanguage.fromLocale(
+          Localizations.localeOf(context),
+        );
+        setState(() {
+          _isMixedBreed = true;
+          _selectedBreedId = mixed.id;
+          _selectedBreedLabel = mixed.localizedName(language);
+        });
+      } catch (_) {
+        return;
+      }
+    } else {
+      setState(() {
+        _isMixedBreed = false;
+        _selectedBreedId = null;
+        _selectedBreedLabel = null;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -41,7 +71,11 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
     final weight = double.tryParse(_weightController.text.replaceAll(',', '.'));
     if (name.isEmpty || age == null || weight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Compila correttamente nome, età e peso')),
+        SnackBar(
+          content: Text(
+            context.l10n.text('Compila correttamente nome, età e peso'),
+          ),
+        ),
       );
       return;
     }
@@ -82,13 +116,20 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
           },
         );
       } else {
-        AppBanner.showSuccess(context, 'Cane aggiunto con successo!');
+        AppBanner.showSuccess(
+          context,
+          context.l10n.text('Cane aggiunto con successo!'),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.text('Errore: {{error}}', {'error': e.toString()}),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -113,32 +154,41 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   AppText.custom(
-                    'Aggiungi Cane',
+                    context.l10n.text('Aggiungi Cane'),
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryBlue,
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: AppColors.text),
-                    onPressed: () => context.pop(),
+                    onPressed: () {
+                      Haptics.tap();
+                      context.pop();
+                    },
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
 
-              _buildTextField('Nome', _nameController),
+              _buildTextField(context.l10n.text('Nome'), _nameController),
               const SizedBox(height: AppSpacing.md),
               _BreedPickerField(
-                label: 'Razza',
+                label: context.l10n.text('Razza'),
                 selectedLabel: _selectedBreedLabel,
                 onTap: _openBreedPicker,
+                disabled: _isMixedBreed,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _MixedBreedCheckbox(
+                value: _isMixedBreed,
+                onChanged: _toggleMixedBreed,
               ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
                     child: _buildTextField(
-                      'Età (anni)',
+                      context.l10n.text('Età (anni)'),
                       _ageController,
                       isNumber: true,
                     ),
@@ -146,7 +196,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: _buildTextField(
-                      'Peso (kg)',
+                      context.l10n.text('Peso (kg)'),
                       _weightController,
                       isNumber: true,
                     ),
@@ -168,15 +218,12 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                             _startDiagnosisAfterCreate = value ?? false;
                           });
                         },
-                  title: const Text(
-                    'Avvia subito nuova diagnosi',
+                  title: Text(
+                    context.l10n.text('Avvia il quiz salute articolare'),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryBlue,
                     ),
-                  ),
-                  subtitle: const Text(
-                    'Dopo il salvataggio ti porto alle domande diagnostiche.',
                   ),
                   activeColor: AppColors.ctaApricot,
                   controlAffinity: ListTileControlAffinity.leading,
@@ -188,7 +235,12 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _addPet,
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Haptics.strong();
+                          _addPet();
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.ctaApricot,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -207,8 +259,8 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                         )
                       : Text(
                           _startDiagnosisAfterCreate
-                              ? 'Aggiungi e fai diagnosi'
-                              : 'Aggiungi',
+                              ? context.l10n.text('Aggiungi e scegli diagnosi')
+                              : context.l10n.text('Aggiungi'),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -265,25 +317,34 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
 
       if (breeds.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nessuna razza disponibile.')),
+          SnackBar(
+            content: Text(context.l10n.text('Nessuna razza disponibile.')),
+          ),
         );
         return;
       }
 
       final picked = await _showBreedPicker(context, breeds);
       if (picked != null) {
+        final language = AppLanguage.fromLocale(
+          Localizations.localeOf(context),
+        );
         setState(() {
           _selectedBreedId = picked.id;
-          _selectedBreedLabel = picked.nameIt?.isNotEmpty == true
-              ? picked.nameIt
-              : picked.name;
+          _selectedBreedLabel = picked.localizedName(language);
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Errore caricamento razze: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.text('Errore caricamento razze: {{error}}', {
+                'error': e.toString(),
+              }),
+            ),
+          ),
+        );
       }
     }
   }
@@ -292,6 +353,14 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
     BuildContext context,
     List<Breed> breeds,
   ) async {
+    final language = AppLanguage.fromLocale(Localizations.localeOf(context));
+    final sortedBreeds = [...breeds]
+      ..sort(
+        (a, b) => a
+            .localizedName(language)
+            .toLowerCase()
+            .compareTo(b.localizedName(language).toLowerCase()),
+      );
     return showModalBottomSheet<Breed>(
       context: context,
       isScrollControlled: true,
@@ -301,7 +370,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
       ),
       builder: (context) {
         final controller = TextEditingController();
-        final valueNotifier = ValueNotifier<List<Breed>>(breeds);
+        final valueNotifier = ValueNotifier<List<Breed>>(sortedBreeds);
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -325,14 +394,14 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'Cerca la razza',
+                context.l10n.text('Cerca la razza'),
                 style: AppTypography.h1.copyWith(fontSize: 20),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller,
                 decoration: InputDecoration(
-                  hintText: 'Digita per cercare',
+                  hintText: context.l10n.text('Digita per cercare'),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: AppColors.ctaApricot,
@@ -347,11 +416,14 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                 onChanged: (query) {
                   final q = query.toLowerCase().trim();
                   if (q.isEmpty) {
-                    valueNotifier.value = breeds;
+                    valueNotifier.value = sortedBreeds;
                   } else {
-                    valueNotifier.value = breeds
+                    valueNotifier.value = sortedBreeds
                         .where(
-                          (b) => (b.nameIt ?? '').toLowerCase().contains(q),
+                          (b) => b
+                              .localizedName(language)
+                              .toLowerCase()
+                              .contains(q),
                         )
                         .toList();
                   }
@@ -376,9 +448,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final breed = filtered[index];
-                        final label = breed.nameIt?.isNotEmpty == true
-                            ? breed.nameIt!
-                            : breed.name;
+                        final label = breed.localizedName(language);
                         return ListTile(
                           title: Text(
                             label,
@@ -407,55 +477,103 @@ class _BreedPickerField extends StatelessWidget {
     required this.label,
     required this.selectedLabel,
     required this.onTap,
+    this.disabled = false,
   });
 
   final String label;
   final String? selectedLabel;
   final VoidCallback onTap;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppText.custom(
-          label,
-          color: AppColors.text.withOpacity(0.6),
-          fontSize: 12,
-        ),
-        const SizedBox(height: 4),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.pets_rounded,
-                  color: AppColors.ctaApricot.withOpacity(0.9),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    selectedLabel ?? 'Seleziona razza',
-                    style: TextStyle(
-                      color: selectedLabel == null
-                          ? AppColors.text.withOpacity(0.5)
-                          : AppColors.text,
-                      fontWeight: FontWeight.w600,
+    return Opacity(
+      opacity: disabled ? 0.55 : 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppText.custom(
+            label,
+            color: AppColors.text.withOpacity(0.6),
+            fontSize: 12,
+          ),
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: disabled ? null : onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: disabled
+                    ? const Color(0xFFEDEEF2)
+                    : AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.pets_rounded,
+                    color: AppColors.ctaApricot.withOpacity(0.9),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      selectedLabel ?? context.l10n.text('Seleziona razza'),
+                      style: TextStyle(
+                        color: selectedLabel == null
+                            ? AppColors.text.withOpacity(0.5)
+                            : AppColors.text,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                const Icon(Icons.arrow_drop_down, color: AppColors.text),
-              ],
+                  const Icon(Icons.arrow_drop_down, color: AppColors.text),
+                ],
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MixedBreedCheckbox extends StatelessWidget {
+  const _MixedBreedCheckbox({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: value,
+                onChanged: (v) => onChanged(v ?? false),
+                activeColor: AppColors.ctaApricot,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              context.l10n.text('Razza mista'),
+              style: TextStyle(
+                color: AppColors.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

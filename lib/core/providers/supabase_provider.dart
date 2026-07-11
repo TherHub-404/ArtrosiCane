@@ -6,6 +6,14 @@ final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
 });
 
+SupabaseClient? maybeSupabaseClient() {
+  try {
+    return Supabase.instance.client;
+  } catch (_) {
+    return null;
+  }
+}
+
 Future<void> initializeSupabase() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,

@@ -135,7 +135,18 @@ class FeatureFlagsController extends StateNotifier<FeatureFlagsState> {
         normalized == 'bibbine' ||
         normalized == 'bibiobe' ||
         normalized.startsWith('bibb')) {
-      return 'bibbione';
+      return 'bibione';
+    }
+    if (normalized == 'skip-onboard' ||
+        normalized == 'skip_onboard' ||
+        normalized == 'skiponboard' ||
+        normalized == 'skip-onboarding' ||
+        normalized == 'skip_onboarding' ||
+        normalized == 'skiponboarding') {
+      return 'skip-onboard';
+    }
+    if (normalized == 'normal' || normalized == 'default') {
+      return 'normal';
     }
     return normalized;
   }

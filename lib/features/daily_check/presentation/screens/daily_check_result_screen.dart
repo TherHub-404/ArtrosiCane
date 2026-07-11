@@ -1,9 +1,10 @@
+import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class DailyCheckResultScreen extends StatelessWidget {
   const DailyCheckResultScreen({
@@ -17,18 +18,16 @@ class DailyCheckResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final palette = _palette(result.semaphore);
-    final isBibbioneRoute =
-        result.recommendation.routeTag == 'bibbione' ||
-        result.recommendation.routeTag == 'bibione';
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: AppColors.primaryBlue,
-        title: const Text(
-          'Semaforo Giornata',
+        title: Text(
+          l10n.text('Semaforo Giornata'),
           style: TextStyle(
             fontWeight: FontWeight.w900,
             fontFamily: 'Montserrat',
@@ -39,6 +38,8 @@ class DailyCheckResultScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
           children: [
+            _SavedBadge(label: l10n.text('Stato di oggi salvato')),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -56,7 +57,7 @@ class DailyCheckResultScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _semaphoreLabel(result.semaphore),
+                    _semaphoreLabel(context, result.semaphore),
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.white,
@@ -86,7 +87,14 @@ class DailyCheckResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '$dogName · Score ${result.score} (raw ${result.rawScore})',
+                    l10n.text(
+                      '{{dogName}} · Punteggio {{score}} (grezzo {{rawScore}})',
+                      {
+                        'dogName': dogName,
+                        'score': result.score.toString(),
+                        'rawScore': result.rawScore.toString(),
+                      },
+                    ),
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.white,
@@ -98,7 +106,7 @@ class DailyCheckResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             _resultCard(
-              title: '2 micro-azioni',
+              title: l10n.text('2 micro-azioni'),
               icon: Icons.check_circle_outline_rounded,
               children: result.recommendation.actions
                   .map((text) => _bullet(text))
@@ -106,31 +114,21 @@ class DailyCheckResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _resultCard(
-              title: '1 cosa da evitare',
+              title: l10n.text('1 cosa da evitare'),
               icon: Icons.remove_circle_outline_rounded,
               children: [_bullet(result.recommendation.avoid)],
             ),
             const SizedBox(height: 10),
             _resultCard(
-              title: 'Percorso consigliato',
-              icon: Icons.map_outlined,
+              title: l10n.text('Video consigliato'),
+              icon: Icons.play_circle_outline_rounded,
               children: [
-                _bullet(
-                  isBibbioneRoute
-                      ? 'Percorso Bibione consigliato oggi.'
-                      : 'Percorso standard consigliato oggi.',
-                ),
+                _bullet(l10n.text('Video consigliato oggi.')),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () {
-                    if (isBibbioneRoute) {
-                      context.push('/walks-overview');
-                    } else {
-                      context.push(
-                        '/walks',
-                        extra: {'grade': '', 'name': dogName},
-                      );
-                    }
+                    Haptics.tap();
+                    context.push('/walks-overview');
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
@@ -138,21 +136,21 @@ class DailyCheckResultScreen extends StatelessWidget {
                       color: AppColors.primaryBlue.withValues(alpha: 0.35),
                     ),
                   ),
-                  child: const Text('Apri percorso'),
+                  child: Text(l10n.text('Apri video')),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             _resultCard(
-              title: 'Esercizio video (20–40 sec)',
+              title: l10n.text('Esercizi consigliati per la salute articolare'),
               icon: Icons.play_circle_outline_rounded,
               children: [
                 _bullet(result.recommendation.videoLabel),
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  onPressed: () async {
-                    final uri = Uri.parse(result.recommendation.videoUrl);
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  onPressed: () {
+                    Haptics.tap();
+                    context.push('/walks-overview');
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
@@ -160,7 +158,7 @@ class DailyCheckResultScreen extends StatelessWidget {
                       color: AppColors.primaryBlue.withValues(alpha: 0.35),
                     ),
                   ),
-                  child: const Text('Apri video'),
+                  child: Text(l10n.text('Apri video')),
                 ),
               ],
             ),
@@ -174,8 +172,8 @@ class DailyCheckResultScreen extends StatelessWidget {
                   color: AppColors.primaryBlue.withValues(alpha: 0.08),
                 ),
               ),
-              child: const Text(
-                'Domani bastano 20 secondi: l’app capisce il recupero del tuo cane.',
+              child: Text(
+                l10n.text('Domani bastano 20 secondi per compilare il Diario.'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -190,18 +188,16 @@ class DailyCheckResultScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Stato di oggi salvato.')),
-                  );
-                  context.pop();
+                  Haptics.strong();
+                  context.go('/home');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.ctaApricot,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                 ),
-                child: const Text(
-                  'Salva stato di oggi',
+                child: Text(
+                  l10n.text('Fatto'),
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Montserrat',
@@ -240,16 +236,20 @@ class DailyCheckResultScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(icon, color: AppColors.primaryBlue),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primaryBlue,
-                  fontFamily: 'Montserrat',
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryBlue,
+                    fontFamily: 'Montserrat',
+                    height: 1.25,
+                  ),
                 ),
               ),
             ],
@@ -298,14 +298,52 @@ class DailyCheckResultScreen extends StatelessWidget {
     }
   }
 
-  String _semaphoreLabel(DailySemaphore semaphore) {
+  String _semaphoreLabel(BuildContext context, DailySemaphore semaphore) {
     switch (semaphore) {
       case DailySemaphore.verde:
-        return 'SEMAFORO VERDE';
+        return context.l10n.text('SEMAFORO VERDE');
       case DailySemaphore.giallo:
-        return 'SEMAFORO GIALLO';
+        return context.l10n.text('SEMAFORO GIALLO');
       case DailySemaphore.rosso:
-        return 'SEMAFORO ROSSO';
+        return context.l10n.text('SEMAFORO ROSSO');
     }
+  }
+}
+
+class _SavedBadge extends StatelessWidget {
+  const _SavedBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF22A06B);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 18, color: accent),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: accent,
+                fontFamily: 'Montserrat',
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

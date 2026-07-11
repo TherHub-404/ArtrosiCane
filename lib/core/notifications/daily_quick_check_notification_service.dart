@@ -12,9 +12,9 @@ class DailyQuickCheckNotificationService {
 
   static const int _notificationId = 1600;
   static const String _channelId = 'daily_quick_check_reminders';
-  static const String _channelName = 'Promemoria Quick Check';
+  static const String _channelName = 'Promemoria "Come stai oggi?"';
   static const String _channelDescription =
-      'Promemoria giornaliero alle 16:00 per fare il quick check.';
+      'Promemoria giornaliero alle 16:00 per rispondere a "Come stai oggi?".';
 
   static bool _initialized = false;
 
@@ -77,8 +77,8 @@ class DailyQuickCheckNotificationService {
 
     await _plugin.zonedSchedule(
       _notificationId,
-      'Quick Check giornaliero',
-      'Sono le 16: è il momento del quick check per i tuoi amici a quattro zampe.',
+      'Come stai oggi?',
+      'Sono le 16: è il momento di chiedere "come stai oggi?" ai tuoi amici a quattro zampe.',
       _next16(),
       const NotificationDetails(
         android: AndroidNotificationDetails(

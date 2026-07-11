@@ -6,14 +6,17 @@ import 'package:artrosi_cane/core/config/app_config.dart';
 import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/core/logging/app_logger.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:play_install_referrer/play_install_referrer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 const _deepLinkChannelName = 'com.company.app/deeplink';
 const _deviceIdStorageKey = 'invite_device_id';
+const _installReferrerConsumedKey = 'install_referrer_consumed';
 
 final linkServiceProvider = Provider<LinkService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
@@ -53,6 +56,11 @@ class LinkService {
        _inviteHost = inviteHost.toLowerCase(),
        _invitePath = _normalizePath(invitePath);
 
+  static const Set<String> _appleAppClipHosts = <String>{
+    'appclip.apple.com',
+    'apps.apple.com',
+  };
+
   final AppLinks _appLinks;
   final MethodChannel _methodChannel;
   final http.Client _httpClient;
@@ -78,6 +86,7 @@ class LinkService {
     await _refreshFromStoredToken();
     await _consumeBufferedNativeLinks();
     await _consumeInitialAppLinks();
+    await _consumePlayInstallReferrer();
 
     _linkSub = _appLinks.uriLinkStream.listen(
       (uri) => _handleIncomingUrl(uri.toString(), source: 'app_links_stream'),
@@ -85,6 +94,43 @@ class LinkService {
         AppLogger.debug('uriLinkStream error: $error');
       },
     );
+  }
+
+  Future<void> _consumePlayInstallReferrer() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    if (_prefs.getBool(_installReferrerConsumedKey) == true) {
+      return;
+    }
+
+    try {
+      final details = await PlayInstallReferrer.installReferrer;
+      final raw = details.installReferrer?.trim();
+      await _prefs.setBool(_installReferrerConsumedKey, true);
+
+      if (raw == null || raw.isEmpty) {
+        return;
+      }
+
+      final params = Uri.splitQueryString(raw);
+      final token = params['token']?.trim();
+      final location = params['location']?.trim().toLowerCase();
+
+      if ((token == null || token.isEmpty) &&
+          (location == null || location.isEmpty)) {
+        return;
+      }
+
+      if (location != null && location.isNotEmpty) {
+        await _flagsController.persistInviteLocationFromLink(location);
+      }
+      if (token != null && token.isNotEmpty) {
+        await _syncToken(token, source: 'play_install_referrer');
+      }
+    } catch (error) {
+      AppLogger.debug('Play install referrer unavailable: $error');
+    }
   }
 
   Future<void> dispose() async {
@@ -164,7 +210,12 @@ class LinkService {
 
     await _flagsController.persistInviteLocationFromLink(inviteLink.location);
 
-    await _syncToken(inviteLink.token, source: source);
+    if (inviteLink.token == null || inviteLink.token!.isEmpty) {
+      AppLogger.debug('Invite context updated without token ($source)');
+      return;
+    }
+
+    await _syncToken(inviteLink.token!, source: source);
   }
 
   Future<void> _syncToken(String token, {required String source}) async {
@@ -202,7 +253,28 @@ class LinkService {
     }
 
     if (uri.host.toLowerCase() != _inviteHost) {
-      return null;
+      final normalizedHost = uri.host.toLowerCase();
+      if (!_appleAppClipHosts.contains(normalizedHost) ||
+          !_isRecognizedAppleAppClipLink(uri)) {
+        return null;
+      }
+
+      final token =
+          (uri.queryParameters['t'] ?? uri.queryParameters['token'])?.trim();
+      final location =
+          (uri.queryParameters['location'] ?? uri.queryParameters['loc'])
+              ?.trim()
+              .toLowerCase();
+
+      if ((token == null || token.isEmpty) &&
+          (location == null || location.isEmpty)) {
+        return null;
+      }
+
+      return _ParsedInviteLink(
+        token: (token == null || token.isEmpty) ? null : token,
+        location: (location == null || location.isEmpty) ? null : location,
+      );
     }
 
     final normalizedPath = _normalizePath(uri.path);
@@ -234,14 +306,26 @@ class LinkService {
       }
     }
 
-    if (token == null || token.isEmpty) {
+    if ((token == null || token.isEmpty) &&
+        (location == null || location.isEmpty)) {
       return null;
     }
 
     return _ParsedInviteLink(
-      token: token,
+      token: (token == null || token.isEmpty) ? null : token,
       location: (location == null || location.isEmpty) ? null : location,
     );
+  }
+
+  bool _isRecognizedAppleAppClipLink(Uri uri) {
+    final bundleId =
+        (uri.queryParameters['p'] ?? uri.queryParameters['app-clip-bundle-id'])
+            ?.trim()
+            .toLowerCase();
+    if (bundleId == null || bundleId.isEmpty) {
+      return false;
+    }
+    return bundleId == 'com.artrosicase.artrosicane.clip';
   }
 
   Future<Map<String, dynamic>> _redeemOrFetchFlags(String token) async {
@@ -359,6 +443,6 @@ class LinkService {
 class _ParsedInviteLink {
   const _ParsedInviteLink({required this.token, required this.location});
 
-  final String token;
+  final String? token;
   final String? location;
 }

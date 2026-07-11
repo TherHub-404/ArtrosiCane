@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:artrosi_cane/core/linking/feature_flags_controller.dart';
 import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
 import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
+import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:artrosi_cane/core/widgets/app_card.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
+import 'package:artrosi_cane/core/widgets/header_logo.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/dog_supabase_repository.dart';
@@ -18,6 +21,8 @@ import 'package:artrosi_cane/features/quiz/domain/entities/quiz_answer.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
 import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_priority_engine.dart';
 import 'package:artrosi_cane/features/quiz/presentation/providers/quiz_providers.dart';
+import 'package:artrosi_cane/l10n/app_locale.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
@@ -26,7 +31,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuizFlowScreen extends ConsumerStatefulWidget {
   const QuizFlowScreen({
@@ -91,6 +95,9 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   bool get _showsDiagnosisGate =>
       (!widget.skipIntro && !widget.startFromDiagnosis) ||
       widget.startFromDiagnosis;
+
+  String _t(String key, [Map<String, String> params = const {}]) =>
+      AppLocalizations.of(context).text(key, params);
 
   @override
   void dispose() {
@@ -224,6 +231,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
           diagnosisCareNotes: profileForSync.diagnosisCareNotes,
         );
         await ref.read(saveDogProfileUseCaseProvider).call(profileForSync);
+        ref.invalidate(userDogsProvider);
         return;
       }
       final id = await repository.upsertDog(profileForSync);
@@ -232,6 +240,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
         _latestProfile = profileForSync.copyWith(id: id);
         await ref.read(saveDogProfileUseCaseProvider).call(_latestProfile!);
       }
+      ref.invalidate(userDogsProvider);
     } catch (_) {
       // Ignore remote errors for now
     }
@@ -240,7 +249,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   Future<String?> _uploadDiagnosisFile(PlatformFile file) async {
     final bytes = await _readPlatformFileBytes(file);
     if (bytes == null || bytes.isEmpty) {
-      throw Exception('File non leggibile');
+      throw Exception(_t('File non leggibile'));
     }
     return ref
         .read(dogSupabaseRepositoryProvider)
@@ -334,12 +343,17 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
   void _syncProfile() {
     final base = _profileDraft;
+    final keepsRisk = _diagnosisStatus != ArthrosisDiagnosisStatus.confirmed;
     _latestProfile = DogProfile(
+      id: base?.id,
       name: base?.name,
       ageYears: base?.ageYears,
       weightKg: base?.weightKg,
       breedId: base?.breedId,
       breedName: base?.breedName,
+      breedImageUrl: base?.breedImageUrl,
+      riskLevel: keepsRisk ? base?.riskLevel : null,
+      riskScore: keepsRisk ? base?.riskScore : null,
       diagnosisStatus: _diagnosisStatus,
       diagnosisAnsweredAt: _diagnosisAnsweredAt,
       diagnosisDate: _diagnosisDate,
@@ -351,13 +365,31 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     );
   }
 
+  Future<void> _saveResultOnCurrentProfile(QuizResult result) async {
+    final base =
+        _latestProfile ??
+        _profileDraft ??
+        _profileFromDogData(widget.dogData ?? const <String, dynamic>{});
+    if (base == null) return;
+
+    final updated = base.copyWith(
+      riskLevel: result.riskLevel.name,
+      riskScore: result.score,
+    );
+    _profileDraft = updated;
+    _latestProfile = updated;
+    await ref.read(saveDogProfileUseCaseProvider).call(updated);
+  }
+
   Future<void> _onAnswerSelected(String questionId, int answerValue) async {
+    Haptics.select();
     final controller = ref.read(quizControllerProvider.notifier);
     await controller.selectAnswer(questionId, answerValue);
   }
 
   Future<void> _goToPreviousPage() async {
     if (!mounted || _currentPage <= 0) return;
+    await Haptics.tap();
     await _pageController.previousPage(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -369,10 +401,12 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     final state = ref.read(quizControllerProvider);
     final isLastPage = pageIndex == _totalPages(state) - 1;
     if (isLastPage) {
+      await Haptics.strong();
       await _submitStandardFlow();
       return;
     }
     if (!mounted) return;
+    await Haptics.tap();
     await _pageController.nextPage(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -396,22 +430,19 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
           'score': result.score,
         },
       );
+      await _saveResultOnCurrentProfile(result);
       await _persistResultRemote(result);
-      if (_isUserAuthenticated()) {
-        await _navigateBackToDogDashboard(result);
-      } else {
-        await ref.read(completeOnboardingUseCaseProvider).call();
-        if (!mounted) return;
-        context.go(
-          '/quiz/result',
-          extra: {
-            'result': result,
-            'dog': _buildDogNavigationData(
-              arthrosisGrade: _riskLabel(result.riskLevel),
-            ),
-          },
-        );
-      }
+      await ref.read(completeOnboardingUseCaseProvider).call();
+      if (!mounted) return;
+      context.go(
+        '/quiz/result',
+        extra: {
+          'result': result,
+          'dog': _buildDogNavigationData(
+            arthrosisGrade: _riskLabel(result.riskLevel),
+          ),
+        },
+      );
     } finally {
       if (mounted) {
         setState(() => _submittingStandardFlow = false);
@@ -494,6 +525,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     await ref
         .read(quizRemoteDataSourceProvider)
         .saveResult(result: result, dogId: dogId, answers: payloadAnswers);
+    ref.invalidate(userDogsProvider);
     if (dogId != null && dogId.isNotEmpty) {
       final signature = '${dogId}_${result.riskLevel.name}_${result.score}';
       await ref
@@ -517,59 +549,6 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
     await ref
         .read(quizRemoteDataSourceProvider)
         .saveOnboardingEvent(eventName: eventName, payload: payload);
-  }
-
-  QuizResult _toLegacyQuizResult(DiagnosisPriorityResult result) {
-    final areas = PriorityArea.values.map(result.area).toList();
-    final hasHigh = areas.any((item) => item.level == PriorityLevel.alta);
-    final hasMedium = areas.any((item) => item.level == PriorityLevel.media);
-    final riskLevel = hasHigh
-        ? RiskLevel.alto
-        : hasMedium
-        ? RiskLevel.medio
-        : RiskLevel.basso;
-    return QuizResult(riskLevel: riskLevel, score: result.totalScore);
-  }
-
-  int _encodeJointsMask(Set<DiagnosisJoint> joints) {
-    var mask = 0;
-    for (final joint in joints) {
-      mask |= (1 << joint.index);
-    }
-    return mask;
-  }
-
-  List<QuizAnswer> _buildConfirmedDiagnosisAnswers() {
-    return [
-      QuizAnswer(
-        questionId: 'dq_joints_mask',
-        value: _encodeJointsMask(_diagnosisJoints),
-      ),
-      QuizAnswer(
-        questionId: 'dq_mobility',
-        value: _diagnosisMobility?.index ?? 0,
-      ),
-      QuizAnswer(
-        questionId: 'dq_rigidity_frequency',
-        value: _diagnosisRigidityFrequency?.index ?? 0,
-      ),
-      QuizAnswer(
-        questionId: 'dq_recovery',
-        value: _diagnosisRecovery?.index ?? 0,
-      ),
-      QuizAnswer(
-        questionId: 'dq_home_risk_factors',
-        value: (_diagnosisHomeRiskFactors ?? false) ? 1 : 0,
-      ),
-      QuizAnswer(
-        questionId: 'dq_weight_trend',
-        value: _diagnosisWeightTrend?.index ?? 0,
-      ),
-      QuizAnswer(
-        questionId: 'dq_movement_rhythm',
-        value: _diagnosisMovementRhythm?.index ?? 0,
-      ),
-    ];
   }
 
   Future<void> _submitConfirmedDiagnosisFlow() async {
@@ -597,7 +576,6 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       );
 
       final priorityResult = _diagnosisPriorityEngine.evaluate(input);
-      final legacyResult = _toLegacyQuizResult(priorityResult);
       await _trackOnboardingEvent(
         'diagnosis_priority_completed',
         payload: {
@@ -615,70 +593,52 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
           .saveDiagnosisPriorityResult(
             DiagnosisPriorityResultModel.fromEntity(priorityResult),
           );
-      await _persistResultRemote(
-        legacyResult,
-        answers: _buildConfirmedDiagnosisAnswers(),
+      await ref.read(completeOnboardingUseCaseProvider).call();
+      if (!mounted) return;
+      context.go(
+        '/quiz/diagnosis-result',
+        extra: {
+          'result': priorityResult,
+          'dog': _buildDogNavigationData(arthrosisGrade: _t('Non rilevato')),
+        },
       );
-      if (_isUserAuthenticated()) {
-        await _navigateBackToDogDashboard(legacyResult);
-      } else {
-        await ref.read(completeOnboardingUseCaseProvider).call();
-        if (!mounted) return;
-        context.go(
-          '/quiz/diagnosis-result',
-          extra: {
-            'result': priorityResult,
-            'dog': _buildDogNavigationData(
-              arthrosisGrade: _riskLabel(legacyResult.riskLevel),
-            ),
-          },
-        );
-      }
     } finally {
       if (mounted) setState(() => _submittingDiagnosisFlow = false);
     }
   }
 
-  bool _isUserAuthenticated() {
-    return Supabase.instance.client.auth.currentUser != null;
-  }
-
-  Future<void> _navigateBackToDogDashboard(QuizResult result) async {
-    // Refresh dog list so the updated risk is pulled on home.
-    ref.invalidate(userDogsProvider);
-
-    if (mounted) {
-      context.go(
-        '/dog-dashboard',
-        extra: _buildDogNavigationData(
-          arthrosisGrade: _riskLabel(result.riskLevel),
-        ),
-      );
-    }
-  }
-
   Map<String, dynamic> _buildDogNavigationData({String? arthrosisGrade}) {
+    final currentRiskLevel =
+        _latestProfile?.riskLevel ?? _profileDraft?.riskLevel;
+    final currentRiskScore =
+        _latestProfile?.riskScore ?? _profileDraft?.riskScore;
+    final currentDiagnosisStatus =
+        _latestProfile?.diagnosisStatus ?? _profileDraft?.diagnosisStatus;
     return {
       'id': _dogId,
-      'name': _dogName ?? _latestProfile?.name ?? 'Il tuo cane',
-      'breed': _dogBreed ?? _latestProfile?.breedName ?? 'Razza non indicata',
+      'name': _dogName ?? _latestProfile?.name ?? _t('Il tuo cane'),
+      'breed':
+          _dogBreed ?? _latestProfile?.breedName ?? _t('Razza non indicata'),
       'breedId': _latestProfile?.breedId,
       'imagePath':
           _dogImage ?? _latestProfile?.breedImageUrl ?? 'assets/first-dog.png',
       'age': _dogAge ?? _latestProfile?.ageYears,
       'weight': _dogWeight ?? _latestProfile?.weightKg,
-      'arthrosisGrade': arthrosisGrade ?? 'Non rilevato',
+      'riskLevel': currentRiskLevel,
+      'riskScore': currentRiskScore,
+      'diagnosisStatus': currentDiagnosisStatus?.name,
+      'arthrosisGrade': arthrosisGrade ?? _t('Non rilevato'),
     };
   }
 
   String _riskLabel(RiskLevel level) {
     switch (level) {
       case RiskLevel.basso:
-        return 'Nessun Livello di artrosi';
+        return _t('Basso');
       case RiskLevel.medio:
-        return 'Artrosi Lieve';
+        return _t('Medio');
       case RiskLevel.alto:
-        return 'Artrosi Grave';
+        return _t('Alto');
     }
   }
 
@@ -708,12 +668,27 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
 
     final questionStartIndex = _questionStartIndex();
     final totalPages = _totalPages(state);
+    final inviteLocation = ref.watch(
+      featureFlagsControllerProvider.select((state) => state.inviteLocation),
+    );
+    final isBibbioneMode =
+        inviteLocation == 'bibbione' || inviteLocation == 'bibione';
 
     return AppScaffold(
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false, // Remove default back button
+        automaticallyImplyLeading: false,
+        titleSpacing: AppSpacing.md,
+        toolbarHeight: 72,
+        title: SizedBox(
+          width: double.infinity,
+          child: HeaderLogo(
+            leftWidth: 156,
+            rightWidth: 136,
+            showRight: isBibbioneMode,
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -836,10 +811,14 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  AppText.body('Domanda ${questionIndex + 1}'),
+                                  AppText.body(
+                                    _t('Domanda {{number}}', {
+                                      'number': '${questionIndex + 1}',
+                                    }),
+                                  ),
                                   const SizedBox(height: AppSpacing.sm),
                                   Text(
-                                    question.text,
+                                    _t(question.text),
                                     style: AppTypography.h1.copyWith(
                                       fontSize: 22,
                                       height: 1.2,
@@ -855,7 +834,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                                   bottom: AppSpacing.md,
                                 ),
                                 child: _OptionTile(
-                                  label: entry.value,
+                                  label: _t(entry.value),
                                   isSelected: selectedAnswer == entry.key,
                                   onTap: () =>
                                       _onAnswerSelected(question.id, entry.key),
@@ -875,7 +854,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                                   ? _goToPreviousPage
                                   : null,
                               icon: const Icon(Icons.arrow_back_rounded),
-                              label: const Text('Indietro'),
+                              label: Text(_t('Indietro')),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryBlue,
                                 side: const BorderSide(
@@ -917,8 +896,8 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                                     )
                                   : Text(
                                       index == totalPages - 1
-                                          ? 'Vedi risultato'
-                                          : 'Continua',
+                                          ? _t('Vedi risultato')
+                                          : _t('Continua'),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -972,28 +951,28 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 1:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question: 'Come descriveresti la mobilita oggi?',
-          subtitle: 'Pensando alla giornata tipo.',
+          question: _t('Come descriveresti la mobilita oggi?'),
+          subtitle: _t('Pensando alla giornata tipo.'),
           options: [
             (
-              label: 'Lieve',
-              detail: 'Cammina ma con rigidita leggera.',
+              label: _t('Lieve'),
+              detail: _t('Cammina ma con rigidita leggera.'),
               selected: _diagnosisMobility == DiagnosisMobility.lieve,
               onTap: () => _selectDiagnosisOption(
                 update: () => _diagnosisMobility = DiagnosisMobility.lieve,
               ),
             ),
             (
-              label: 'Moderata',
-              detail: 'Rallenta ed evita alcuni movimenti.',
+              label: _t('Moderata'),
+              detail: _t('Rallenta ed evita alcuni movimenti.'),
               selected: _diagnosisMobility == DiagnosisMobility.moderata,
               onTap: () => _selectDiagnosisOption(
                 update: () => _diagnosisMobility = DiagnosisMobility.moderata,
               ),
             ),
             (
-              label: 'Avanzata',
-              detail: 'Difficolta evidente, fatica ad alzarsi.',
+              label: _t('Avanzata'),
+              detail: _t('Difficolta evidente, fatica ad alzarsi.'),
               selected: _diagnosisMobility == DiagnosisMobility.avanzata,
               onTap: () => _selectDiagnosisOption(
                 update: () => _diagnosisMobility = DiagnosisMobility.avanzata,
@@ -1004,11 +983,12 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 2:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question:
-              'Nell’ultima settimana quante volte hai notato rigidita o zoppia?',
+          question: _t(
+            'Nell’ultima settimana quante volte hai notato rigidita o zoppia?',
+          ),
           options: [
             (
-              label: 'Mai',
+              label: _t('Mai'),
               detail: null,
               selected:
                   _diagnosisRigidityFrequency == DiagnosisRigidityFrequency.mai,
@@ -1018,7 +998,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: '1-2 giorni',
+              label: _t('1-2 giorni'),
               detail: null,
               selected:
                   _diagnosisRigidityFrequency ==
@@ -1029,7 +1009,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: '3-4 giorni',
+              label: _t('3-4 giorni'),
               detail: null,
               selected:
                   _diagnosisRigidityFrequency ==
@@ -1040,7 +1020,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: '5-7 giorni',
+              label: _t('5-7 giorni'),
               detail: null,
               selected:
                   _diagnosisRigidityFrequency ==
@@ -1055,11 +1035,11 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 3:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question: 'Il giorno dopo una passeggiata normale, com’e?',
-          subtitle: 'Non considerare escursioni lunghe.',
+          question: _t('Il giorno dopo una passeggiata normale, com’e?'),
+          subtitle: _t('Non considerare escursioni lunghe.'),
           options: [
             (
-              label: 'Uguale',
+              label: _t('Uguale'),
               detail: null,
               selected: _diagnosisRecovery == DiagnosisRecovery.uguale,
               onTap: () => _selectDiagnosisOption(
@@ -1067,7 +1047,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'Un po peggio',
+              label: _t('Un po peggio'),
               detail: null,
               selected: _diagnosisRecovery == DiagnosisRecovery.unPoPeggio,
               onTap: () => _selectDiagnosisOption(
@@ -1075,7 +1055,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'Molto peggio',
+              label: _t('Molto peggio'),
               detail: null,
               selected: _diagnosisRecovery == DiagnosisRecovery.moltoPeggio,
               onTap: () => _selectDiagnosisOption(
@@ -1088,11 +1068,11 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 4:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question: 'In casa sono presenti 2 o piu fattori di rischio?',
-          subtitle: 'Scale, pavimenti scivolosi, salti o auto difficile.',
+          question: _t('In casa sono presenti 2 o piu fattori di rischio?'),
+          subtitle: _t('Scale, pavimenti scivolosi, salti o auto difficile.'),
           options: [
             (
-              label: 'Si',
+              label: _t('Si'),
               detail: null,
               selected: _diagnosisHomeRiskFactors == true,
               onTap: () => _selectDiagnosisOption(
@@ -1100,7 +1080,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'No',
+              label: _t('No'),
               detail: null,
               selected: _diagnosisHomeRiskFactors == false,
               onTap: () => _selectDiagnosisOption(
@@ -1112,10 +1092,10 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 5:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question: 'Negli ultimi 3 mesi il peso e...',
+          question: _t('Negli ultimi 3 mesi il peso e...'),
           options: [
             (
-              label: 'Stabile',
+              label: _t('Stabile'),
               detail: null,
               selected: _diagnosisWeightTrend == DiagnosisWeightTrend.stabile,
               onTap: () => _selectDiagnosisOption(
@@ -1124,7 +1104,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'In aumento',
+              label: _t('In aumento'),
               detail: null,
               selected: _diagnosisWeightTrend == DiagnosisWeightTrend.inAumento,
               onTap: () => _selectDiagnosisOption(
@@ -1133,7 +1113,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'Non so',
+              label: _t('Non so'),
               detail: null,
               selected: _diagnosisWeightTrend == DiagnosisWeightTrend.nonSo,
               onTap: () => _selectDiagnosisOption(
@@ -1146,11 +1126,11 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
       case 6:
         return _buildDiagnosisSingleChoiceStep(
           step: step,
-          question: 'Il movimento settimanale e...',
-          subtitle: 'La regolarita e piu importante della quantita.',
+          question: _t('Il movimento settimanale e...'),
+          subtitle: _t('La regolarita e piu importante della quantita.'),
           options: [
             (
-              label: 'Regolare ogni giorno',
+              label: _t('Regolare ogni giorno'),
               detail: null,
               selected:
                   _diagnosisMovementRhythm ==
@@ -1161,7 +1141,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'A giorni alterni tanto',
+              label: _t('A giorni alterni tanto'),
               detail: null,
               selected:
                   _diagnosisMovementRhythm ==
@@ -1172,7 +1152,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
               ),
             ),
             (
-              label: 'Irregolare (weekend lunghi)',
+              label: _t('Irregolare (weekend lunghi)'),
               detail: null,
               selected:
                   _diagnosisMovementRhythm ==
@@ -1216,11 +1196,14 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppText.body(
-                        'Domanda ${step + 1}/$_confirmedDiagnosisQuestionCount',
+                        _t('Domanda {{number}}', {
+                          'number':
+                              '${step + 1}/$_confirmedDiagnosisQuestionCount',
+                        }),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        'Quali articolazioni sono coinvolte?',
+                        _t('Quali articolazioni sono coinvolte?'),
                         style: AppTypography.h1.copyWith(
                           fontSize: 22,
                           height: 1.2,
@@ -1228,7 +1211,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       AppText.body(
-                        'Seleziona tutte quelle indicate nella diagnosi.',
+                        _t('Seleziona tutte quelle indicate nella diagnosi.'),
                       ),
                     ],
                   ),
@@ -1238,7 +1221,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                   (option) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: _OptionTile(
-                      label: option.$2,
+                      label: _t(option.$2),
                       isSelected: _diagnosisJoints.contains(option.$1),
                       onTap: () {
                         if (_submittingDiagnosisFlow) return;
@@ -1269,7 +1252,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                           ? null
                           : _goToPreviousConfirmedDiagnosisStep,
                       icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Indietro'),
+                      label: Text(_t('Indietro')),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primaryBlue,
                         side: const BorderSide(color: AppColors.borderSoft),
@@ -1295,7 +1278,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text('Continua'),
+                      child: Text(_t('Continua')),
                     ),
                   ),
                 ],
@@ -1344,7 +1327,10 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppText.body(
-                        'Domanda ${step + 1}/$_confirmedDiagnosisQuestionCount',
+                        _t('Domanda {{number}}', {
+                          'number':
+                              '${step + 1}/$_confirmedDiagnosisQuestionCount',
+                        }),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
@@ -1390,7 +1376,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                           ? null
                           : _goToPreviousConfirmedDiagnosisStep,
                       icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Indietro'),
+                      label: Text(_t('Indietro')),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primaryBlue,
                         side: const BorderSide(color: AppColors.borderSoft),
@@ -1418,8 +1404,8 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                       ),
                       child: Text(
                         step == _confirmedDiagnosisQuestionCount - 1
-                            ? 'Vedi risultato'
-                            : 'Continua',
+                            ? _t('Vedi risultato')
+                            : _t('Continua'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -1643,6 +1629,9 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
     return !_missingDate;
   }
 
+  String _t(String key, [Map<String, String> params = const {}]) =>
+      AppLocalizations.of(context).text(key, params);
+
   @override
   void initState() {
     super.initState();
@@ -1715,7 +1704,10 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Caricati ${uploaded.length} file. Non caricati: $failed.',
+              _t('Caricati {{uploaded}} file. Non caricati: {{failed}}.', {
+                'uploaded': uploaded.length.toString(),
+                'failed': failed.toString(),
+              }),
             ),
           ),
         );
@@ -1726,8 +1718,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Non sono riuscito a caricare i file su cloud.'),
+        SnackBar(
+          content: Text(_t('Non sono riuscito a caricare i file su cloud.')),
         ),
       );
     }
@@ -1745,8 +1737,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('File rimosso dalla lista, ma non dal cloud.'),
+        SnackBar(
+          content: Text(_t('File rimosso dalla lista, ma non dal cloud.')),
         ),
       );
     }
@@ -1772,7 +1764,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
     final borderColor = hasError ? Colors.red.shade400 : AppColors.borderSoft;
     return InputDecoration(
       hintText: hintText,
-      errorText: hasError ? 'Campo obbligatorio' : null,
+      errorText: hasError ? _t('Campo obbligatorio') : null,
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
@@ -1828,8 +1820,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
       initialDate: initial.isAfter(now) ? now : initial,
       firstDate: DateTime(2000),
       lastDate: now,
-      helpText: 'Data diagnosi',
-      locale: const Locale('it'),
+      helpText: _t('Data diagnosi'),
+      locale: AppLanguage.fromLocale(Localizations.localeOf(context)).locale,
     );
     if (picked == null) return;
     setState(() {
@@ -1854,18 +1846,22 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppText.h1('Diagnosi', color: AppColors.primaryBlue),
+                AppText.h1(_t('Diagnosi'), color: AppColors.primaryBlue),
                 const SizedBox(height: AppSpacing.md),
                 AppText.body(
-                  'Il tuo cane ha una diagnosi di artrosi confermata dal veterinario?',
+                  _t(
+                    'Il tuo cane ha una diagnosi di artrosi confermata dal veterinario?',
+                  ),
                   color: AppColors.text,
                   bold: true,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _ChoiceCard(
                   icon: Icons.verified_rounded,
-                  label: 'Ho già una diagnosi',
-                  subtitle: 'Posso allegare referti e aggiungere note utili.',
+                  label: _t('Ho già una diagnosi'),
+                  subtitle: _t(
+                    'Posso allegare referti e aggiungere note utili.',
+                  ),
                   selected: _status == ArthrosisDiagnosisStatus.confirmed,
                   hasError: _attemptedSubmit && _missingStatus,
                   onTap: () {
@@ -1879,8 +1875,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                 const SizedBox(height: AppSpacing.sm),
                 _ChoiceCard(
                   icon: Icons.search_rounded,
-                  label: 'Non ho una diagnosi',
-                  subtitle: 'Continuo con il test di screening.',
+                  label: _t('Non ho una diagnosi'),
+                  subtitle: _t('Continuo con il test di screening.'),
                   selected: _status == ArthrosisDiagnosisStatus.notDiagnosed,
                   hasError: _attemptedSubmit && _missingStatus,
                   onTap: () {
@@ -1915,7 +1911,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                             ),
                             const SizedBox(width: AppSpacing.xs),
                             AppText.body(
-                              'Importante',
+                              _t('Importante'),
                               bold: true,
                               color: AppColors.ctaApricot,
                             ),
@@ -1933,13 +1929,13 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                     controller: _dateCtrl,
                     readOnly: true,
                     decoration: _diagnosisInputDecoration(
-                      hintText: 'Quando è stata fatta la diagnosi?',
+                      hintText: _t('Quando è stata fatta la diagnosi?'),
                       hasError: _attemptedSubmit && _missingDate,
                       suffixIcon: IconButton(
                         onPressed: _selectDiagnosisDate,
                         icon: const Icon(Icons.calendar_today_rounded),
                         color: AppColors.primaryBlue,
-                        tooltip: 'Seleziona data',
+                        tooltip: _t('Seleziona data'),
                       ),
                     ),
                     onTap: _selectDiagnosisDate,
@@ -1948,7 +1944,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                   TextField(
                     controller: _vetCtrl,
                     decoration: _diagnosisInputDecoration(
-                      hintText: 'Da che studio veterinario?',
+                      hintText: _t('Da che studio veterinario?'),
                       hasError: false,
                     ),
                     onChanged: (_) => _notifyChange(),
@@ -1974,12 +1970,14 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
-                            AppText.body('Allega referti', bold: true),
+                            AppText.body(_t('Allega referti'), bold: true),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         AppText.body(
-                          'Formati suggeriti: .pdf .png .jpeg .jpg (puoi allegare anche altri tipi).',
+                          _t(
+                            'Formati suggeriti: .pdf .png .jpeg .jpg (puoi allegare anche altri tipi).',
+                          ),
                           color: AppColors.text.withValues(alpha: 0.72),
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -1994,8 +1992,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                           ),
                           label: Text(
                             _uploadingDiagnosisFiles
-                                ? 'Caricamento in corso...'
-                                : 'Seleziona file',
+                                ? _t('Caricamento in corso...')
+                                : _t('Seleziona file'),
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primaryBlue,
@@ -2049,8 +2047,9 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                     minLines: 4,
                     maxLines: 6,
                     decoration: _diagnosisInputDecoration(
-                      hintText:
-                          'Note su dieta, farmaci, integratori o cure che il cane sta seguendo.',
+                      hintText: _t(
+                        'Note su dieta, farmaci, integratori o cure che il cane sta seguendo.',
+                      ),
                       hasError: false,
                     ),
                     onChanged: (_) => _notifyChange(),
@@ -2067,7 +2066,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                 child: OutlinedButton.icon(
                   onPressed: () => widget.onGoBack(),
                   icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Indietro'),
+                  label: Text(_t('Indietro')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
                     side: const BorderSide(color: AppColors.borderSoft),
@@ -2094,8 +2093,8 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    'Continua',
+                  child: Text(
+                    _t('Continua'),
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -2263,9 +2262,9 @@ class _QuizBottomBar extends StatelessWidget {
                 size: 16,
                 color: AppColors.ctaApricot,
               ),
-              label: const Text(
-                'Indietro',
-                style: TextStyle(
+              label: Text(
+                AppLocalizations.of(context).text('Indietro'),
+                style: const TextStyle(
                   color: AppColors.ctaApricot,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2275,37 +2274,36 @@ class _QuizBottomBar extends StatelessWidget {
             const SizedBox.shrink(),
           const Spacer(),
           if (!isLast)
-            SizedBox(
-              width: 150,
-              child: ElevatedButton.icon(
-                onPressed: onNext,
-                icon: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  'Continua',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.ctaApricot,
-                  elevation: 3,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  minimumSize: const Size(150, 44),
-                ),
-                iconAlignment: IconAlignment.end,
+            ElevatedButton.icon(
+              onPressed: onNext,
+              icon: const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.white,
               ),
+              label: Text(
+                AppLocalizations.of(context).text('Continua'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.ctaApricot,
+                elevation: 3,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                minimumSize: const Size(150, 44),
+              ),
+              iconAlignment: IconAlignment.end,
             )
           else
             const SizedBox.shrink(),

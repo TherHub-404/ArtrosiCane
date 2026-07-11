@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:flutter/material.dart';
 
 class AppButton extends StatelessWidget {
@@ -18,8 +19,9 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activeCallback = enabled ? Haptics.wrap(onPressed) : null;
     return ElevatedButton(
-      onPressed: enabled ? onPressed : null,
+      onPressed: activeCallback,
       style: backgroundColor != null
           ? ElevatedButton.styleFrom(
               backgroundColor: backgroundColor,

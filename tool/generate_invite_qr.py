@@ -5,6 +5,11 @@ Generate invite QR codes with center emoji badges.
 Outputs:
 - assets/qr/qr-normal-dog.png
 - assets/qr/qr-bibbione-island.png
+
+Examples:
+  python3 tool/generate_invite_qr.py \\
+    --normal-url 'https://appclip.apple.com/id?p=com.artrosicase.artrosicane.Clip&location=normal' \\
+    --bibbione-url 'https://appclip.apple.com/id?p=com.artrosicase.artrosicane.Clip&location=bibione'
 """
 
 from __future__ import annotations
@@ -54,6 +59,14 @@ def parse_args() -> argparse.Namespace:
         "--out-dir",
         default="assets/qr",
         help="Output directory",
+    )
+    parser.add_argument(
+        "--normal-url",
+        help="Explicit URL to embed in the normal QR. Overrides token/domain options.",
+    )
+    parser.add_argument(
+        "--bibbione-url",
+        help="Explicit URL to embed in the Bibbione QR. Overrides token/domain options.",
     )
     parser.add_argument(
         "--url-format",
@@ -140,11 +153,15 @@ def main() -> int:
     out_dir = pathlib.Path(args.out_dir)
     cache_dir = out_dir / ".emoji-cache"
 
-    normal_url = build_url(args.domain, args.normal_token, url_format=args.url_format)
-    bibbione_url = build_url(
+    normal_url = args.normal_url or build_url(
+        args.domain,
+        args.normal_token,
+        url_format=args.url_format,
+    )
+    bibbione_url = args.bibbione_url or build_url(
         args.domain,
         args.bibbione_token,
-        "bibbione",
+        "bibione",
         url_format=args.url_format,
     )
 

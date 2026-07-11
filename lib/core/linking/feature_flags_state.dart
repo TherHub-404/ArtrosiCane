@@ -39,6 +39,13 @@ class FeatureFlagsState {
     );
   }
 
+  /// True when the install/deep-link asked the app to skip the onboarding
+  /// flow (welcome + quiz) and route the user straight to login / home.
+  bool get shouldSkipOnboarding => inviteLocation == 'skip-onboard';
+
+  /// True when the install/deep-link is the Bibione partner flow.
+  bool get isBibioneFlow => inviteLocation == 'bibione';
+
   bool isEnabled(String key, {bool defaultValue = false}) {
     final value = flags[key];
     if (value is bool) {

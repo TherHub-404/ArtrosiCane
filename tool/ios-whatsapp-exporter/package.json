@@ -1,0 +1,43 @@
+{
+  "name": "ios-whatsapp-exporter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "activate:whatsapp": "node scripts/activate-whatsapp-business.mjs",
+    "export:all:fast": "node scripts/export-all-chats-fast.mjs",
+    "export:all:safe-fast": "node scripts/export-all-chats-safe-fast.mjs",
+    "export:visible": "node scripts/export-visible-chats-batch.mjs",
+    "export:visible:fast-current": "node scripts/export-visible-chats-fast-current.mjs",
+    "focus:whatsapp:switcher": "node scripts/focus-whatsapp-from-app-switcher.mjs",
+    "find:whatsapp": "node scripts/find-whatsapp-bundles.mjs",
+    "goto:export-list:fast": "node scripts/goto-export-list-fast.mjs",
+    "goto:export-list": "node scripts/navigate-to-export-chat.mjs",
+    "probe:flow": "node scripts/probe-export-flow.mjs",
+    "probe:current-fast": "node scripts/probe-current-screen-fast.mjs",
+    "probe:confirm-save-current": "node scripts/probe-confirm-save-current.mjs",
+    "probe:files-picker-from-current": "node scripts/probe-files-picker-from-current.mjs",
+    "probe:files-parent-from-current": "node scripts/probe-parent-from-files-current.mjs",
+    "probe:files-more-menu-current": "node scripts/probe-files-more-menu-current.mjs",
+    "probe:open-chat-clyo-from-browse-current": "node scripts/probe-open-chat-clyo-from-browse-current.mjs",
+    "probe:search-clyo-chats-current": "node scripts/probe-search-clyo-chats-current.mjs",
+    "probe:save-into-chat-clyo-from-search-current": "node scripts/probe-save-into-chat-clyo-from-search-current.mjs",
+    "probe:save-to-files": "node scripts/probe-save-to-files.mjs",
+    "probe:save-to-files:fast": "node scripts/probe-save-to-files-fast.mjs",
+    "probe:share-sheet": "node scripts/probe-share-sheet.mjs",
+    "resolve:duplicate:keep-both:current": "node scripts/resolve-duplicate-keep-both-current.mjs",
+    "scroll:choose-chat:current": "node scripts/scroll-choose-chat-current.mjs",
+    "swipe:up:choose-chat:current": "node scripts/swipe-up-choose-chat-current.mjs",
+    "probe": "node scripts/probe-whatsapp-business.mjs",
+    "probe:export-list": "node scripts/open-export-chat.mjs",
+    "appium": "appium server --use-drivers=xcuitest --base-path=/wd/hub"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "webdriverio": "^9.20.0"
+  },
+  "devDependencies": {
+    "appium": "^3.2.2",
+    "appium-xcuitest-driver": "^10.41.0"
+  }
+}

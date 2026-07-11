@@ -24,15 +24,6 @@ class DogSupabaseRepository {
       userId: userId,
     );
 
-    // Try to find an existing dog for this owner with the same name
-    final existing = await _client
-        .from('dogs')
-        .select('id')
-        .eq('owner_id', userId)
-        .eq('name', profile.name!)
-        .limit(1)
-        .maybeSingle();
-
     final payload = {
       'owner_id': userId,
       'name': profile.name,
@@ -49,18 +40,22 @@ class DogSupabaseRepository {
       'diagnosis_care_notes': profile.diagnosisCareNotes,
     };
 
-    if (existing != null && existing['id'] != null) {
-      final id = existing['id'] as String;
-      await _client.from('dogs').update(payload).eq('id', id);
-      return id;
-    } else {
-      final inserted = await _client
+    final profileId = profile.id?.trim();
+    if (profileId != null && profileId.isNotEmpty) {
+      await _client
           .from('dogs')
-          .insert(payload)
-          .select('id')
-          .maybeSingle();
-      return inserted?['id'] as String?;
+          .update(payload)
+          .eq('id', profileId)
+          .eq('owner_id', userId);
+      return profileId;
     }
+
+    final inserted = await _client
+        .from('dogs')
+        .insert(payload)
+        .select('id')
+        .maybeSingle();
+    return inserted?['id'] as String?;
   }
 
   Future<void> updateDiagnosisForDog({
