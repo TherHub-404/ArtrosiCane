@@ -31,6 +31,7 @@ jobs:
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           TARGET_STATE_NAME: In Review
+          TARGET_STATE_ID: 7d2dd602-a828-49c7-b74a-44cea96710c9
         run: |
           set -euo pipefail
 
@@ -84,7 +85,7 @@ jobs:
             --data "$(jq -n --arg id "$ISSUE_ID" '{query:"query IssueForPr($id: String!) { issue(id: $id) { id identifier state { name } team { states { nodes { id name } } } } }", variables:{id:$id}}')")"
 
           LINEAR_ISSUE_UUID="$(printf '%s' "$ISSUE_RESPONSE" | jq -r '.data.issue.id // empty')"
-          TARGET_STATE_ID="$(printf '%s' "$ISSUE_RESPONSE" | jq -r --arg name "$TARGET_STATE_NAME" '.data.issue.team.states.nodes[] | select((.name | ascii_downcase) == ($name | ascii_downcase)) | .id' | head -n 1)"
+          TARGET_STATE_ID="${TARGET_STATE_ID:-$(printf '%s' "$ISSUE_RESPONSE" | jq -r --arg name "$TARGET_STATE_NAME" '.data.issue.team.states.nodes[] | select((.name | ascii_downcase) == ($name | ascii_downcase)) | .id' | head -n 1)}"
 
           if [ -z "$LINEAR_ISSUE_UUID" ] || [ -z "$TARGET_STATE_ID" ]; then
             echo "Could not resolve Linear issue or target state for $ISSUE_ID."
