@@ -1,0 +1,141 @@
+name: Linear PR sync
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - edited
+
+permissions:
+  pull-requests: read
+
+jobs:
+  move-linear-issue-to-review:
+    name: Move Linear issue to In Review
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Update Linear issue state
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          TARGET_STATE_NAME: In Review
+        with:
+          script: |
+            const apiKey = process.env.LINEAR_API_KEY;
+            if (!apiKey) {
+              core.setFailed('Missing LINEAR_API_KEY repository secret.');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const searchableText = [
+              pr.title,
+              pr.body || '',
+              pr.head?.ref || '',
+            ].join('\n');
+
+            const identifiers = [...new Set(
+              [...searchableText.matchAll(/\bARTR-\d+\b/gi)].map((match) => match[0].toUpperCase())
+            )];
+
+            if (identifiers.length === 0) {
+              core.info('No ArtrosiCane Linear issue identifier found in PR title, body, or branch.');
+              return;
+            }
+
+            async function linearRequest(query, variables) {
+              const response = await fetch('https://api.linear.app/graphql', {
+                method: 'POST',
+                headers: {
+                  'Authorization': apiKey,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query, variables }),
+              });
+
+              const result = await response.json();
+              if (!response.ok || result.errors) {
+                throw new Error(JSON.stringify(result.errors || result));
+              }
+              return result.data;
+            }
+
+            const issueQuery = `
+              query IssueForPrSync($id: String!) {
+                issue(id: $id) {
+                  id
+                  identifier
+                  title
+                  state { name }
+                  team {
+                    states {
+                      nodes {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const updateMutation = `
+              mutation MoveIssueToState($id: String!, $stateId: String!) {
+                issueUpdate(id: $id, input: { stateId: $stateId }) {
+                  success
+                  issue {
+                    identifier
+                    state { name }
+                  }
+                }
+              }
+            `;
+
+            const commentMutation = `
+              mutation CommentOnIssue($issueId: String!, $body: String!) {
+                commentCreate(input: { issueId: $issueId, body: $body }) {
+                  success
+                }
+              }
+            `;
+
+            for (const identifier of identifiers) {
+              const data = await linearRequest(issueQuery, { id: identifier });
+              const issue = data.issue;
+              if (!issue) {
+                core.warning(`Linear issue ${identifier} was not found.`);
+                continue;
+              }
+
+              const targetState = issue.team.states.nodes.find(
+                (state) => state.name.toLowerCase() === process.env.TARGET_STATE_NAME.toLowerCase()
+              );
+
+              if (!targetState) {
+                throw new Error(`State "${process.env.TARGET_STATE_NAME}" was not found for ${identifier}.`);
+              }
+
+              if (issue.state?.name === targetState.name) {
+                core.info(`${identifier} is already in ${targetState.name}.`);
+              } else {
+                const updated = await linearRequest(updateMutation, {
+                  id: issue.id,
+                  stateId: targetState.id,
+                });
+
+                if (!updated.issueUpdate.success) {
+                  throw new Error(`Linear did not confirm update for ${identifier}.`);
+                }
+
+                core.info(`Moved ${identifier} to ${updated.issueUpdate.issue.state.name}.`);
+              }
+
+              await linearRequest(commentMutation, {
+                issueId: issue.id,
+                body: `GitHub PR opened and ready for review: ${pr.html_url}`,
+              });
+            }
