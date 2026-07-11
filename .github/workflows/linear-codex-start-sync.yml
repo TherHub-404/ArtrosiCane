@@ -1,0 +1,57 @@
+name: Linear Codex start sync
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  move-codex-issues-to-progress:
+    name: Move delegated Codex issues to In Progress
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Move Linear issues
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          TEAM_ID: 6f6fa2e2-4959-4da7-a317-bf4233266c92
+          CODEX_AGENT_ID: ab23fee4-e80e-4892-a218-1a5c7391d72b
+          IN_PROGRESS_STATE_ID: 0b0c7930-ce8f-40d0-80e2-e9f6419d217f
+        run: |
+          set -euo pipefail
+
+          if [ -z "${LINEAR_API_KEY:-}" ]; then
+            echo "Missing LINEAR_API_KEY repository secret."
+            exit 1
+          fi
+
+          RESPONSE="$(curl -fsS https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n \
+              --arg teamId "$TEAM_ID" \
+              --arg delegateId "$CODEX_AGENT_ID" \
+              '{query:"query CodexDelegatedIssues($teamId: ID!, $delegateId: String!) { issues(first: 50, filter: { team: { id: { eq: $teamId } }, delegate: { id: { eq: $delegateId } }, state: { type: { in: [backlog, unstarted] } }, archivedAt: { null: true } }) { nodes { id identifier title state { name type } } } }", variables:{teamId:$teamId,delegateId:$delegateId}}')")"
+
+          ISSUE_IDS="$(printf '%s' "$RESPONSE" | jq -r '.data.issues.nodes[]?.id')"
+
+          if [ -z "$ISSUE_IDS" ]; then
+            echo "No delegated Codex issues waiting to move."
+            exit 0
+          fi
+
+          for ISSUE_ID in $ISSUE_IDS; do
+            IDENTIFIER="$(printf '%s' "$RESPONSE" | jq -r --arg id "$ISSUE_ID" '.data.issues.nodes[] | select(.id == $id) | .identifier')"
+            echo "Moving $IDENTIFIER to In Progress."
+
+            curl -fsS https://api.linear.app/graphql \
+              -H "Authorization: $LINEAR_API_KEY" \
+              -H "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg id "$ISSUE_ID" \
+                --arg stateId "$IN_PROGRESS_STATE_ID" \
+                '{query:"mutation MoveIssue($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success issue { identifier state { name } } } }", variables:{id:$id,stateId:$stateId}}')"
+          done
