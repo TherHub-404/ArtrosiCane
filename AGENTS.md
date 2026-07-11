@@ -11,7 +11,9 @@ ArtrosiCane is a Flutter app backed by Supabase. The default target branch is `m
 - Keep changes scoped to the Linear task.
 - Do not commit secrets or local `.env` values.
 - Link the Linear issue in the PR title or body.
-- When work is ready for human review, move the Linear issue to `In Review`, not `Done`.
+- When work is ready for human review, open a real GitHub pull request and include the PR URL in the Linear comment.
+- Move the Linear issue to `In Review` only after the GitHub PR exists and the PR URL is available.
+- If you cannot push a branch or open a PR, leave the Linear issue in its current state and clearly report the blocker.
 - Only a human reviewer should move the issue to `Done` after checking and merging the PR.
 
 ## Validation
