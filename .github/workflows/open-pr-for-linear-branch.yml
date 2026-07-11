@@ -1,0 +1,70 @@
+name: Open PR for Linear branch
+
+on:
+  push:
+    branches:
+      - 'artr-**'
+      - 'ARTR-**'
+      - '**/artr-**'
+      - '**/ARTR-**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-pr:
+    name: Open pull request
+    runs-on: ubuntu-latest
+    if: github.ref_name != 'main'
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Open PR if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          ISSUE_ID="$(printf '%s\n%s\n' "$BRANCH" "$(git log -1 --pretty=%B)" | grep -Eio 'ARTR-[0-9]+' | head -n 1 | tr '[:lower:]' '[:upper:]' || true)"
+
+          if [ -z "$ISSUE_ID" ]; then
+            echo "No ARTR issue identifier found in branch name or latest commit message."
+            exit 0
+          fi
+
+          EXISTING_PR="$(gh pr list \
+            --repo "$REPO" \
+            --head "$BRANCH" \
+            --state open \
+            --json number,url \
+            --jq '.[0].url // empty')"
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists: $EXISTING_PR"
+            exit 0
+          fi
+
+          TITLE="$ISSUE_ID: Codex implementation"
+          BODY="$(cat <<EOF
+          Linear issue: $ISSUE_ID
+
+          This pull request was opened automatically because branch \`$BRANCH\` was pushed without an open PR.
+
+          Validation:
+          - Pending CI
+          EOF
+          )"
+
+          gh pr create \
+            --repo "$REPO" \
+            --base main \
+            --head "$BRANCH" \
+            --title "$TITLE" \
+            --body "$BODY"
