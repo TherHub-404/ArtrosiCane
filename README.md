@@ -195,3 +195,7 @@ dart tool/import_dog_breeds.dart
   - verifica che `.env` esista nella root del progetto e contenga i valori.
 - iOS `pod install` / `Generated.xcconfig must exist`:
   - esegui prima `flutter pub get`, poi `cd ios && pod install`.
+
+## Environment verification
+
+Codex environment final test: Flutter setup, branch push, PR creation, and Linear review handoff are verified.
