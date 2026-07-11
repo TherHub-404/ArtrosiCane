@@ -46,7 +46,7 @@ What should change, in user/product terms?
 Add this as the final paragraph when you want Codex to pick up the issue:
 
 ```markdown
-Codex: implement this issue in `TherHub-404/ArtrosiCane`, create a branch from `main`, run the validation checks, and open a pull request targeting `main`. Keep the PR scoped to this issue and link this Linear issue in the PR body.
+Codex: implement this issue in `TherHub-404/ArtrosiCane`, create a branch from `main`, run the validation checks, and open a pull request targeting `main`. Keep the PR scoped to this issue, link this Linear issue in the PR body, and move this Linear issue to `In Review` when the PR is ready. Do not move it to `Done`; a human reviewer will do that after review/merge.
 ```
 
 ## Expected Codex Loop
@@ -58,4 +58,5 @@ Codex: implement this issue in `TherHub-404/ArtrosiCane`, create a branch from `
 5. Run validation.
 6. Push the branch.
 7. Open a PR to `main`.
-8. Comment on the Linear issue with the PR link and validation notes.
+8. Move the Linear issue to `In Review`.
+9. Comment on the Linear issue with the PR link and validation notes.
