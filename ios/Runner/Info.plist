@@ -50,6 +50,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Usiamo la fotocamera per aggiornare la foto del profilo del cane.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usiamo la posizione solo quando necessario per mostrare contenuti o inviti collegati alla località.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Usiamo la libreria foto per scegliere l'immagine del profilo del cane.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

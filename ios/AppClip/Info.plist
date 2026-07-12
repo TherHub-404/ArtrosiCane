@@ -43,6 +43,8 @@
 	<string>/i</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usiamo la posizione solo quando necessario per mostrare contenuti o inviti collegati alla località.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UISupportedInterfaceOrientations</key>
