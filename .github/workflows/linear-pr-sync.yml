@@ -119,20 +119,19 @@ jobs:
                 throw new Error(`State "${process.env.TARGET_STATE_NAME}" was not found for ${identifier}.`);
               }
 
-              if (issue.state?.name === targetState.name) {
-                core.info(`${identifier} is already in ${targetState.name}.`);
-              } else {
-                const updated = await linearRequest(updateMutation, {
-                  id: issue.id,
-                  stateId: targetState.id,
-                });
+              core.info('Waiting for Linear native GitHub automation before setting review state.');
+              await new Promise((resolve) => setTimeout(resolve, 30000));
 
-                if (!updated.issueUpdate.success) {
-                  throw new Error(`Linear did not confirm update for ${identifier}.`);
-                }
+              const updated = await linearRequest(updateMutation, {
+                id: issue.id,
+                stateId: targetState.id,
+              });
 
-                core.info(`Moved ${identifier} to ${updated.issueUpdate.issue.state.name}.`);
+              if (!updated.issueUpdate.success) {
+                throw new Error(`Linear did not confirm update for ${identifier}.`);
               }
+
+              core.info(`Moved ${identifier} to ${updated.issueUpdate.issue.state.name}.`);
 
               await linearRequest(commentMutation, {
                 issueId: issue.id,

@@ -92,6 +92,9 @@ jobs:
             exit 0
           fi
 
+          echo "Waiting for Linear's native GitHub automation before setting review state."
+          sleep 30
+
           curl -fsS https://api.linear.app/graphql \
             -H "Authorization: $LINEAR_API_KEY" \
             -H "Content-Type: application/json" \
