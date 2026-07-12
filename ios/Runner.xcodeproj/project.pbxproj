@@ -567,7 +567,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane.Clip;
 				PRODUCT_NAME = ZampaSiCura;
 				PROVISIONING_PROFILE_SPECIFIER = "clip App Store Connect";
@@ -650,7 +650,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane;
 				PRODUCT_NAME = ZampaSiCura;
 				PROVISIONING_PROFILE_SPECIFIER = "ArtrosiCane AppStore";
@@ -669,7 +669,7 @@
 				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.artrosiCane.RunnerTests;
 				PRODUCT_NAME = ZampaSiCura;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -688,7 +688,7 @@
 				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.artrosiCane.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -705,7 +705,7 @@
 				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = 9Z8F9Q282X;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.artrosiCane.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -730,7 +730,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "clip App Store Connect";
@@ -872,7 +872,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane;
 				PRODUCT_NAME = ZampaSiCura;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -900,7 +900,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane;
 				PRODUCT_NAME = ZampaSiCura;
 				PROVISIONING_PROFILE_SPECIFIER = "ArtrosiCane AppStore";
@@ -926,7 +926,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.artrosicase.artrosicane.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
