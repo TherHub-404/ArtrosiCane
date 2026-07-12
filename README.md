@@ -2,6 +2,8 @@
 
 App Flutter per la gestione del profilo cane, onboarding e quiz, con backend Supabase.
 
+> ✅ Successo: il processo Codex/Linear/GitHub è operativo end-to-end.
+
 ## Prerequisiti
 
 ### Toolchain base
