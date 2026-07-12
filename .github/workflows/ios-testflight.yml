@@ -90,9 +90,16 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"
+          BUILD_NAME="$(awk '/^version:/ { print $2; exit }' pubspec.yaml | cut -d+ -f1)"
           echo "Using iOS build number: $BUILD_NUMBER"
+          echo "Using iOS build name: $BUILD_NAME"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BUILD_NAME" ios/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/AppClip/Info.plist
+
           flutter build ipa \
             --release \
+            --build-name "$BUILD_NAME" \
             --build-number "$BUILD_NUMBER" \
             --export-options-plist=ios/ExportOptions.plist
 
