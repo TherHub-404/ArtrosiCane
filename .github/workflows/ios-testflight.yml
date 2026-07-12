@@ -85,6 +85,40 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Verify Supabase public API
+        run: |
+          set -euo pipefail
+
+          SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' .env)"
+          SUPABASE_ANON_KEY="$(awk -F= '/^SUPABASE_ANON_KEY=/{print $2; exit}' .env)"
+          SUPABASE_HOST="$(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          echo "Supabase host: $SUPABASE_HOST"
+
+          HTTP_CODE="$(curl -sS -o "$RUNNER_TEMP/breeds_check.json" -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/breeds?select=id,name,name_it&limit=3" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")"
+          echo "Supabase breeds HTTP code: $HTTP_CODE"
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          path = Path(os.environ["RUNNER_TEMP"]) / "breeds_check.json"
+          data = json.loads(path.read_text())
+          if not isinstance(data, list):
+              print(f"Supabase response was not a list: {data}")
+              sys.exit(1)
+          print(f"Supabase breeds rows: {len(data)}")
+          print(f"Supabase breed names: {[row.get('name') for row in data]}")
+          if len(data) == 0:
+              sys.exit(1)
+          PY
+
+          test "$HTTP_CODE" = "200"
+
       - name: Install Apple signing assets
         env:
           IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
