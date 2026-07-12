@@ -44,16 +44,97 @@ class DailyCheckRepository {
     required DailyCheckInput input,
     required DailyCheckResult result,
   }) async {
-    await _saveLocalLog(input, result);
+    final createdAt = DateTime.now().toUtc();
+    await _saveLocalLog(input, result, createdAt: createdAt);
+    await clearDraft(input.dogId);
     await _recomputeAndPersistSensitivities(input.dogId);
-    await _enqueueRemoteLog(input, result);
+    await _enqueueRemoteLog(input, result, createdAt: createdAt);
     await _flushRemoteQueue();
+  }
+
+  DailyCheckDraft loadDraft(String? dogId) {
+    final raw = _prefs.getString(_draftKey(dogId));
+    if (raw == null || raw.isEmpty) return const DailyCheckDraft();
+    try {
+      final map = json.decode(raw) as Map<String, dynamic>;
+      return DailyCheckDraft(
+        symptomLevel: _enumByIndex(
+          DailySymptomLevel.values,
+          map['symptom'] as num?,
+        ),
+        plannedLoad: _enumByIndex(PlannedLoad.values, map['load'] as num?),
+        riskFactors: ((map['riskFactors'] as List<dynamic>?) ?? <dynamic>[])
+            .map((e) => e.toString())
+            .map(_parseRiskFactor)
+            .whereType<DailyRiskFactor>()
+            .toSet(),
+        recoveryDelta: _enumByIndex(
+          RecoveryDelta.values,
+          map['recovery'] as num?,
+        ),
+        updatedAt: DateTime.tryParse(map['updatedAt']?.toString() ?? ''),
+      );
+    } catch (_) {
+      return const DailyCheckDraft();
+    }
+  }
+
+  Future<void> saveDraft({
+    required String? dogId,
+    DailySymptomLevel? symptomLevel,
+    PlannedLoad? plannedLoad,
+    required Set<DailyRiskFactor> riskFactors,
+    RecoveryDelta? recoveryDelta,
+  }) async {
+    final hasAnswers =
+        symptomLevel != null ||
+        plannedLoad != null ||
+        riskFactors.isNotEmpty ||
+        recoveryDelta != null;
+    if (!hasAnswers) {
+      await clearDraft(dogId);
+      return;
+    }
+    await _prefs.setString(
+      _draftKey(dogId),
+      json.encode({
+        'symptom': symptomLevel?.index,
+        'load': plannedLoad?.index,
+        'riskFactors': riskFactors.map((e) => e.name).toList(),
+        'recovery': recoveryDelta?.index,
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+  }
+
+  Future<void> clearDraft(String? dogId) => _prefs.remove(_draftKey(dogId));
+
+  Future<TodayDailyDiaryState> todayState({required String? dogId}) async {
+    if (dogId == null || dogId.isEmpty) {
+      return const TodayDailyDiaryState(status: DailyDiaryStatus.unavailable);
+    }
+    final localToday = _localHistory(dogId).where(_isToday).toList();
+    if (localToday.isNotEmpty) {
+      return TodayDailyDiaryState(
+        status: DailyDiaryStatus.completed,
+        latestEntry: localToday.first,
+      );
+    }
+    final draft = loadDraft(dogId);
+    if (draft.hasAnswers) {
+      return TodayDailyDiaryState(
+        status: DailyDiaryStatus.inProgress,
+        draft: draft,
+      );
+    }
+    return const TodayDailyDiaryState(status: DailyDiaryStatus.notStarted);
   }
 
   Future<void> _saveLocalLog(
     DailyCheckInput input,
-    DailyCheckResult result,
-  ) async {
+    DailyCheckResult result, {
+    required DateTime createdAt,
+  }) async {
     final key = _dailyLogKey(input.dogId);
     final existingRaw = _prefs.getString(key);
     final list = existingRaw == null
@@ -62,8 +143,13 @@ class DailyCheckRepository {
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList();
 
+    list.removeWhere((item) {
+      final ts = DateTime.tryParse(item['ts']?.toString() ?? '')?.toLocal();
+      return ts != null && _isSameLocalDay(ts, createdAt.toLocal());
+    });
+
     list.add({
-      'ts': DateTime.now().toUtc().toIso8601String(),
+      'ts': createdAt.toIso8601String(),
       'symptom': input.symptomLevel.index,
       'load': input.plannedLoad.index,
       'recovery': input.recoveryDelta.index,
@@ -138,8 +224,9 @@ class DailyCheckRepository {
 
   Future<void> _enqueueRemoteLog(
     DailyCheckInput input,
-    DailyCheckResult result,
-  ) async {
+    DailyCheckResult result, {
+    required DateTime createdAt,
+  }) async {
     final payload = {
       'owner_id': _client.auth.currentUser?.id,
       'dog_id': input.dogId,
@@ -156,7 +243,7 @@ class DailyCheckRepository {
       'route_tag': result.recommendation.routeTag,
       'video_label': result.recommendation.videoLabel,
       'video_url': result.recommendation.videoUrl,
-      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
     };
 
     final existingRaw = _prefs.getString(_remoteQueueKey);
@@ -165,6 +252,13 @@ class DailyCheckRepository {
         : (json.decode(existingRaw) as List<dynamic>)
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList();
+    queue.removeWhere((item) {
+      final sameDog = item['dog_id']?.toString() == input.dogId;
+      final ts = DateTime.tryParse(
+        item['created_at']?.toString() ?? '',
+      )?.toLocal();
+      return sameDog && ts != null && _isSameLocalDay(ts, createdAt.toLocal());
+    });
     queue.add(payload);
     final trimmed = queue.length > 240
         ? queue.sublist(queue.length - 240)
@@ -319,10 +413,31 @@ class DailyCheckRepository {
     return null;
   }
 
+  bool _isToday(DailyLogEntry entry) =>
+      _isSameLocalDay(entry.createdAt, DateTime.now());
+
+  bool _isSameLocalDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  T? _enumByIndex<T>(List<T> values, num? index) {
+    final parsed = index?.toInt();
+    if (parsed == null || parsed < 0 || parsed >= values.length) return null;
+    return values[parsed];
+  }
+
+  DailyRiskFactor? _parseRiskFactor(String value) {
+    for (final factor in DailyRiskFactor.values) {
+      if (factor.name == value) return factor;
+    }
+    return null;
+  }
+
   String _sensitivityKey(String? dogId) =>
       'factorSensitivity::${dogId ?? 'global'}';
 
   String _dailyLogKey(String? dogId) => 'dailyLog::${dogId ?? 'global'}';
+
+  String _draftKey(String? dogId) => 'dailyCheckDraft::${dogId ?? 'global'}';
 }
 
 final dailyCheckRepositoryProvider = Provider<DailyCheckRepository>((ref) {

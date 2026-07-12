@@ -33,6 +33,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
   RecoveryDelta? _recoveryDelta;
   final Set<DailyRiskFactor> _riskFactors = <DailyRiskFactor>{};
   bool _saving = false;
+  String? _validationMessage;
 
   bool get _canSubmit =>
       _symptomLevel != null && _plannedLoad != null && _recoveryDelta != null;
@@ -55,18 +56,71 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    final draft = ref
+        .read(dailyCheckRepositoryProvider)
+        .loadDraft(widget.dogId);
+    _symptomLevel = draft.symptomLevel;
+    _plannedLoad = draft.plannedLoad;
+    _recoveryDelta = draft.recoveryDelta;
+    _riskFactors.addAll(draft.riskFactors);
+    if (_symptomLevel != null) {
+      _currentPage = _firstIncompleteStep();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageController.hasClients) {
+          _pageController.jumpToPage(_currentPage);
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
   }
 
+  int _firstIncompleteStep() {
+    for (var step = 0; step < _totalPages; step++) {
+      if (!_isStepAnswered(step)) return step;
+    }
+    return _totalPages - 1;
+  }
+
+  Future<void> _persistDraft() {
+    return ref
+        .read(dailyCheckRepositoryProvider)
+        .saveDraft(
+          dogId: widget.dogId,
+          symptomLevel: _symptomLevel,
+          plannedLoad: _plannedLoad,
+          riskFactors: _riskFactors,
+          recoveryDelta: _recoveryDelta,
+        );
+  }
+
+  void _setAnswer(VoidCallback update) {
+    setState(() {
+      update();
+      _validationMessage = null;
+    });
+    _persistDraft();
+  }
+
   Future<void> _goToNextPage() async {
+    if (!_isStepAnswered(_currentPage)) {
+      setState(() {
+        _validationMessage = _validationTextForStep(_currentPage);
+      });
+      return;
+    }
     if (_isLastPage) {
       await Haptics.strong();
       await _submit();
       return;
     }
-    if (_saving || !_isStepAnswered(_currentPage)) return;
+    if (_saving) return;
     await Haptics.tap();
     await _pageController.nextPage(
       duration: const Duration(milliseconds: 260),
@@ -77,6 +131,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
   Future<void> _goToPreviousPage() async {
     if (_saving) return;
     await Haptics.tap();
+    if (!mounted) return;
     if (_currentPage == 0) {
       if (context.canPop()) {
         context.pop();
@@ -91,8 +146,29 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
     );
   }
 
+  String _validationTextForStep(int step) {
+    final l10n = context.l10n;
+    switch (step) {
+      case 0:
+        return l10n.text('Scegli se oggi hai notato rigidita o zoppia.');
+      case 1:
+        return l10n.text('Scegli quanto movimento fara oggi.');
+      case 3:
+        return l10n.text('Scegli com era il recupero rispetto a ieri.');
+      default:
+        return '';
+    }
+  }
+
   Future<void> _submit() async {
-    if (!_canSubmit || _saving) return;
+    final l10n = context.l10n;
+    if (!_canSubmit || _saving) {
+      setState(
+        () =>
+            _validationMessage = _validationTextForStep(_firstIncompleteStep()),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -120,6 +196,16 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
       await repo.saveDailyLog(input: input, result: result);
       if (!mounted) return;
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.text(
+              'Check di oggi salvato. Puoi rivedere il risultato quando vuoi.',
+            ),
+          ),
+        ),
+      );
+
       await context.push(
         '/daily-check/result',
         extra: {
@@ -128,6 +214,17 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
           'result': result,
           'diagnosisStatus': diagnosisStatus?.name,
         },
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.text(
+              'Connessione assente: il check resta salvato sul dispositivo e verra inviato appena possibile.',
+            ),
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -187,7 +284,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     DailySymptomLevel.lieve: l10n.text('Lieve'),
                     DailySymptomLevel.marcata: l10n.text('Marcata'),
                   },
-                  onChanged: (value) => setState(() => _symptomLevel = value),
+                  onChanged: (value) => _setAnswer(() => _symptomLevel = value),
                 ),
                 _buildSingleChoiceStep<PlannedLoad>(
                   stepIndex: 1,
@@ -199,7 +296,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     PlannedLoad.medio: l10n.text('Medio (10-20 min)'),
                     PlannedLoad.lungo: l10n.text('Lungo (20+ min)'),
                   },
-                  onChanged: (value) => setState(() => _plannedLoad = value),
+                  onChanged: (value) => _setAnswer(() => _plannedLoad = value),
                 ),
                 _buildRiskFactorStep(),
                 _buildSingleChoiceStep<RecoveryDelta>(
@@ -214,7 +311,8 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     RecoveryDelta.pocoPiuRigido: l10n.text('Un po piu rigido'),
                     RecoveryDelta.moltoPiuRigido: l10n.text('Molto piu rigido'),
                   },
-                  onChanged: (value) => setState(() => _recoveryDelta = value),
+                  onChanged: (value) =>
+                      _setAnswer(() => _recoveryDelta = value),
                   footer: const Padding(
                     padding: EdgeInsets.only(top: AppSpacing.md),
                     child: NonMedicalDisclaimer(),
@@ -458,6 +556,35 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     color: AppColors.text.withValues(alpha: 0.75),
                   ),
                 ),
+                if (stepIndex != 2) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    context.l10n.text('Obbligatorio'),
+                    style: AppTypography.bodyBold.copyWith(
+                      fontSize: 12,
+                      color: AppColors.ctaApricot,
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    context.l10n.text(
+                      'Facoltativo: puoi continuare anche senza scegliere fattori.',
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.text.withValues(alpha: 0.68),
+                    ),
+                  ),
+                ],
+                if (_validationMessage != null &&
+                    stepIndex == _currentPage) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _validationMessage!,
+                    style: AppTypography.bodyBold.copyWith(color: Colors.red),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 child,
               ],
@@ -525,8 +652,9 @@ class _OptionTile extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : AppColors.text,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                     fontSize: 16,
                   ),
                 ),

@@ -11,6 +11,49 @@ enum DailyRiskFactor { caldo, sabbia, scale, scivoloso, auto, acqua }
 
 enum DailySemaphore { verde, giallo, rosso }
 
+enum DailyDiaryStatus { unavailable, notStarted, inProgress, completed }
+
+class DailyCheckDraft {
+  const DailyCheckDraft({
+    this.symptomLevel,
+    this.plannedLoad,
+    this.riskFactors = const <DailyRiskFactor>{},
+    this.recoveryDelta,
+    this.updatedAt,
+  });
+
+  final DailySymptomLevel? symptomLevel;
+  final PlannedLoad? plannedLoad;
+  final Set<DailyRiskFactor> riskFactors;
+  final RecoveryDelta? recoveryDelta;
+  final DateTime? updatedAt;
+
+  bool get hasAnswers =>
+      symptomLevel != null ||
+      plannedLoad != null ||
+      riskFactors.isNotEmpty ||
+      recoveryDelta != null;
+
+  bool get isComplete =>
+      symptomLevel != null && plannedLoad != null && recoveryDelta != null;
+}
+
+class TodayDailyDiaryState {
+  const TodayDailyDiaryState({
+    required this.status,
+    this.latestEntry,
+    this.draft,
+  });
+
+  final DailyDiaryStatus status;
+  final DailyLogEntry? latestEntry;
+  final DailyCheckDraft? draft;
+
+  bool get canStartOrContinue =>
+      status == DailyDiaryStatus.notStarted ||
+      status == DailyDiaryStatus.inProgress;
+}
+
 enum DailyActionType { action, avoid }
 
 class DailyActionRule {
