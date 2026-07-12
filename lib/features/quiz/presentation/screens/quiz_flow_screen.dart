@@ -734,6 +734,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
                   return DogProfilePage(
                     onProfileChanged: _onProfileChanged,
                     showValidationErrors: _showDogProfileValidationErrors,
+                    bottomContentPadding: 96,
                   );
                 }
                 if (_showsDiagnosisGate && index == diagnosisPageIndex) {
@@ -2248,66 +2249,69 @@ class _QuizBottomBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      color: Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          if (!isFirst)
-            TextButton.icon(
-              onPressed: onBack,
-              icon: const Icon(
-                Icons.arrow_back_ios,
-                size: 16,
-                color: AppColors.ctaApricot,
-              ),
-              label: Text(
-                AppLocalizations.of(context).text('Indietro'),
-                style: const TextStyle(
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        color: Colors.white,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            if (!isFirst)
+              TextButton.icon(
+                onPressed: onBack,
+                icon: const Icon(
+                  Icons.arrow_back_ios,
+                  size: 16,
                   color: AppColors.ctaApricot,
-                  fontWeight: FontWeight.bold,
                 ),
-              ),
-            )
-          else
-            const SizedBox.shrink(),
-          const Spacer(),
-          if (!isLast)
-            ElevatedButton.icon(
-              onPressed: onNext,
-              icon: const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.white,
-              ),
-              label: Text(
-                AppLocalizations.of(context).text('Continua'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                label: Text(
+                  AppLocalizations.of(context).text('Indietro'),
+                  style: const TextStyle(
+                    color: AppColors.ctaApricot,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else
+              const SizedBox.shrink(),
+            const Spacer(),
+            if (!isLast)
+              ElevatedButton.icon(
+                onPressed: onNext,
+                icon: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
                   color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.4,
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.ctaApricot,
-                elevation: 3,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
+                label: Text(
+                  AppLocalizations.of(context).text('Continua'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.ctaApricot,
+                  elevation: 3,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  minimumSize: const Size(150, 44),
                 ),
-                minimumSize: const Size(150, 44),
-              ),
-              iconAlignment: IconAlignment.end,
-            )
-          else
-            const SizedBox.shrink(),
-        ],
+                iconAlignment: IconAlignment.end,
+              )
+            else
+              const SizedBox.shrink(),
+          ],
+        ),
       ),
     );
   }
