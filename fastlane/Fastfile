@@ -1,7 +1,12 @@
 default_platform(:ios)
 
+def repo_root
+  File.expand_path('..', __dir__)
+end
+
 def pubspec_marketing_version
-  version_line = File.readlines('pubspec.yaml').find { |line| line.start_with?('version:') }
+  pubspec_path = File.join(repo_root, 'pubspec.yaml')
+  version_line = File.readlines(pubspec_path).find { |line| line.start_with?('version:') }
   UI.user_error!('Could not find version in pubspec.yaml') unless version_line
 
   version_line.split.fetch(1).split('+').first
