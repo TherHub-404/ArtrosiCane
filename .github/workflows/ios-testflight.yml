@@ -190,6 +190,37 @@ jobs:
             --build-number "$BUILD_NUMBER" \
             --export-options-plist=ios/ExportOptions.plist
 
+      - name: Verify packaged env asset
+        run: |
+          set -euo pipefail
+
+          IPA_PATH="$(find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found in build/ios/ipa"
+            exit 1
+          fi
+
+          rm -rf "$RUNNER_TEMP/ipa-check"
+          mkdir -p "$RUNNER_TEMP/ipa-check"
+          unzip -q "$IPA_PATH" -d "$RUNNER_TEMP/ipa-check"
+
+          ENV_ASSET="$(find "$RUNNER_TEMP/ipa-check/Payload" -path '*/flutter_assets/.env' -print -quit)"
+          if [ -z "$ENV_ASSET" ]; then
+            echo "Packaged .env asset was not found in the IPA."
+            find "$RUNNER_TEMP/ipa-check/Payload" -path '*flutter_assets*' -maxdepth 6 -type f | sed 's#^.*/Payload#Payload#' | head -80
+            exit 1
+          fi
+
+          PACKAGED_SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' "$ENV_ASSET")"
+          PACKAGED_SUPABASE_HOST="$(printf '%s' "$PACKAGED_SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          EXPECTED_SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' .env)"
+          EXPECTED_SUPABASE_HOST="$(printf '%s' "$EXPECTED_SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          echo "Packaged env asset: ${ENV_ASSET#$RUNNER_TEMP/ipa-check/}"
+          echo "Packaged Supabase host: $PACKAGED_SUPABASE_HOST"
+
+          test "$PACKAGED_SUPABASE_HOST" = "$EXPECTED_SUPABASE_HOST"
+          ! grep -q "your-project.supabase.co\\|your-anon-key" "$ENV_ASSET"
+
       - name: Upload to TestFlight
         env:
           APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
