@@ -30,14 +30,15 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           supabaseClientProvider.overrideWithValue(supabaseClient),
         ],
-        child: const MaterialApp(home: OnboardingWelcomeScreen()),
+        child: const MaterialApp(
+          locale: Locale('it'),
+          home: OnboardingWelcomeScreen(),
+        ),
       ),
     );
 
     expect(
-      find.text(
-        'Un progetto pilota\nper il benessere\ndel tuo cane\nin vacanza.',
-      ),
+      find.text('Un progetto pilota per il benessere del tuo cane in vacanza.'),
       findsOneWidget,
     );
     expect(find.text('In collaborazione con'), findsOneWidget);
