@@ -44,7 +44,43 @@ jobs:
           bundler-cache: true
 
       - name: Create env file
-        run: cp .env.example .env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          DOG_API_KEY: ${{ secrets.DOG_API_KEY }}
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          INVITE_API_BASE_URL: ${{ secrets.INVITE_API_BASE_URL }}
+          INVITE_DOMAIN: ${{ secrets.INVITE_DOMAIN }}
+          INVITE_PATH: ${{ secrets.INVITE_PATH }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_URL and SUPABASE_ANON_KEY repository secrets are required for TestFlight builds."
+            exit 1
+          fi
+
+          if [ "$SUPABASE_URL" = "https://your-project.supabase.co" ] || [ "$SUPABASE_ANON_KEY" = "your-anon-key" ]; then
+            echo "Refusing to build TestFlight with placeholder Supabase configuration."
+            exit 1
+          fi
+
+          {
+            echo "SUPABASE_URL=$SUPABASE_URL"
+            echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            echo "DOG_API_KEY=${DOG_API_KEY:-}"
+            echo "SUPABASE_SERVICE_ROLE="
+            echo "LIBRETRANSLATE_ENDPOINT="
+            echo "LIBRETRANSLATE_API_KEY="
+            echo "DEMO_EMAIL="
+            echo "DEMO_PASSWORD="
+            echo "GOOGLE_IOS_CLIENT_ID=${GOOGLE_IOS_CLIENT_ID:-}"
+            echo "GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID:-}"
+            echo "INVITE_API_BASE_URL=${INVITE_API_BASE_URL:-https://api.example.com}"
+            echo "INVITE_DOMAIN=${INVITE_DOMAIN:-artrosicane.vercel.app}"
+            echo "INVITE_PATH=${INVITE_PATH:-/i}"
+          } > .env
 
       - name: Install Flutter dependencies
         run: flutter pub get
