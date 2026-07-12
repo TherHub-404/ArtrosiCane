@@ -52,12 +52,20 @@ Do not begin broad architectural changes based only on assumptions.
 
 ## 4. Branch Workflow
 
-Create a new branch from the latest `main`.
+Before creating a branch, verify that the checkout can push to the real
+GitHub repository. Codex coding sessions may start on a temporary `work`
+branch without a configured remote; fix that before coding.
 
 ```bash
-git checkout main
-git pull origin main
+git remote -v
+git remote get-url origin >/dev/null 2>&1 || git remote add origin https://github.com/TherHub-404/ArtrosiCane.git
+git fetch origin main
 ```
+
+If a local `main` branch is missing, create or reset the working branch from
+`origin/main` instead of stopping only because `main` is unavailable locally.
+
+Create a new branch from the latest `origin/main`.
 
 Use Linear's suggested branch name when available.
 
@@ -83,6 +91,15 @@ codex/artr-25-improve-medication-reminders
 ```
 
 Never work directly on `main`.
+
+At the end of the task, the branch must be pushed to GitHub:
+
+```bash
+git push -u origin <branch-name>
+```
+
+If the push fails, report the exact Git error and do not claim the work is
+ready for review.
 
 ---
 
@@ -741,12 +758,13 @@ git diff --staged
 When the work is ready for human review:
 
 1. Push the branch.
-2. Open a real GitHub pull request.
-3. Link the Linear issue.
-4. Add the pull request URL to a Linear comment.
-5. Move the Linear issue to `In Review`.
+2. Do not open a pull request manually.
+3. GitHub Actions will automatically open the pull request from pushed
+   `codex/artr-*` or `*ARTR-*` branches.
+4. GitHub Actions will link the Linear issue and move it to `In Review`.
 
-Do not move the issue to `In Review` before the pull request exists.
+Do not move the issue to `In Review` yourself. If GitHub Actions cannot open a
+pull request, leave the issue in its current state and report the blocker.
 
 A pull request should include:
 
@@ -804,8 +822,8 @@ Todo → In Progress → In Review → Done
 Rules:
 
 * Move the issue to `In Progress` when implementation begins, if appropriate.
-* Move it to `In Review` only after a GitHub pull request exists.
-* Include the pull request URL in a Linear comment.
+* Do not move it to `In Review` manually; GitHub Actions handles that after a real PR exists.
+* Do not add a PR URL manually unless the automation fails and a human asks you to.
 * Only a human reviewer should move the issue to `Done`.
 * Do not mark work complete based only on local changes.
 
@@ -826,7 +844,7 @@ If blocked:
    * What access or decision is needed
    * Whether any branch or pull request was created
 
-If the branch cannot be pushed or the pull request cannot be opened, do not move the Linear issue to `In Review`.
+If the branch cannot be pushed, do not move the Linear issue to `In Review`.
 
 ---
 
@@ -846,9 +864,7 @@ Work is ready for review only when:
 * No secrets or local configuration are committed.
 * Supabase implications are documented.
 * The branch is pushed.
-* A GitHub pull request exists.
-* The pull request URL is added to Linear.
-* The Linear issue is moved to `In Review`.
+* GitHub Actions is able to create the pull request and update Linear.
 
 ---
 
@@ -881,12 +897,13 @@ At the end of a task, report:
 
 ## Pull Request
 
-- PR URL
+- Branch pushed to GitHub
+- PR URL if GitHub Actions already created it
 
 ## Linear
 
 - Current issue status
-- Confirmation that the PR URL was added
+- Whether GitHub Actions updated the issue
 
 ## Notes
 
