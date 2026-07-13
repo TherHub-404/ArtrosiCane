@@ -148,22 +148,21 @@ void main() {
 
     expect(find.byType(DogDashboardScreen), findsOneWidget);
   });
-  testWidgets('each Home diary entry point opens an independent dog diary', (
+  testWidgets('each dog card opens an independent diary for that dog', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsOneWidget);
-    expect(find.text('Inizia il check di oggi per Luna'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsNothing);
+    expect(find.byKey(const ValueKey('pet-card-diary-Luna')), findsOneWidget);
 
-    final lunaStartButton = find.descendant(
-      of: find.byKey(const ValueKey('home-diary-card-dog-1')),
-      matching: find.widgetWithText(ElevatedButton, 'Inizia'),
-    );
-    expect(lunaStartButton, findsOneWidget);
-    await tester.tap(lunaStartButton);
+    tester
+        .widgetList<PetCard>(find.byType(PetCard))
+        .toList()[0]
+        .onDiaryTap!
+        .call();
     await tester.pumpAndSettle();
     expect(find.text('daily-check-dog-1-Luna'), findsOneWidget);
 
@@ -171,19 +170,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    final miloCard = find.byKey(const ValueKey('home-diary-card-dog-2'));
-    await tester.drag(find.byType(Scrollable).first, const Offset(-320, 0));
-    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home-diary-card-dog-2')), findsNothing);
+    expect(find.byKey(const ValueKey('pet-card-diary-Milo')), findsOneWidget);
 
-    expect(miloCard, findsOneWidget);
-    expect(find.text('Inizia il check di oggi per Milo'), findsOneWidget);
-
-    final miloStartButton = find.descendant(
-      of: miloCard,
-      matching: find.widgetWithText(ElevatedButton, 'Inizia'),
-    );
-    expect(miloStartButton, findsOneWidget);
-    await tester.tap(miloStartButton);
+    tester
+        .widgetList<PetCard>(find.byType(PetCard))
+        .toList()[1]
+        .onDiaryTap!
+        .call();
     await tester.pumpAndSettle();
     expect(find.text('daily-check-dog-2-Milo'), findsOneWidget);
   });

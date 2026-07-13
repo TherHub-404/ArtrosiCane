@@ -19,6 +19,7 @@ class PetCard extends StatelessWidget {
     required this.imagePath,
     required this.backgroundColor,
     this.onTap,
+    this.onDiaryTap,
   });
 
   static const double cardHeight = 392;
@@ -33,6 +34,7 @@ class PetCard extends StatelessWidget {
   final String imagePath;
   final Color backgroundColor;
   final VoidCallback? onTap;
+  final VoidCallback? onDiaryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +95,6 @@ class PetCard extends StatelessWidget {
                   child: _PetImage(imagePath: imagePath),
                 ),
               ),
-
               // Wave-shaped white border overlay
               Positioned(
                 top: 200,
@@ -270,6 +271,12 @@ class PetCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onDiaryTap != null)
+                Positioned(
+                  top: 18,
+                  right: 18,
+                  child: _DiaryActionChip(petName: name, onTap: onDiaryTap!),
+                ),
             ],
           ),
         ),
@@ -417,6 +424,55 @@ class _PetImage extends StatelessWidget {
       fit: BoxFit.cover,
       alignment: const Alignment(0, 0.22),
       errorBuilder: (context, error, stackTrace) => placeholder,
+    );
+  }
+}
+
+class _DiaryActionChip extends StatelessWidget {
+  const _DiaryActionChip({required this.petName, required this.onTap});
+
+  final String petName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: context.l10n.text('Apri diario di {{dogName}}', {
+        'dogName': petName,
+      }),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.16),
+        child: InkWell(
+          key: ValueKey('pet-card-diary-$petName'),
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.edit_note_rounded,
+                  size: 18,
+                  color: AppColors.ctaApricot,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  context.l10n.text('Diario'),
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.primaryBlue,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
