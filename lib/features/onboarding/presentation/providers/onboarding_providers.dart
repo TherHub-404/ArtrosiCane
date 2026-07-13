@@ -1,6 +1,6 @@
 import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dart';
-import 'package:artrosi_cane/features/onboarding/data/repositories/onboarding_repository_impl.dart';
 import 'package:artrosi_cane/features/onboarding/data/repositories/breed_repository.dart';
+import 'package:artrosi_cane/features/onboarding/data/repositories/onboarding_repository_impl.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/dog_profile.dart';
 import 'package:artrosi_cane/features/onboarding/domain/repositories/onboarding_repository.dart';
 import 'package:artrosi_cane/features/onboarding/domain/usecases/complete_onboarding.dart';
@@ -34,8 +34,9 @@ final completeOnboardingUseCaseProvider = Provider<CompleteOnboarding>((ref) {
   return CompleteOnboarding(repository);
 });
 
-final isOnboardingCompletedUseCaseProvider =
-    Provider<IsOnboardingCompleted>((ref) {
+final isOnboardingCompletedUseCaseProvider = Provider<IsOnboardingCompleted>((
+  ref,
+) {
   final repository = ref.watch(onboardingRepositoryProvider);
   return IsOnboardingCompleted(repository);
 });

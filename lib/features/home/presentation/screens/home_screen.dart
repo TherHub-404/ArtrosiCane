@@ -16,7 +16,6 @@ import 'package:artrosi_cane/l10n/app_locale.dart';
 import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
-import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -625,7 +624,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 title: _drawerTab == _DrawerTab.settings
                     ? Text(
                         l10n.text('Impostazioni'),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontWeight: FontWeight.w900,
                           fontFamily: 'Montserrat',
@@ -680,7 +679,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     padding: EdgeInsets.zero,
                     children: [
                       DrawerHeader(
-                        decoration: BoxDecoration(color: AppColors.ctaApricot),
+                        decoration: const BoxDecoration(
+                          color: AppColors.ctaApricot,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -693,7 +694,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               userDisplay.displayName,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -735,7 +736,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             children: [
                               Text(
                                 l10n.text('Modalità esperienza'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Montserrat',
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
@@ -818,7 +819,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         leading: const Icon(Icons.logout, color: Colors.red),
                         title: Text(
                           l10n.text('Logout'),
-                          style: TextStyle(color: Colors.red),
+                          style: const TextStyle(color: Colors.red),
                         ),
                         onTap: () async {
                           Navigator.of(context).pop();
@@ -915,7 +916,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.pets_rounded,
                                 color: AppColors.ctaApricot,
                                 size: 20,
@@ -926,7 +927,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   l10n.text('I tuoi Cani'),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,
                                     fontFamily: 'Montserrat',
@@ -994,7 +995,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             ),
                                             Text(
                                               l10n.text('Nessun cane presente'),
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w800,
                                                 color: AppColors.primaryBlue,
@@ -1028,17 +1029,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(
+                                                  const Icon(
                                                     Icons.add,
                                                     color: Colors.white,
                                                     size: 18,
                                                   ),
-                                                  SizedBox(width: 6),
+                                                  const SizedBox(width: 6),
                                                   Text(
                                                     l10n.text(
                                                       'Aggiungi il tuo cane',
                                                     ),
-                                                    style: TextStyle(
+                                                    style: const TextStyle(
                                                       color: Colors.white,
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -1108,7 +1109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   l10n.text('CONSIGLI SU MISURA'),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 1.2,
@@ -1119,7 +1120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   l10n.text('Salute e Benessere'),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
                                     fontFamily: 'Montserrat',
@@ -1347,7 +1348,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               activeTrackColor: AppColors.primaryBlue.withValues(alpha: 0.35),
               title: Text(
                 l10n.text('Notifiche push'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryBlue,
                 ),
@@ -1409,11 +1410,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.red),
-                    SizedBox(width: 8),
+                    const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    const SizedBox(width: 8),
                     Text(
                       l10n.text('Area account'),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
@@ -1917,8 +1918,9 @@ class _NewsCarouselState extends ConsumerState<_NewsCarousel> {
     if (sentence == null) return context.l10n.text('Tema del mese');
     final month = _localizedMonthBadge(sentence)?.trim() ?? '';
     final theme = sentence.themeMonth.trim();
-    if (theme.isEmpty)
+    if (theme.isEmpty) {
       return month.isEmpty ? context.l10n.text('Tema del mese') : month;
+    }
     if (month.isEmpty) return theme;
     return '$month · $theme';
   }
@@ -2802,7 +2804,7 @@ class _PetCarouselState extends State<_PetCarousel> {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 context.l10n.text('Aggiungi un cane'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.primaryBlue,
@@ -3028,17 +3030,16 @@ class _AuthUserDisplay {
 }
 
 class _DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-  final double radius;
-
   _DashedBorderPainter({
     required this.color,
     this.strokeWidth = 2.0,
     this.gap = 5.0,
     this.radius = 0.0,
   });
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+  final double radius;
 
   @override
   void paint(Canvas canvas, Size size) {

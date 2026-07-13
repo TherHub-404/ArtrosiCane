@@ -44,11 +44,7 @@ class WalksOverviewScreen extends ConsumerWidget {
               ),
             ),
             // Floating back button — visible in every state.
-            const Positioned(
-              top: 6,
-              left: 10,
-              child: _ReelBackButton(),
-            ),
+            const Positioned(top: 6, left: 10, child: _ReelBackButton()),
           ],
         ),
       ),
@@ -77,7 +73,11 @@ class _WalksMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AppColors.primaryBlue.withValues(alpha: 0.5)),
+            Icon(
+              icon,
+              size: 56,
+              color: AppColors.primaryBlue.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(
               message,
@@ -247,7 +247,12 @@ class _ReelPage extends StatelessWidget {
     final lang = AppLanguage.fromLocale(Localizations.localeOf(context)).code;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(AppSpacing.sm, 6, AppSpacing.sm, bottomInset),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        6,
+        AppSpacing.sm,
+        bottomInset,
+      ),
       child: Column(
         children: [
           // Title — always fully visible: wraps onto more lines, never
@@ -256,7 +261,10 @@ class _ReelPage extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 56,
+                  vertical: 4,
+                ),
                 child: Text(
                   video.titleFor(lang),
                   textAlign: TextAlign.center,
@@ -407,7 +415,8 @@ class _ReelVideoPlayerState extends State<_ReelVideoPlayer> {
   Widget build(BuildContext context) {
     const radius = BorderRadius.all(Radius.circular(22));
     final controller = _controller;
-    final ready = !_initializing &&
+    final ready =
+        !_initializing &&
         _error == null &&
         controller != null &&
         controller.value.isInitialized;

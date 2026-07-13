@@ -4,42 +4,42 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Serializza e deserializza il risultato priorita', () {
-    final model = DiagnosisPriorityResultModel(
+    const model = DiagnosisPriorityResultModel(
       areas: {
-        PriorityArea.dolore: const AreaPriority(
+        PriorityArea.dolore: AreaPriority(
           area: PriorityArea.dolore,
           score: 7,
           level: PriorityLevel.alta,
         ),
-        PriorityArea.ambiente: const AreaPriority(
+        PriorityArea.ambiente: AreaPriority(
           area: PriorityArea.ambiente,
           score: 4,
           level: PriorityLevel.media,
         ),
-        PriorityArea.peso: const AreaPriority(
+        PriorityArea.peso: AreaPriority(
           area: PriorityArea.peso,
           score: 3,
           level: PriorityLevel.media,
         ),
-        PriorityArea.movimento: const AreaPriority(
+        PriorityArea.movimento: AreaPriority(
           area: PriorityArea.movimento,
           score: 4,
           level: PriorityLevel.media,
         ),
-        PriorityArea.routineCarico: const AreaPriority(
+        PriorityArea.routineCarico: AreaPriority(
           area: PriorityArea.routineCarico,
           score: 5,
           level: PriorityLevel.media,
           compressedFromHigh: true,
         ),
       },
-      orderedAreas: const [
+      orderedAreas: [
         PriorityArea.dolore,
         PriorityArea.routineCarico,
         PriorityArea.ambiente,
       ],
-      shownHighAreas: const [PriorityArea.dolore],
-      compressedFromHigh: const [PriorityArea.routineCarico],
+      shownHighAreas: [PriorityArea.dolore],
+      compressedFromHigh: [PriorityArea.routineCarico],
       safetyRuleApplied: false,
       totalScore: 23,
     );

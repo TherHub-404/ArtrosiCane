@@ -67,7 +67,9 @@ class _ChangeTempPasswordScreenState
       _showNotice(
         _ChangePwdNotice(
           title: _t('Le password non coincidono'),
-          message: _t('Riscrivi la stessa password nei due campi per continuare.'),
+          message: _t(
+            'Riscrivi la stessa password nei due campi per continuare.',
+          ),
           tone: _ChangePwdNoticeTone.error,
         ),
       );
@@ -91,7 +93,9 @@ class _ChangeTempPasswordScreenState
       _showNotice(
         _ChangePwdNotice(
           title: _t('Qualcosa non va'),
-          message: _t('Non siamo riusciti ad aggiornare la password. Riprova tra poco.'),
+          message: _t(
+            'Non siamo riusciti ad aggiornare la password. Riprova tra poco.',
+          ),
           tone: _ChangePwdNoticeTone.error,
           debugDetails: kDebugMode ? e.toString() : null,
         ),
@@ -127,13 +131,17 @@ class _ChangeTempPasswordScreenState
         msg.contains('connection')) {
       return _ChangePwdNotice(
         title: _t('Connessione assente'),
-        message: _t('Sembra esserci un problema di rete. Controlla la connessione e riprova.'),
+        message: _t(
+          'Sembra esserci un problema di rete. Controlla la connessione e riprova.',
+        ),
         tone: _ChangePwdNoticeTone.error,
       );
     }
     return _ChangePwdNotice(
       title: _t('Aggiornamento non riuscito'),
-      message: _t('Non siamo riusciti ad aggiornare la password. Riprova tra poco.'),
+      message: _t(
+        'Non siamo riusciti ad aggiornare la password. Riprova tra poco.',
+      ),
       tone: _ChangePwdNoticeTone.error,
       debugDetails: kDebugMode ? e.message : null,
     );
@@ -322,9 +330,7 @@ class _ChangeTempPasswordScreenState
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
-                    isPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                    isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                     color: AppColors.text.withValues(alpha: 0.5),
                   ),
                   onPressed: onVisibilityToggle,

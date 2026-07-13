@@ -25,7 +25,13 @@ class DogEditSheet extends StatefulWidget {
   final String initialAge;
   final String initialWeight;
   final String? initialImagePath;
-  final Future<bool> Function(String name, String age, String weight, String? imagePath) onSave;
+  final Future<bool> Function(
+    String name,
+    String age,
+    String weight,
+    String? imagePath,
+  )
+  onSave;
   final VoidCallback onDelete;
 
   @override
@@ -89,7 +95,7 @@ class _DogEditSheetState extends State<DogEditSheet> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          
+
           // Photo Upload
           Center(
             child: Column(
@@ -102,7 +108,9 @@ class _DogEditSheetState extends State<DogEditSheet> {
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.2),
+                      ),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _buildAvatar(),
@@ -141,15 +149,15 @@ class _DogEditSheetState extends State<DogEditSheet> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: AppSpacing.xl),
-          
+
           // Save Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                Haptics.strong();
+                await Haptics.strong();
                 final ok = await widget.onSave(
                   _nameController.text,
                   _ageController.text,
@@ -168,12 +176,16 @@ class _DogEditSheetState extends State<DogEditSheet> {
               ),
               child: Text(
                 context.l10n.text('Salva Modifiche'),
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          
+
           // Delete Button
           Center(
             child: TextButton(
@@ -183,7 +195,7 @@ class _DogEditSheetState extends State<DogEditSheet> {
               },
               child: Text(
                 context.l10n.text('Elimina profilo'),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -197,11 +209,19 @@ class _DogEditSheetState extends State<DogEditSheet> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText.custom(label, color: AppColors.text.withValues(alpha: 0.6), fontSize: 12),
+        AppText.custom(
+          label,
+          color: AppColors.text.withValues(alpha: 0.6),
+          fontSize: 12,
+        ),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -213,7 +233,10 @@ class _DogEditSheetState extends State<DogEditSheet> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -223,7 +246,11 @@ class _DogEditSheetState extends State<DogEditSheet> {
   Widget _buildAvatar() {
     final placeholder = Container(
       color: AppColors.background,
-      child: const Icon(Icons.camera_alt, color: AppColors.primaryBlue, size: 32),
+      child: const Icon(
+        Icons.camera_alt,
+        color: AppColors.primaryBlue,
+        size: 32,
+      ),
     );
 
     if (_imagePath == null || _imagePath!.isEmpty) {
@@ -252,7 +279,10 @@ class _DogEditSheetState extends State<DogEditSheet> {
               Navigator.of(ctx).pop();
               _pickImage(ImageSource.gallery);
             },
-            icon: const Icon(Icons.photo_library_rounded, color: AppColors.primaryBlue),
+            icon: const Icon(
+              Icons.photo_library_rounded,
+              color: AppColors.primaryBlue,
+            ),
             tooltip: context.l10n.text('Galleria'),
           ),
         ];
@@ -265,7 +295,10 @@ class _DogEditSheetState extends State<DogEditSheet> {
                 Navigator.of(ctx).pop();
                 _pickImage(ImageSource.camera);
               },
-              icon: const Icon(Icons.photo_camera_rounded, color: AppColors.primaryBlue),
+              icon: const Icon(
+                Icons.photo_camera_rounded,
+                color: AppColors.primaryBlue,
+              ),
               tooltip: context.l10n.text('Fotocamera'),
             ),
           );
@@ -302,9 +335,7 @@ class _DogEditSheetState extends State<DogEditSheet> {
       final msg = isPermissionDenied
           ? context.l10n.text('Serve il permesso per accedere alle foto.')
           : context.l10n.text('Impossibile aprire la galleria.');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 }

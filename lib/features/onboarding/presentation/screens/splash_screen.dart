@@ -48,8 +48,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // Capped to avoid hanging the splash on slow networks; on subsequent
       // launches the location is hydrated synchronously from SharedPreferences
       // so this branch is skipped.
-      final cachedLocation =
-          ref.read(featureFlagsControllerProvider).inviteLocation;
+      final cachedLocation = ref
+          .read(featureFlagsControllerProvider)
+          .inviteLocation;
       if (cachedLocation == null) {
         await _startLinkServiceIfNeeded().timeout(
           const Duration(seconds: 2),
@@ -58,14 +59,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       }
 
       final repo = ref.read(authRepositoryProvider);
-      final softDeleted = await repo
-          .signOutIfCurrentUserSoftDeleted()
-          .timeout(const Duration(seconds: 8), onTimeout: () => false);
+      final softDeleted = await repo.signOutIfCurrentUserSoftDeleted().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => false,
+      );
       final hardDeleted = softDeleted
           ? false
-          : await repo
-              .signOutIfCurrentUserHardDeleted()
-              .timeout(const Duration(seconds: 8), onTimeout: () => false);
+          : await repo.signOutIfCurrentUserHardDeleted().timeout(
+              const Duration(seconds: 8),
+              onTimeout: () => false,
+            );
       if (softDeleted || hardDeleted) {
         final prefs = ref.read(sharedPreferencesProvider);
         await repo.signOutAndClearLocalState(prefs);
@@ -80,11 +83,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // so the user does not redo onboarding for data already collected.
       final session = ref.read(supabaseClientProvider).auth.currentSession;
       if (session != null) {
-        await repo
-            .claimProfile()
-            .timeout(const Duration(seconds: 5), onTimeout: () => null);
-        await _hydrateOnboardingFromRemoteIfNeeded()
-            .timeout(const Duration(seconds: 5), onTimeout: () {});
+        await repo.claimProfile().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => null,
+        );
+        await _hydrateOnboardingFromRemoteIfNeeded().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {},
+        );
       }
 
       if (!mounted) return;

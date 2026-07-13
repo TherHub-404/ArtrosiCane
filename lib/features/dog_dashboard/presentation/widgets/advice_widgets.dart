@@ -248,11 +248,7 @@ class AdviceListCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              AdviceIconBadge(
-                icon: headerIcon,
-                color: accentColor,
-                size: 40,
-              ),
+              AdviceIconBadge(icon: headerIcon, color: accentColor, size: 40),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(

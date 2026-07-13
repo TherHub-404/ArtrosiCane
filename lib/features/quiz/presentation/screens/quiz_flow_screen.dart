@@ -382,7 +382,7 @@ class _QuizFlowScreenState extends ConsumerState<QuizFlowScreen> {
   }
 
   Future<void> _onAnswerSelected(String questionId, int answerValue) async {
-    Haptics.select();
+    await Haptics.select();
     final controller = ref.read(quizControllerProvider.notifier);
     await controller.selectAnswer(questionId, answerValue);
   }
@@ -2096,7 +2096,7 @@ class _DiagnosisStepContentState extends State<_DiagnosisStepContent> {
                   ),
                   child: Text(
                     _t('Continua'),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                     ),

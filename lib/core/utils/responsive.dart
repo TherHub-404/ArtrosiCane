@@ -33,5 +33,6 @@ extension BuildContextResponsive on BuildContext {
 
   /// Scales a value but never above its baseline (useful for spacing that
   /// should shrink on small screens but not grow on large ones).
-  double scaledDown(double value) => value * widthScale.clamp(_minWidthScale, 1.0);
+  double scaledDown(double value) =>
+      value * widthScale.clamp(_minWidthScale, 1.0);
 }

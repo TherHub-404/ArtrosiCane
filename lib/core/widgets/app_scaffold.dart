@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
+import 'package:flutter/material.dart';
 
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
@@ -23,10 +23,7 @@ class AppScaffold extends StatelessWidget {
       backgroundColor: backgroundColor,
       appBar: appBar,
       body: SafeArea(
-        child: Padding(
-          padding: padding,
-          child: body,
-        ),
+        child: Padding(padding: padding, child: body),
       ),
       bottomNavigationBar: bottomNavigationBar == null
           ? null

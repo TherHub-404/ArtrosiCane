@@ -1,15 +1,15 @@
 import 'package:artrosi_cane/core/utils/haptics.dart';
+import 'package:artrosi_cane/core/widgets/app_banner.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
-import 'package:artrosi_cane/core/widgets/app_banner.dart';
 import 'package:artrosi_cane/features/onboarding/domain/entities/breed.dart';
 import 'package:artrosi_cane/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:artrosi_cane/l10n/app_locale.dart';
 import 'package:artrosi_cane/l10n/app_localizations.dart';
-import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
+import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -220,7 +220,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                         },
                   title: Text(
                     context.l10n.text('Avvia il quiz salute articolare'),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryBlue,
                     ),
@@ -261,7 +261,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                           _startDiagnosisAfterCreate
                               ? context.l10n.text('Aggiungi e scegli diagnosi')
                               : context.l10n.text('Aggiungi'),
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -286,7 +286,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
       children: [
         AppText.custom(
           label,
-          color: AppColors.text.withOpacity(0.6),
+          color: AppColors.text.withValues(alpha: 0.6),
           fontSize: 12,
         ),
         const SizedBox(height: 4),
@@ -325,6 +325,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
       }
 
       final picked = await _showBreedPicker(context, breeds);
+      if (!mounted) return;
       if (picked != null) {
         final language = AppLanguage.fromLocale(
           Localizations.localeOf(context),
@@ -439,7 +440,7 @@ class _AddPetDialogState extends ConsumerState<AddPetDialog> {
                       return Center(
                         child: AppText.body(
                           'Nessun risultato',
-                          color: AppColors.text.withOpacity(0.6),
+                          color: AppColors.text.withValues(alpha: 0.6),
                         ),
                       );
                     }
@@ -494,7 +495,7 @@ class _BreedPickerField extends StatelessWidget {
         children: [
           AppText.custom(
             label,
-            color: AppColors.text.withOpacity(0.6),
+            color: AppColors.text.withValues(alpha: 0.6),
             fontSize: 12,
           ),
           const SizedBox(height: 4),
@@ -512,7 +513,7 @@ class _BreedPickerField extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.pets_rounded,
-                    color: AppColors.ctaApricot.withOpacity(0.9),
+                    color: AppColors.ctaApricot.withValues(alpha: 0.9),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -520,7 +521,7 @@ class _BreedPickerField extends StatelessWidget {
                       selectedLabel ?? context.l10n.text('Seleziona razza'),
                       style: TextStyle(
                         color: selectedLabel == null
-                            ? AppColors.text.withOpacity(0.5)
+                            ? AppColors.text.withValues(alpha: 0.5)
                             : AppColors.text,
                         fontWeight: FontWeight.w600,
                       ),
@@ -566,7 +567,7 @@ class _MixedBreedCheckbox extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               context.l10n.text('Razza mista'),
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.text,
                 fontWeight: FontWeight.w600,
               ),

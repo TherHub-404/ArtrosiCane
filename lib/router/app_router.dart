@@ -220,9 +220,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return Scaffold(
               appBar: AppBar(title: Text(context.l10n.text('Come stai oggi?'))),
               body: Center(
-                child: Text(
-                  context.l10n.text('Risultato non disponibile.'),
-                ),
+                child: Text(context.l10n.text('Risultato non disponibile.')),
               ),
             );
           }

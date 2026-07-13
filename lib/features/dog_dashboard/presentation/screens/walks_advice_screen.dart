@@ -167,9 +167,7 @@ class WalksAdviceScreen extends StatelessWidget {
             'Fai il test per consigli mirati',
           ),
           duration: '-',
-          points: [
-            'Completa il test artrosi per vedere i video consigliati.',
-          ],
+          points: ['Completa il test artrosi per vedere i video consigliati.'],
           surfaces: [],
           surfacesLimit: [],
           accentColor: AppColors.primaryBlue,
@@ -191,7 +189,10 @@ class WalksAdviceScreen extends StatelessWidget {
 
 String _cleanSurfaceLabel(String text) {
   final noEmoji = text
-      .replaceAll(RegExp(r'\p{Extended_Pictographic}', unicode: true), '')
+      .replaceAll(
+        RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true),
+        '',
+      )
       .replaceAll('️', '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();

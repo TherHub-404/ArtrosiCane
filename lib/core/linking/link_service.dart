@@ -259,8 +259,8 @@ class LinkService {
         return null;
       }
 
-      final token =
-          (uri.queryParameters['t'] ?? uri.queryParameters['token'])?.trim();
+      final token = (uri.queryParameters['t'] ?? uri.queryParameters['token'])
+          ?.trim();
       final location =
           (uri.queryParameters['location'] ?? uri.queryParameters['loc'])
               ?.trim()
@@ -284,8 +284,8 @@ class LinkService {
       return null;
     }
 
-    String? token =
-        (uri.queryParameters['t'] ?? uri.queryParameters['token'])?.trim();
+    String? token = (uri.queryParameters['t'] ?? uri.queryParameters['token'])
+        ?.trim();
     String? location =
         (uri.queryParameters['location'] ?? uri.queryParameters['loc'])
             ?.trim()

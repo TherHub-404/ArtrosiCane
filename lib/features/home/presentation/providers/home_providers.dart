@@ -18,11 +18,11 @@ final userDogsProvider = FutureProvider((ref) {
 
 final dailySentenceForTodayProvider =
     FutureProvider.family<DailySentence?, String>((ref, language) {
-  final repo = ref.watch(dailySentenceRepositoryProvider);
-  final now = DateTime.now();
-  return repo.fetchForToday(
-    language: language,
-    month: now.month,
-    day: now.day,
-  );
-});
+      final repo = ref.watch(dailySentenceRepositoryProvider);
+      final now = DateTime.now();
+      return repo.fetchForToday(
+        language: language,
+        month: now.month,
+        day: now.day,
+      );
+    });

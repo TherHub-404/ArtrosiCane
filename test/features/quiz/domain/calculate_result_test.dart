@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockQuizRepository extends Mock implements QuizRepository {}
+
 class _FakeQuizResult extends Fake implements QuizResult {}
 
 void main() {

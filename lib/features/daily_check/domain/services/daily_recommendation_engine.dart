@@ -168,7 +168,7 @@ class DailyRecommendationEngine {
 }
 
 final List<DailyActionRule> _rules = [
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A01',
     text: 'Spezza la passeggiata in 2 uscite più brevi.',
     type: DailyActionType.action,
@@ -179,7 +179,7 @@ final List<DailyActionRule> _rules = [
     loadMax: PlannedLoad.lungo,
     priorityBase: 13,
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A02',
     text: 'Scegli fondo compatto e regolare.',
     type: DailyActionType.action,
@@ -191,7 +191,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 11,
     riskFactorTags: {DailyRiskFactor.sabbia, DailyRiskFactor.scivoloso},
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A03',
     text: 'Aggiungi una pausa di 2 minuti ogni 10 minuti.',
     type: DailyActionType.action,
@@ -202,7 +202,7 @@ final List<DailyActionRule> _rules = [
     loadMax: PlannedLoad.lungo,
     priorityBase: 12,
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A04',
     text: 'Programma uscita al fresco: mattina presto o sera.',
     type: DailyActionType.action,
@@ -214,7 +214,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 10,
     riskFactorTags: {DailyRiskFactor.caldo},
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A05',
     text: 'Prediligi passo lento e costante.',
     type: DailyActionType.action,
@@ -226,7 +226,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 10,
     recoveryMin: RecoveryDelta.pocoPiuRigido,
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'A06',
     text: 'Fai un riscaldamento dolce di 2 minuti prima di uscire.',
     type: DailyActionType.action,
@@ -237,7 +237,7 @@ final List<DailyActionRule> _rules = [
     loadMax: PlannedLoad.lungo,
     priorityBase: 11,
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'V01',
     text: 'Evita scale ripetute oggi.',
     type: DailyActionType.avoid,
@@ -249,7 +249,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 14,
     riskFactorTags: {DailyRiskFactor.scale},
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'V02',
     text: 'Evita sabbia morbida nelle ore centrali.',
     type: DailyActionType.avoid,
@@ -261,7 +261,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 13,
     riskFactorTags: {DailyRiskFactor.sabbia, DailyRiskFactor.caldo},
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'V03',
     text: 'Evita salti da auto o divano.',
     type: DailyActionType.avoid,
@@ -273,7 +273,7 @@ final List<DailyActionRule> _rules = [
     priorityBase: 12,
     riskFactorTags: {DailyRiskFactor.auto},
   ),
-  DailyActionRule(
+  const DailyActionRule(
     id: 'V04',
     text: 'Evita scatti e cambi di ritmo improvvisi.',
     type: DailyActionType.avoid,

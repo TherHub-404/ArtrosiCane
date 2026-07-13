@@ -1,22 +1,6 @@
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 
 class DiagnosisPriorityResultModel {
-  const DiagnosisPriorityResultModel({
-    required this.areas,
-    required this.orderedAreas,
-    required this.shownHighAreas,
-    required this.compressedFromHigh,
-    required this.safetyRuleApplied,
-    required this.totalScore,
-  });
-
-  final Map<PriorityArea, AreaPriority> areas;
-  final List<PriorityArea> orderedAreas;
-  final List<PriorityArea> shownHighAreas;
-  final List<PriorityArea> compressedFromHigh;
-  final bool safetyRuleApplied;
-  final int totalScore;
-
   factory DiagnosisPriorityResultModel.fromEntity(
     DiagnosisPriorityResult entity,
   ) {
@@ -28,35 +12,6 @@ class DiagnosisPriorityResultModel {
       safetyRuleApplied: entity.safetyRuleApplied,
       totalScore: entity.totalScore,
     );
-  }
-
-  DiagnosisPriorityResult toEntity() {
-    return DiagnosisPriorityResult(
-      areas: areas,
-      orderedAreas: orderedAreas,
-      shownHighAreas: shownHighAreas,
-      compressedFromHigh: compressedFromHigh,
-      safetyRuleApplied: safetyRuleApplied,
-      totalScore: totalScore,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'areas': {
-        for (final entry in areas.entries)
-          entry.key.name: {
-            'score': entry.value.score,
-            'level': entry.value.level.name,
-            'compressedFromHigh': entry.value.compressedFromHigh,
-          },
-      },
-      'orderedAreas': orderedAreas.map((a) => a.name).toList(),
-      'shownHighAreas': shownHighAreas.map((a) => a.name).toList(),
-      'compressedFromHigh': compressedFromHigh.map((a) => a.name).toList(),
-      'safetyRuleApplied': safetyRuleApplied,
-      'totalScore': totalScore,
-    };
   }
 
   factory DiagnosisPriorityResultModel.fromJson(Map<String, dynamic> json) {
@@ -108,5 +63,49 @@ class DiagnosisPriorityResultModel {
       safetyRuleApplied: json['safetyRuleApplied'] as bool? ?? false,
       totalScore: (json['totalScore'] as num?)?.toInt() ?? 0,
     );
+  }
+  const DiagnosisPriorityResultModel({
+    required this.areas,
+    required this.orderedAreas,
+    required this.shownHighAreas,
+    required this.compressedFromHigh,
+    required this.safetyRuleApplied,
+    required this.totalScore,
+  });
+
+  final Map<PriorityArea, AreaPriority> areas;
+  final List<PriorityArea> orderedAreas;
+  final List<PriorityArea> shownHighAreas;
+  final List<PriorityArea> compressedFromHigh;
+  final bool safetyRuleApplied;
+  final int totalScore;
+
+  DiagnosisPriorityResult toEntity() {
+    return DiagnosisPriorityResult(
+      areas: areas,
+      orderedAreas: orderedAreas,
+      shownHighAreas: shownHighAreas,
+      compressedFromHigh: compressedFromHigh,
+      safetyRuleApplied: safetyRuleApplied,
+      totalScore: totalScore,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'areas': {
+        for (final entry in areas.entries)
+          entry.key.name: {
+            'score': entry.value.score,
+            'level': entry.value.level.name,
+            'compressedFromHigh': entry.value.compressedFromHigh,
+          },
+      },
+      'orderedAreas': orderedAreas.map((a) => a.name).toList(),
+      'shownHighAreas': shownHighAreas.map((a) => a.name).toList(),
+      'compressedFromHigh': compressedFromHigh.map((a) => a.name).toList(),
+      'safetyRuleApplied': safetyRuleApplied,
+      'totalScore': totalScore,
+    };
   }
 }

@@ -36,7 +36,7 @@ void main() {
     const input = DailyCheckInput(
       symptomLevel: DailySymptomLevel.no,
       plannedLoad: PlannedLoad.breve,
-      riskFactors: const {},
+      riskFactors: {},
       recoveryDelta: RecoveryDelta.uguale,
       dogId: 'dog-1',
     );

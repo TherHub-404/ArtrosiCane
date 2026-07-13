@@ -762,7 +762,10 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.fitness_center, color: AppColors.primaryBlue),
+                  const Icon(
+                    Icons.fitness_center,
+                    color: AppColors.primaryBlue,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -790,7 +793,11 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Icon(Icons.touch_app, size: 18, color: AppColors.ctaApricot),
+                  const Icon(
+                    Icons.touch_app,
+                    size: 18,
+                    color: AppColors.ctaApricot,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     _t('Tocca per aprire i dettagli'),
@@ -887,7 +894,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.map_outlined, color: AppColors.primaryBlue),
+                  const Icon(Icons.map_outlined, color: AppColors.primaryBlue),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -925,7 +932,11 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Icon(Icons.touch_app, size: 18, color: AppColors.ctaApricot),
+                  const Icon(
+                    Icons.touch_app,
+                    size: 18,
+                    color: AppColors.ctaApricot,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     _t('Tocca per aprire i dettagli'),

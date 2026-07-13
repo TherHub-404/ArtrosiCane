@@ -72,7 +72,9 @@ class _OnboardingWelcomeScreenState
         inviteLocation == 'bibbione' || inviteLocation == 'bibione';
 
     final title = isBibbioneMode
-        ? l10n.text('Un progetto pilota per il benessere del tuo cane in vacanza.')
+        ? l10n.text(
+            'Un progetto pilota per il benessere del tuo cane in vacanza.',
+          )
         : l10n.text('Un percorso per il benessere del tuo cane, ogni giorno.');
     final subtitle = isBibbioneMode
         ? l10n.text(
@@ -273,7 +275,9 @@ class _BottomSection extends StatelessWidget {
                 icon: Icons.remove_red_eye_outlined,
                 circleColor: const Color(0xFF6E80BA),
                 title: l10n.text('Osserva'),
-                subtitle: l10n.text('Impara a riconoscere i segnali importanti.'),
+                subtitle: l10n.text(
+                  'Impara a riconoscere i segnali importanti.',
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               _FeatureRow(

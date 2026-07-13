@@ -82,9 +82,7 @@ class _DailyCheckHistoryScreenState
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
               title: Text(
-                l10n.text('Diario di {{dogName}}', {
-                  'dogName': widget.dogName,
-                }),
+                l10n.text('Diario di {{dogName}}', {'dogName': widget.dogName}),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -349,10 +347,7 @@ class _DayCard extends StatelessWidget {
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(
-              color: color.withValues(alpha: 0.18),
-              width: 1,
-            ),
+            border: Border.all(color: color.withValues(alpha: 0.18), width: 1),
           ),
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
@@ -545,21 +540,13 @@ class _ChartCard extends StatelessWidget {
                   label: l10n.text('Verde'),
                   color: _verde,
                 ),
-                Container(
-                  width: 1,
-                  height: 28,
-                  color: AppColors.borderSoft,
-                ),
+                Container(width: 1, height: 28, color: AppColors.borderSoft),
                 _StatItem(
                   value: stats.giallo,
                   label: l10n.text('Giallo'),
                   color: _giallo,
                 ),
-                Container(
-                  width: 1,
-                  height: 28,
-                  color: AppColors.borderSoft,
-                ),
+                Container(width: 1, height: 28, color: AppColors.borderSoft),
                 _StatItem(
                   value: stats.rosso,
                   label: l10n.text('Rosso'),
@@ -711,10 +698,7 @@ class _BarChartPainter extends CustomPainter {
       oldDelegate.buckets != buckets;
 }
 
-List<DailyLogEntry?> _aggregateLastDays(
-  List<DailyLogEntry> entries,
-  int days,
-) {
+List<DailyLogEntry?> _aggregateLastDays(List<DailyLogEntry> entries, int days) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
@@ -1047,7 +1031,7 @@ class _EmptyView extends StatelessWidget {
           width: 80,
           height: 80,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.beigeAccent,
             shape: BoxShape.circle,
           ),
@@ -1120,7 +1104,10 @@ class _ErrorView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         Center(
-          child: TextButton(onPressed: onRetry, child: Text(l10n.text('Riprova'))),
+          child: TextButton(
+            onPressed: onRetry,
+            child: Text(l10n.text('Riprova')),
+          ),
         ),
       ],
     );
