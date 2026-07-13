@@ -24,7 +24,7 @@ permissions:
 jobs:
   testflight:
     name: Build and upload to TestFlight
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
 
     steps:
@@ -40,13 +40,84 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
+          ruby-version: '3.3'
           bundler-cache: true
 
       - name: Create env file
-        run: cp .env.example .env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          DOG_API_KEY: ${{ secrets.DOG_API_KEY }}
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          INVITE_API_BASE_URL: ${{ secrets.INVITE_API_BASE_URL }}
+          INVITE_DOMAIN: ${{ secrets.INVITE_DOMAIN }}
+          INVITE_PATH: ${{ secrets.INVITE_PATH }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_URL and SUPABASE_ANON_KEY repository secrets are required for TestFlight builds."
+            exit 1
+          fi
+
+          if [ "$SUPABASE_URL" = "https://your-project.supabase.co" ] || [ "$SUPABASE_ANON_KEY" = "your-anon-key" ]; then
+            echo "Refusing to build TestFlight with placeholder Supabase configuration."
+            exit 1
+          fi
+
+          {
+            echo "SUPABASE_URL=$SUPABASE_URL"
+            echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            echo "DOG_API_KEY=${DOG_API_KEY:-}"
+            echo "SUPABASE_SERVICE_ROLE="
+            echo "LIBRETRANSLATE_ENDPOINT="
+            echo "LIBRETRANSLATE_API_KEY="
+            echo "DEMO_EMAIL="
+            echo "DEMO_PASSWORD="
+            echo "GOOGLE_IOS_CLIENT_ID=${GOOGLE_IOS_CLIENT_ID:-}"
+            echo "GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID:-}"
+            echo "INVITE_API_BASE_URL=${INVITE_API_BASE_URL:-https://api.example.com}"
+            echo "INVITE_DOMAIN=${INVITE_DOMAIN:-artrosicane.vercel.app}"
+            echo "INVITE_PATH=${INVITE_PATH:-/i}"
+          } > .env
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Verify Supabase public API
+        run: |
+          set -euo pipefail
+
+          SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' .env)"
+          SUPABASE_ANON_KEY="$(awk -F= '/^SUPABASE_ANON_KEY=/{print $2; exit}' .env)"
+          SUPABASE_HOST="$(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          echo "Supabase host: $SUPABASE_HOST"
+
+          HTTP_CODE="$(curl -sS -o "$RUNNER_TEMP/breeds_check.json" -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/breeds?select=id,name,name_it&limit=3" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")"
+          echo "Supabase breeds HTTP code: $HTTP_CODE"
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          path = Path(os.environ["RUNNER_TEMP"]) / "breeds_check.json"
+          data = json.loads(path.read_text())
+          if not isinstance(data, list):
+              print(f"Supabase response was not a list: {data}")
+              sys.exit(1)
+          print(f"Supabase breeds rows: {len(data)}")
+          print(f"Supabase breed names: {[row.get('name') for row in data]}")
+          if len(data) == 0:
+              sys.exit(1)
+          PY
+
+          test "$HTTP_CODE" = "200"
 
       - name: Install Apple signing assets
         env:
@@ -85,16 +156,6 @@ jobs:
 
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
-      - name: Build IPA
-        run: |
-          set -euo pipefail
-          BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"
-          echo "Using iOS build number: $BUILD_NUMBER"
-          flutter build ipa \
-            --release \
-            --build-number "$BUILD_NUMBER" \
-            --export-options-plist=ios/ExportOptions.plist
-
       - name: Write App Store Connect API key
         env:
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
@@ -102,6 +163,63 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/appstore"
           echo "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 -D > "$RUNNER_TEMP/appstore/AuthKey.p8"
+
+      - name: Resolve TestFlight version
+        id: version
+        env:
+          APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ runner.temp }}/appstore/AuthKey.p8
+        run: bundle exec fastlane ios resolve_testflight_version
+
+      - name: Build IPA
+        run: |
+          set -euo pipefail
+          BUILD_NAME="${{ steps.version.outputs.build_name }}"
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+          echo "Using iOS build number: $BUILD_NUMBER"
+          echo "Using iOS build name: $BUILD_NAME"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BUILD_NAME" ios/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/AppClip/Info.plist
+
+          flutter build ipa \
+            --release \
+            --build-name "$BUILD_NAME" \
+            --build-number "$BUILD_NUMBER" \
+            --export-options-plist=ios/ExportOptions.plist
+
+      - name: Verify packaged env asset
+        run: |
+          set -euo pipefail
+
+          IPA_PATH="$(find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found in build/ios/ipa"
+            exit 1
+          fi
+
+          rm -rf "$RUNNER_TEMP/ipa-check"
+          mkdir -p "$RUNNER_TEMP/ipa-check"
+          unzip -q "$IPA_PATH" -d "$RUNNER_TEMP/ipa-check"
+
+          ENV_ASSET="$(find "$RUNNER_TEMP/ipa-check/Payload" -path '*/flutter_assets/.env' -print -quit)"
+          if [ -z "$ENV_ASSET" ]; then
+            echo "Packaged .env asset was not found in the IPA."
+            find "$RUNNER_TEMP/ipa-check/Payload" -path '*flutter_assets*' -maxdepth 6 -type f | sed 's#^.*/Payload#Payload#' | head -80
+            exit 1
+          fi
+
+          PACKAGED_SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' "$ENV_ASSET")"
+          PACKAGED_SUPABASE_HOST="$(printf '%s' "$PACKAGED_SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          EXPECTED_SUPABASE_URL="$(awk -F= '/^SUPABASE_URL=/{print $2; exit}' .env)"
+          EXPECTED_SUPABASE_HOST="$(printf '%s' "$EXPECTED_SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          echo "Packaged env asset: ${ENV_ASSET#$RUNNER_TEMP/ipa-check/}"
+          echo "Packaged Supabase host: $PACKAGED_SUPABASE_HOST"
+
+          test "$PACKAGED_SUPABASE_HOST" = "$EXPECTED_SUPABASE_HOST"
+          ! grep -q "your-project.supabase.co\\|your-anon-key" "$ENV_ASSET"
 
       - name: Upload to TestFlight
         env:

@@ -15,10 +15,12 @@ class DogProfilePage extends ConsumerStatefulWidget {
     super.key,
     this.onProfileChanged,
     this.showValidationErrors = false,
+    this.bottomContentPadding = 0,
   });
 
   final Function(DogProfile)? onProfileChanged;
   final bool showValidationErrors;
+  final double bottomContentPadding;
 
   @override
   ConsumerState<DogProfilePage> createState() => _DogProfilePageState();
@@ -123,7 +125,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
             AppSpacing.lg,
             AppSpacing.lg,
             AppSpacing.lg,
-            AppSpacing.lg + bottomSafeInset,
+            AppSpacing.lg + bottomSafeInset + widget.bottomContentPadding,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +283,7 @@ class _DogProfilePageState extends ConsumerState<DogProfilePage>
                   if (!mounted) return;
                   if (picked != null) {
                     final language = AppLanguage.fromLocale(
-                      Localizations.localeOf(context),
+                      Localizations.localeOf(this.context),
                     );
                     setState(() {
                       _selectedBreedId = picked.id;
@@ -515,30 +517,33 @@ class _MixedBreedCheckbox extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () => onChanged(!value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: Checkbox(
-                value: value,
-                onChanged: (v) => onChanged(v ?? false),
-                activeColor: AppColors.ctaApricot,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: value,
+                  onChanged: (v) => onChanged(v ?? false),
+                  activeColor: AppColors.ctaApricot,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              context.l10n.text('Razza mista'),
-              style: AppTypography.body.copyWith(
-                color: AppColors.text,
-                fontWeight: FontWeight.w600,
+              const SizedBox(width: 10),
+              Text(
+                context.l10n.text('Razza mista'),
+                style: AppTypography.body.copyWith(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

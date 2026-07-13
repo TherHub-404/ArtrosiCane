@@ -5,6 +5,8 @@ import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
+import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/features/daily_check/presentation/providers/daily_check_providers.dart';
 import 'package:artrosi_cane/features/home/data/daily_sentence_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
@@ -16,6 +18,7 @@ import 'package:artrosi_cane/l10n/app_locale.dart';
 import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
+import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -940,7 +943,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     SizedBox(
-                      height: 420,
+                      height: 540,
                       child: Consumer(
                         builder: (context, ref, _) {
                           final pets = ref.watch(userDogsProvider);
@@ -1053,9 +1056,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ),
                                 );
                               }
-                              return _PetCarousel(
-                                dogs: list,
-                                onAddTap: _openAddPetDialog,
+                              return Column(
+                                children: [
+                                  _HomeDailyDiaryEntryPoint(dog: list.first),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Expanded(
+                                    child: _PetCarousel(
+                                      dogs: list,
+                                      onAddTap: _openAddPetDialog,
+                                    ),
+                                  ),
+                                ],
                               );
                             },
                             loading: () => const Center(
@@ -2648,6 +2659,156 @@ class _AppBarWaveClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class _HomeDailyDiaryEntryPoint extends ConsumerWidget {
+  const _HomeDailyDiaryEntryPoint({required this.dog});
+
+  final dynamic dog;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dogId = dog.id?.toString();
+    final dogName = dog.name?.toString() ?? context.l10n.text('Il tuo cane');
+    final state = ref.watch(todayDailyDiaryStateProvider(dogId));
+
+    return state.when(
+      loading: () => _Card(
+        title: context.l10n.text('Check di oggi'),
+        subtitle: context.l10n.text('Controllo stato in corso...'),
+        actionLabel: context.l10n.text('Apri'),
+        icon: Icons.hourglass_top_rounded,
+        onPressed: null,
+      ),
+      error: (_, __) => _Card(
+        title: context.l10n.text('Check di oggi'),
+        subtitle: context.l10n.text(
+          'Stato non disponibile: puoi comunque aprire il check.',
+        ),
+        actionLabel: context.l10n.text('Apri check di oggi'),
+        icon: Icons.error_outline_rounded,
+        onPressed: () => _openCheck(context, dogId, dogName),
+      ),
+      data: (diaryState) {
+        final isCompleted = diaryState.status == DailyDiaryStatus.completed;
+        final isDraft = diaryState.status == DailyDiaryStatus.inProgress;
+        return _Card(
+          title: isCompleted
+              ? context.l10n.text('Check di oggi completato')
+              : isDraft
+              ? context.l10n.text('Continua il check di oggi')
+              : context.l10n.text('Inizia il check di oggi'),
+          subtitle: isCompleted
+              ? context.l10n.text(
+                  'Il diario e salvato. Tocca per vedere lo storico.',
+                )
+              : isDraft
+              ? context.l10n.text(
+                  'Bozza salvata: riprendi senza reinserire le risposte.',
+                )
+              : context.l10n.text(
+                  'Rispondi a 4 domande rapide per il consiglio di oggi.',
+                ),
+          actionLabel: isCompleted
+              ? context.l10n.text('Vedi diario')
+              : isDraft
+              ? context.l10n.text('Continua')
+              : context.l10n.text('Inizia'),
+          icon: isCompleted
+              ? Icons.check_circle_rounded
+              : isDraft
+              ? Icons.edit_note_rounded
+              : Icons.traffic_rounded,
+          onPressed: isCompleted
+              ? () => _openHistory(context, dogId, dogName)
+              : () => _openCheck(context, dogId, dogName),
+        );
+      },
+    );
+  }
+
+  void _openCheck(BuildContext context, String? dogId, String dogName) {
+    context.push('/daily-check', extra: {'dogId': dogId, 'dogName': dogName});
+  }
+
+  void _openHistory(BuildContext context, String? dogId, String dogName) {
+    context.push(
+      '/daily-check/history',
+      extra: {'dogId': dogId, 'dogName': dogName},
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  const _Card({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.ctaApricot),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.body.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.ctaApricot,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              minimumSize: const Size(0, 40),
+            ),
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PetCarousel extends StatefulWidget {

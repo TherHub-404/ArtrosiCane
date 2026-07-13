@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>APP_GROUP_ID</key>
+	<string>group.com.artrosicase.artrosicane</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -29,10 +31,6 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -44,18 +42,22 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GIDClientID</key>
 	<string>1058669899472-k1tnp52pj2o25fbn7uemtunbt18bfclp.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Usiamo la fotocamera per aggiornare la foto del profilo del cane.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Usiamo la libreria foto per scegliere l'immagine del profilo del cane.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usiamo la posizione solo quando necessario per mostrare contenuti o inviti collegati alla tua località.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Permette di salvare immagini scattate durante l'aggiornamento del profilo.</string>
-	<key>APP_GROUP_ID</key>
-	<string>group.com.artrosicase.artrosicane</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usiamo la libreria foto per scegliere l'immagine del profilo del cane.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

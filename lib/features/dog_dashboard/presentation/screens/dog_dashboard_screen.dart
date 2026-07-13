@@ -1,7 +1,9 @@
 import 'dart:io';
 
-import 'package:artrosi_cane/core/widgets/app_button.dart';
 import 'package:artrosi_cane/core/widgets/app_banner.dart';
+import 'package:artrosi_cane/core/widgets/app_button.dart';
+import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/features/daily_check/presentation/providers/daily_check_providers.dart';
 import 'package:artrosi_cane/features/dog_dashboard/presentation/widgets/dog_edit_sheet.dart';
 import 'package:artrosi_cane/features/home/data/dog_remote_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
@@ -531,6 +533,96 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
   }
 
   Widget _buildQuickCheckSection(BuildContext context) {
+    final todayState = ref.watch(todayDailyDiaryStateProvider(_dogId));
+
+    return todayState.when(
+      loading: () => _buildQuickCheckCard(
+        context,
+        statusLabel: _t('Caricamento stato check...'),
+        description: _t(
+          'Stiamo controllando se il check di oggi e gia stato completato.',
+        ),
+        buttonLabel: _t('Apri check di oggi'),
+        icon: Icons.hourglass_top_rounded,
+        onPressed: null,
+      ),
+      error: (_, __) => _buildQuickCheckCard(
+        context,
+        statusLabel: _t('Stato check non disponibile'),
+        description: _t(
+          'Puoi comunque aprire il check: se eri offline, la bozza sul dispositivo resta disponibile.',
+        ),
+        buttonLabel: _t('Apri check di oggi'),
+        icon: Icons.error_outline_rounded,
+        onPressed: _openDailyCheck,
+      ),
+      data: (state) {
+        final status = state.status;
+        final isCompleted = status == DailyDiaryStatus.completed;
+        final isDraft = status == DailyDiaryStatus.inProgress;
+        return _buildQuickCheckCard(
+          context,
+          statusLabel: isCompleted
+              ? _t('Check di oggi completato')
+              : isDraft
+              ? _t('Check di oggi in corso')
+              : _t('Check di oggi da compilare'),
+          description: isCompleted
+              ? _t(
+                  'Ottimo: il diario di oggi e salvato. Puoi rivedere il risultato o consultare lo storico.',
+                )
+              : isDraft
+              ? _t(
+                  'Hai una bozza salvata: continua da dove eri rimasto senza reinserire le risposte.',
+                )
+              : _t(
+                  'In 20 secondi ottieni semaforo, 2 micro-azioni e 1 cosa da evitare per oggi.',
+                ),
+          buttonLabel: isCompleted
+              ? _t('Vedi diario completo')
+              : isDraft
+              ? _t('Continua check di oggi')
+              : _t('Inizia check di oggi'),
+          icon: isCompleted
+              ? Icons.check_circle_rounded
+              : isDraft
+              ? Icons.edit_note_rounded
+              : Icons.traffic_rounded,
+          onPressed: isCompleted ? _openDailyHistory : _openDailyCheck,
+        );
+      },
+    );
+  }
+
+  void _openDailyCheck() {
+    context.push(
+      '/daily-check',
+      extra: {
+        'dogId': _dogId,
+        'dogName': _name.isNotEmpty ? _name : context.l10n.text('Il tuo cane'),
+      },
+    );
+  }
+
+  void _openDailyHistory() {
+    if (_dogId == null) return;
+    context.push(
+      '/daily-check/history',
+      extra: {
+        'dogId': _dogId,
+        'dogName': _name.isNotEmpty ? _name : context.l10n.text('Il tuo cane'),
+      },
+    );
+  }
+
+  Widget _buildQuickCheckCard(
+    BuildContext context, {
+    required String statusLabel,
+    required String description,
+    required String buttonLabel,
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -560,16 +652,12 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                   color: AppColors.ctaApricot.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.traffic_rounded,
-                  color: AppColors.ctaApricot,
-                  size: 20,
-                ),
+                child: Icon(icon, color: AppColors.ctaApricot, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  context.l10n.text('Come stai oggi?'),
+                  statusLabel,
                   style: AppTypography.bodyBold.copyWith(
                     color: AppColors.primaryBlue,
                     fontSize: 18,
@@ -580,9 +668,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            context.l10n.text(
-              'In 20 secondi ottieni semaforo, 2 micro-azioni e 1 cosa da evitare per oggi.',
-            ),
+            description,
             style: AppTypography.body.copyWith(
               color: AppColors.text.withValues(alpha: 0.78),
             ),
@@ -591,17 +677,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                context.push(
-                  '/daily-check',
-                  extra: {
-                    'dogId': _dogId,
-                    'dogName': _name.isNotEmpty
-                        ? _name
-                        : context.l10n.text('Il tuo cane'),
-                  },
-                );
-              },
+              onPressed: onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.ctaApricot,
                 foregroundColor: Colors.white,
@@ -612,7 +688,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
                 ),
               ),
               child: Text(
-                context.l10n.text('Come stai oggi?'),
+                buttonLabel,
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
@@ -620,19 +696,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
           const SizedBox(height: 8),
           Center(
             child: TextButton.icon(
-              onPressed: _dogId == null
-                  ? null
-                  : () {
-                      context.push(
-                        '/daily-check/history',
-                        extra: {
-                          'dogId': _dogId,
-                          'dogName': _name.isNotEmpty
-                              ? _name
-                              : context.l10n.text('Il tuo cane'),
-                        },
-                      );
-                    },
+              onPressed: _dogId == null ? null : _openDailyHistory,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.primaryBlue,
                 padding: const EdgeInsets.symmetric(
@@ -645,7 +709,7 @@ class _DogDashboardScreenState extends ConsumerState<DogDashboardScreen> {
               ),
               icon: const Icon(Icons.history_rounded, size: 18),
               label: Text(
-                context.l10n.text('Vedi diario completo'),
+                _t('Vedi diario completo'),
                 style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 13,

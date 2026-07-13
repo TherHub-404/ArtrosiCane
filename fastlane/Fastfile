@@ -1,15 +1,67 @@
 default_platform(:ios)
 
+def repo_root
+  File.expand_path('..', __dir__)
+end
+
+def pubspec_marketing_version
+  pubspec_path = File.join(repo_root, 'pubspec.yaml')
+  version_line = File.readlines(pubspec_path).find { |line| line.start_with?('version:') }
+  UI.user_error!('Could not find version in pubspec.yaml') unless version_line
+
+  version_line.split.fetch(1).split('+').first
+end
+
+def next_patch_version(version)
+  parts = version.split('.').map(&:to_i)
+  parts << 0 while parts.length < 3
+  parts[2] += 1
+  parts.join('.')
+end
+
 platform :ios do
-  desc 'Upload an existing IPA to TestFlight'
-  lane :upload_testflight do
-    api_key = app_store_connect_api_key(
+  private_lane :app_store_api_key do
+    app_store_connect_api_key(
       key_id: ENV.fetch('APP_STORE_CONNECT_KEY_ID'),
       issuer_id: ENV.fetch('APP_STORE_CONNECT_ISSUER_ID'),
       key_filepath: ENV.fetch('APP_STORE_CONNECT_API_KEY_PATH'),
       duration: 1200,
       in_house: false
     )
+  end
+
+  desc 'Resolve the version and build number to use for a TestFlight upload'
+  lane :resolve_testflight_version do
+    app_store_api_key
+
+    base_version = pubspec_marketing_version
+    build_name = base_version
+
+    app = Spaceship::ConnectAPI::App.find(ENV.fetch('APP_IDENTIFIER'))
+    UI.user_error!("Could not find App Store Connect app #{ENV.fetch('APP_IDENTIFIER')}") unless app
+
+    live_version = app.get_live_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    if live_version && Gem::Version.new(base_version) <= Gem::Version.new(live_version.version_string)
+      build_name = next_patch_version(live_version.version_string)
+      UI.message("Base version #{base_version} is not higher than live App Store version #{live_version.version_string}; using #{build_name} for this TestFlight build")
+    else
+      UI.message("Using pubspec version #{build_name} for this TestFlight build")
+    end
+
+    build_number = Time.now.utc.strftime('%Y%m%d%H%M%S')
+    UI.message("Using build number #{build_number}")
+
+    if ENV['GITHUB_OUTPUT']
+      File.open(ENV.fetch('GITHUB_OUTPUT'), 'a') do |file|
+        file.puts("build_name=#{build_name}")
+        file.puts("build_number=#{build_number}")
+      end
+    end
+  end
+
+  desc 'Upload an existing IPA to TestFlight'
+  lane :upload_testflight do
+    api_key = app_store_api_key
 
     upload_to_testflight(
       api_key: api_key,
