@@ -1058,7 +1058,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               }
                               return Column(
                                 children: [
-                                  _HomeDailyDiaryEntryPoint(dog: list.first),
+                                  _HomeDailyDiaryEntryList(dogs: list),
                                   const SizedBox(height: AppSpacing.sm),
                                   Expanded(
                                     child: _PetCarousel(
@@ -2661,6 +2661,31 @@ class _AppBarWaveClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
+class _HomeDailyDiaryEntryList extends StatelessWidget {
+  const _HomeDailyDiaryEntryList({required this.dogs});
+
+  final List<dynamic> dogs;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        itemCount: dogs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, index) {
+          return SizedBox(
+            width: (MediaQuery.sizeOf(context).width - 56).clamp(280.0, 360.0),
+            child: _HomeDailyDiaryEntryPoint(dog: dogs[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _HomeDailyDiaryEntryPoint extends ConsumerWidget {
   const _HomeDailyDiaryEntryPoint({required this.dog});
 
@@ -2671,17 +2696,24 @@ class _HomeDailyDiaryEntryPoint extends ConsumerWidget {
     final dogId = dog.id?.toString();
     final dogName = dog.name?.toString() ?? context.l10n.text('Il tuo cane');
     final state = ref.watch(todayDailyDiaryStateProvider(dogId));
+    final cardKey = ValueKey('home-diary-card-${dogId ?? dogName}');
 
     return state.when(
       loading: () => _Card(
-        title: context.l10n.text('Check di oggi'),
+        key: cardKey,
+        title: context.l10n.text('Check di oggi per {{dogName}}', {
+          'dogName': dogName,
+        }),
         subtitle: context.l10n.text('Controllo stato in corso...'),
         actionLabel: context.l10n.text('Apri'),
         icon: Icons.hourglass_top_rounded,
         onPressed: null,
       ),
       error: (_, __) => _Card(
-        title: context.l10n.text('Check di oggi'),
+        key: cardKey,
+        title: context.l10n.text('Check di oggi per {{dogName}}', {
+          'dogName': dogName,
+        }),
         subtitle: context.l10n.text(
           'Stato non disponibile: puoi comunque aprire il check.',
         ),
@@ -2693,11 +2725,18 @@ class _HomeDailyDiaryEntryPoint extends ConsumerWidget {
         final isCompleted = diaryState.status == DailyDiaryStatus.completed;
         final isDraft = diaryState.status == DailyDiaryStatus.inProgress;
         return _Card(
+          key: cardKey,
           title: isCompleted
-              ? context.l10n.text('Check di oggi completato')
+              ? context.l10n.text('Check di oggi completato per {{dogName}}', {
+                  'dogName': dogName,
+                })
               : isDraft
-              ? context.l10n.text('Continua il check di oggi')
-              : context.l10n.text('Inizia il check di oggi'),
+              ? context.l10n.text('Continua il check di oggi per {{dogName}}', {
+                  'dogName': dogName,
+                })
+              : context.l10n.text('Inizia il check di oggi per {{dogName}}', {
+                  'dogName': dogName,
+                }),
           subtitle: isCompleted
               ? context.l10n.text(
                   'Il diario e salvato. Tocca per vedere lo storico.',
@@ -2741,6 +2780,7 @@ class _HomeDailyDiaryEntryPoint extends ConsumerWidget {
 
 class _Card extends StatelessWidget {
   const _Card({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.actionLabel,

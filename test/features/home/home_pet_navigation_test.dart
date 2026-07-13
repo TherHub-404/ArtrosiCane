@@ -38,15 +38,21 @@ void main() {
     return GoRouter(
       initialLocation: '/home',
       routes: [
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
-        ),
+        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/dog-dashboard',
           builder: (context, state) {
             final data = state.extra as Map<String, dynamic>? ?? {};
             return DogDashboardScreen(dogData: data);
+          },
+        ),
+        GoRoute(
+          path: '/daily-check',
+          builder: (context, state) {
+            final data = state.extra as Map<String, dynamic>? ?? {};
+            return Scaffold(
+              body: Text('daily-check-${data['dogId']}-${data['dogName']}'),
+            );
           },
         ),
       ],
@@ -69,6 +75,15 @@ void main() {
               ageYears: 7,
               weightKg: 24.5,
               riskLevel: 'medio',
+            ),
+            DogProfile(
+              id: 'dog-2',
+              name: 'Milo',
+              breedName: 'Beagle',
+              breedImageUrl: 'assets/first-dog.png',
+              ageYears: 5,
+              weightKg: 12,
+              riskLevel: 'basso',
             ),
           ];
         }),
@@ -132,5 +147,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DogDashboardScreen), findsOneWidget);
+  });
+  testWidgets('each Home diary entry point opens an independent dog diary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsOneWidget);
+    expect(find.text('Inizia il check di oggi per Luna'), findsOneWidget);
+
+    final lunaStartButton = find.descendant(
+      of: find.byKey(const ValueKey('home-diary-card-dog-1')),
+      matching: find.widgetWithText(ElevatedButton, 'Inizia'),
+    );
+    expect(lunaStartButton, findsOneWidget);
+    await tester.tap(lunaStartButton);
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-1-Luna'), findsOneWidget);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final miloCard = find.byKey(const ValueKey('home-diary-card-dog-2'));
+    await tester.drag(find.byType(Scrollable).first, const Offset(-320, 0));
+    await tester.pumpAndSettle();
+
+    expect(miloCard, findsOneWidget);
+    expect(find.text('Inizia il check di oggi per Milo'), findsOneWidget);
+
+    final miloStartButton = find.descendant(
+      of: miloCard,
+      matching: find.widgetWithText(ElevatedButton, 'Inizia'),
+    );
+    expect(miloStartButton, findsOneWidget);
+    await tester.tap(miloStartButton);
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-2-Milo'), findsOneWidget);
   });
 }
