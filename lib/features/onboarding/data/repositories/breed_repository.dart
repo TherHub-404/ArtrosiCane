@@ -15,13 +15,15 @@ class BreedRepository {
         .limit(500); // assicurati di ricevere tutte le razze
     final list = response as List<dynamic>;
     return list
-        .map((item) => Breed(
-              id: item['id'] as String,
-              name: item['name'] as String,
-              nameIt: item['name_it'] as String?,
-              nameFr: item['name_fr'] as String?,
-              nameDe: item['name_de'] as String?,
-            ))
+        .map(
+          (item) => Breed(
+            id: item['id'] as String,
+            name: item['name'] as String,
+            nameIt: item['name_it'] as String?,
+            nameFr: item['name_fr'] as String?,
+            nameDe: item['name_de'] as String?,
+          ),
+        )
         .toList();
   }
 }

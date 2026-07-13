@@ -101,10 +101,7 @@ class QuizController extends StateNotifier<QuizState> {
     state = const QuizState(isLoading: true);
     try {
       final questions = await getQuestions();
-      state = state.copyWith(
-        questions: questions,
-        isLoading: false,
-      );
+      state = state.copyWith(questions: questions, isLoading: false);
     } catch (_) {
       state = state.copyWith(isLoading: false);
     }
@@ -146,14 +143,15 @@ class QuizController extends StateNotifier<QuizState> {
   }
 }
 
-final quizControllerProvider =
-    StateNotifierProvider<QuizController, QuizState>((ref) {
-  final controller = QuizController(
-    getQuestions: ref.watch(getQuestionsUseCaseProvider),
-    submitAnswer: ref.watch(submitAnswerUseCaseProvider),
-    calculateResult: ref.watch(calculateResultUseCaseProvider),
-    loadProgress: ref.watch(loadProgressUseCaseProvider),
-  );
-  controller.loadInitial();
-  return controller;
-});
+final quizControllerProvider = StateNotifierProvider<QuizController, QuizState>(
+  (ref) {
+    final controller = QuizController(
+      getQuestions: ref.watch(getQuestionsUseCaseProvider),
+      submitAnswer: ref.watch(submitAnswerUseCaseProvider),
+      calculateResult: ref.watch(calculateResultUseCaseProvider),
+      loadProgress: ref.watch(loadProgressUseCaseProvider),
+    );
+    controller.loadInitial();
+    return controller;
+  },
+);

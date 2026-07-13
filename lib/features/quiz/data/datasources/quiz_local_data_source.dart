@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart';
-import 'package:artrosi_cane/features/quiz/data/models/quiz_question_model.dart';
 import 'package:artrosi_cane/core/errors/exceptions.dart';
+import 'package:artrosi_cane/features/quiz/data/models/quiz_question_model.dart';
+import 'package:flutter/services.dart';
 
 abstract class QuizLocalDataSource {
   Future<List<QuizQuestionModel>> loadQuestions();
@@ -19,7 +19,9 @@ class AssetQuizLocalDataSource implements QuizLocalDataSource {
       final raw = await rootBundle.loadString(assetPath);
       final data = json.decode(raw) as List<dynamic>;
       return data
-          .map((item) => QuizQuestionModel.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => QuizQuestionModel.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
     } catch (e) {
       throw CacheException('Errore nel caricamento delle domande: $e');

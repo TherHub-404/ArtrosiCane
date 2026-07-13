@@ -11,8 +11,9 @@ class SubmitAnswer {
     QuizAnswer newAnswer,
   ) async {
     final updated = List<QuizAnswer>.from(current);
-    final index =
-        updated.indexWhere((answer) => answer.questionId == newAnswer.questionId);
+    final index = updated.indexWhere(
+      (answer) => answer.questionId == newAnswer.questionId,
+    );
     if (index >= 0) {
       updated[index] = newAnswer;
     } else {

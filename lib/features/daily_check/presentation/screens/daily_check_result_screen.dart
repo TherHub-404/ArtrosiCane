@@ -28,7 +28,7 @@ class DailyCheckResultScreen extends StatelessWidget {
         foregroundColor: AppColors.primaryBlue,
         title: Text(
           l10n.text('Semaforo Giornata'),
-          style: TextStyle(
+          style: const TextStyle(
             fontWeight: FontWeight.w900,
             fontFamily: 'Montserrat',
           ),
@@ -174,7 +174,7 @@ class DailyCheckResultScreen extends StatelessWidget {
               ),
               child: Text(
                 l10n.text('Domani bastano 20 secondi per compilare il Diario.'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryBlue,
@@ -198,7 +198,7 @@ class DailyCheckResultScreen extends StatelessWidget {
                 ),
                 child: Text(
                   l10n.text('Fatto'),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Montserrat',
                   ),

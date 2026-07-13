@@ -34,9 +34,7 @@ void main() {
     });
 
     test('hydrates location even without persisted flags', () async {
-      SharedPreferences.setMockInitialValues({
-        'invite_location': 'bibbine',
-      });
+      SharedPreferences.setMockInitialValues({'invite_location': 'bibbine'});
       final prefs = await SharedPreferences.getInstance();
       final controller = FeatureFlagsController(prefs);
 

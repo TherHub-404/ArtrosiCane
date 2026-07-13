@@ -46,10 +46,13 @@ class _ArtrosiCaneAppState extends ConsumerState<ArtrosiCaneApp> {
         //  - Screen width vs the design baseline, so narrow phones (e.g.
         //    Galaxy S26 / S26+ at ~360 dp) scale type down to fit.
         final osFactor = mediaQuery.textScaler.scale(1).clamp(0.9, 1.15);
-        final widthFactor =
-            (mediaQuery.size.width / kBaselineWidth).clamp(0.85, 1.10);
-        final effectiveTextScaler =
-            TextScaler.linear((osFactor * widthFactor).toDouble());
+        final widthFactor = (mediaQuery.size.width / kBaselineWidth).clamp(
+          0.85,
+          1.10,
+        );
+        final effectiveTextScaler = TextScaler.linear(
+          (osFactor * widthFactor).toDouble(),
+        );
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: effectiveTextScaler),
           child: SessionGuard(child: child ?? const SizedBox.shrink()),

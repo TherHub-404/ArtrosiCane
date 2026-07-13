@@ -6,5 +6,6 @@ class SaveProgress {
 
   final QuizRepository repository;
 
-  Future<void> call(List<QuizAnswer> answers) => repository.saveProgress(answers);
+  Future<void> call(List<QuizAnswer> answers) =>
+      repository.saveProgress(answers);
 }

@@ -3,11 +3,11 @@ import 'package:artrosi_cane/core/providers/preferences_data_source_provider.dar
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/core/widgets/app_scaffold.dart';
 import 'package:artrosi_cane/core/widgets/non_medical_disclaimer.dart';
-import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/features/quiz/data/datasources/quiz_remote_data_source.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_micro_action_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/entities/diagnosis_priority_models.dart';
 import 'package:artrosi_cane/features/quiz/domain/services/diagnosis_micro_action_engine.dart';
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -191,7 +191,7 @@ class _DiagnosisPriorityResultScreenState
                 children: [
                   Text(
                     context.l10n.text('La tua Mappa Priorita'),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 44,
                       fontWeight: FontWeight.w900,
                       color: AppColors.primaryBlue,
@@ -260,7 +260,7 @@ class _DiagnosisPriorityResultScreenState
                 children: [
                   Text(
                     context.l10n.text('Microazioni'),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.w900,
                       color: AppColors.ctaApricot,
@@ -354,7 +354,7 @@ class _DiagnosisPriorityResultScreenState
           children: [
             Text(
               context.l10n.text('Scegli il tuo prossimo passo'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
                 color: AppColors.primaryBlue,

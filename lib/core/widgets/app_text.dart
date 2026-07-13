@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:artrosi_cane/theme/app_typography.dart';
+import 'package:flutter/material.dart';
 
 class AppText {
   const AppText._();

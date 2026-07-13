@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 /// Centralised haptic feedback helpers. Use [Haptics.tap] for primary CTAs and
@@ -18,19 +20,17 @@ class Haptics {
   static VoidCallback? wrap(VoidCallback? callback) {
     if (callback == null) return null;
     return () {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       callback();
     };
   }
 
   /// Wraps an async callback (returning Future) so it fires a tap haptic
   /// before running.
-  static Future<void> Function()? wrapAsync(
-    Future<void> Function()? callback,
-  ) {
+  static Future<void> Function()? wrapAsync(Future<void> Function()? callback) {
     if (callback == null) return null;
     return () async {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       await callback();
     };
   }

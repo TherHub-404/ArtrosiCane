@@ -8,10 +8,7 @@ import 'package:artrosi_cane/features/quiz/domain/entities/quiz_result.dart';
 import 'package:artrosi_cane/features/quiz/domain/repositories/quiz_repository.dart';
 
 class QuizRepositoryImpl implements QuizRepository {
-  QuizRepositoryImpl(
-    this._localDataSource,
-    this._preferencesDataSource,
-  );
+  QuizRepositoryImpl(this._localDataSource, this._preferencesDataSource);
 
   final QuizLocalDataSource _localDataSource;
   final PreferencesDataSource _preferencesDataSource;

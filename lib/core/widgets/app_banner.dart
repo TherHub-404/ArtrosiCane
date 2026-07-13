@@ -45,7 +45,7 @@ class AppBanner {
               onPressed: messenger.hideCurrentMaterialBanner,
               child: Text(
                 context.l10n.text('Chiudi'),
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
               ),
             )
           else

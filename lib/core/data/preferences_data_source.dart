@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:artrosi_cane/core/errors/exceptions.dart';
 import 'package:artrosi_cane/features/onboarding/data/models/dog_profile_model.dart';
-import 'package:artrosi_cane/features/quiz/data/models/quiz_answer_model.dart';
 import 'package:artrosi_cane/features/quiz/data/models/diagnosis_priority_result_model.dart';
+import 'package:artrosi_cane/features/quiz/data/models/quiz_answer_model.dart';
 import 'package:artrosi_cane/features/quiz/data/models/quiz_result_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

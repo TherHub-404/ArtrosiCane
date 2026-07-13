@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:artrosi_cane/core/linking/video_call_booking_launcher.dart';
 import 'package:artrosi_cane/core/utils/haptics.dart';
 import 'package:artrosi_cane/l10n/app_localizations.dart';
@@ -134,7 +136,7 @@ class VideoCallIntroDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
-                      Haptics.tap();
+                      unawaited(Haptics.tap());
                       Navigator.of(context).pop();
                       await VideoCallBookingLauncher.open(context);
                     },

@@ -1,12 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
+import 'package:flutter/material.dart';
 
 class AppCard extends StatelessWidget {
-  const AppCard({
-    super.key,
-    required this.child,
-    this.onTap,
-  });
+  const AppCard({super.key, required this.child, this.onTap});
 
   final Widget child;
   final VoidCallback? onTap;

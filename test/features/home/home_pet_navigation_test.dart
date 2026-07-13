@@ -38,15 +38,21 @@ void main() {
     return GoRouter(
       initialLocation: '/home',
       routes: [
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
-        ),
+        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/dog-dashboard',
           builder: (context, state) {
             final data = state.extra as Map<String, dynamic>? ?? {};
             return DogDashboardScreen(dogData: data);
+          },
+        ),
+        GoRoute(
+          path: '/daily-check',
+          builder: (context, state) {
+            final data = state.extra as Map<String, dynamic>? ?? {};
+            return Scaffold(
+              body: Text('daily-check-${data['dogId']}-${data['dogName']}'),
+            );
           },
         ),
       ],
@@ -69,6 +75,15 @@ void main() {
               ageYears: 7,
               weightKg: 24.5,
               riskLevel: 'medio',
+            ),
+            DogProfile(
+              id: 'dog-2',
+              name: 'Milo',
+              breedName: 'Beagle',
+              breedImageUrl: 'assets/first-dog.png',
+              ageYears: 5,
+              weightKg: 12,
+              riskLevel: 'basso',
             ),
           ];
         }),
@@ -132,5 +147,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DogDashboardScreen), findsOneWidget);
+  });
+  testWidgets('each dog card opens an independent diary for that dog', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsNothing);
+    expect(find.byKey(const ValueKey('pet-card-diary-Luna')), findsOneWidget);
+
+    tester
+        .widgetList<PetCard>(find.byType(PetCard))
+        .toList()[0]
+        .onDiaryTap!
+        .call();
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-1-Luna'), findsOneWidget);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('home-diary-card-dog-2')), findsNothing);
+    expect(find.byKey(const ValueKey('pet-card-diary-Milo')), findsOneWidget);
+
+    tester
+        .widgetList<PetCard>(find.byType(PetCard))
+        .toList()[1]
+        .onDiaryTap!
+        .call();
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-2-Milo'), findsOneWidget);
   });
 }

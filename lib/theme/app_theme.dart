@@ -1,7 +1,7 @@
+import 'package:artrosi_cane/theme/app_colors.dart';
+import 'package:artrosi_cane/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'app_colors.dart';
-import 'app_typography.dart';
 
 class AppTheme {
   const AppTheme._();
@@ -13,7 +13,7 @@ class AppTheme {
         seedColor: AppColors.primaryBlue,
         primary: AppColors.primaryBlue,
         secondary: AppColors.ctaApricot,
-        background: AppColors.background,
+        surface: AppColors.background,
       ),
       scaffoldBackgroundColor: AppColors.background,
       textTheme: AppTypography.textTheme,
