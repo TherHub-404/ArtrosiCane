@@ -19,6 +19,39 @@ def next_patch_version(version)
   parts.join('.')
 end
 
+def testflight_build_upload_state_error?(error)
+  message = error.to_s
+  message.include?('buildUpload') &&
+    message.include?('ENTITY_ERROR.RELATIONSHIP.INVALID.INVALID_STATE')
+end
+
+def upload_testflight_with_retry(api_key:, ipa:, app_identifier:)
+  attempts = (ENV['TESTFLIGHT_UPLOAD_ATTEMPTS'] || '4').to_i
+  attempts = 1 if attempts < 1
+  wait_seconds = (ENV['TESTFLIGHT_UPLOAD_RETRY_WAIT_SECONDS'] || '180').to_i
+
+  (1..attempts).each do |attempt|
+    begin
+      UI.message("Uploading IPA to TestFlight (attempt #{attempt}/#{attempts})")
+      upload_to_testflight(
+        api_key: api_key,
+        ipa: ipa,
+        app_identifier: app_identifier,
+        skip_waiting_for_build_processing: true
+      )
+      return
+    rescue StandardError => error
+      raise unless testflight_build_upload_state_error?(error) && attempt < attempts
+
+      UI.important(
+        "App Store Connect rejected the upload because a previous buildUpload " \
+        "relationship is still settling. Waiting #{wait_seconds} seconds before retrying..."
+      )
+      sleep(wait_seconds)
+    end
+  end
+end
+
 platform :ios do
   private_lane :app_store_api_key do
     app_store_connect_api_key(
@@ -63,11 +96,10 @@ platform :ios do
   lane :upload_testflight do
     api_key = app_store_api_key
 
-    upload_to_testflight(
+    upload_testflight_with_retry(
       api_key: api_key,
       ipa: ENV.fetch('IPA_PATH'),
-      app_identifier: ENV.fetch('APP_IDENTIFIER'),
-      skip_waiting_for_build_processing: true
+      app_identifier: ENV.fetch('APP_IDENTIFIER')
     )
   end
 end
