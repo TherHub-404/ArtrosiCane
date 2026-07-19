@@ -155,7 +155,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsNothing);
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('pet-card-diary-Luna')), findsOneWidget);
 
     tester
@@ -170,7 +170,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byKey(const ValueKey('home-diary-card-dog-2')), findsNothing);
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('pet-card-diary-Milo')), findsOneWidget);
 
     tester
@@ -178,6 +178,41 @@ void main() {
         .toList()[1]
         .onDiaryTap!
         .call();
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-2-Milo'), findsOneWidget);
+  });
+
+  testWidgets('home diary panel follows the selected dog and opens its diary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('home-diary-card-dog-1')), findsOneWidget);
+    expect(find.text('Diario di Luna'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('home-diary-card-dog-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('daily-check-dog-1-Luna'), findsOneWidget);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final carousel = find.byKey(const ValueKey('pet-carousel-page-view'));
+    await tester.ensureVisible(carousel);
+    await tester.pumpAndSettle();
+    await tester.drag(carousel, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-diary-card-dog-2')), findsOneWidget);
+    expect(find.text('Diario di Milo'), findsOneWidget);
+
+    final secondDogPanel = find.byKey(const ValueKey('home-diary-card-dog-2'));
+    await tester.ensureVisible(secondDogPanel);
+    await tester.pumpAndSettle();
+    tester.widget<InkWell>(secondDogPanel).onTap!.call();
     await tester.pumpAndSettle();
     expect(find.text('daily-check-dog-2-Milo'), findsOneWidget);
   });
