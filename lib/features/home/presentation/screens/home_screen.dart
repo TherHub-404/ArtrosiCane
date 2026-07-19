@@ -5,6 +5,8 @@ import 'package:artrosi_cane/core/providers/shared_prefs_provider.dart';
 import 'package:artrosi_cane/core/providers/supabase_provider.dart';
 import 'package:artrosi_cane/core/widgets/app_text.dart';
 import 'package:artrosi_cane/features/auth/data/auth_repository.dart';
+import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
+import 'package:artrosi_cane/features/daily_check/presentation/providers/daily_check_providers.dart';
 import 'package:artrosi_cane/features/home/data/daily_sentence_repository.dart';
 import 'package:artrosi_cane/features/home/presentation/providers/home_providers.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/add_pet_dialog.dart';
@@ -39,6 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _isSpeedDialOpen = false;
   bool _pushNotificationsEnabled = true;
   _DrawerTab _drawerTab = _DrawerTab.home;
+  int _selectedDogIndex = 0;
   late AnimationController _speedDialController;
   late Animation<double> _speedDialAnimation;
 
@@ -411,6 +414,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       radius: radius,
       foregroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
       child: hasAvatar ? null : Icon(Icons.person, color: iconColor),
+    );
+  }
+
+  int _validSelectedDogIndex(List<dynamic> dogs) {
+    if (dogs.isEmpty) {
+      return 0;
+    }
+    if (_selectedDogIndex < dogs.length) {
+      return _selectedDogIndex;
+    }
+    return dogs.length - 1;
+  }
+
+  void _selectDog(int index) {
+    if (index == _selectedDogIndex) {
+      return;
+    }
+    setState(() {
+      _selectedDogIndex = index;
+    });
+  }
+
+  void _openDogDiary(BuildContext context, dynamic dog) {
+    context.push(
+      '/daily-check',
+      extra: {
+        'dogId': dog.id,
+        'dogName': dog.name ?? context.l10n.text('Il tuo cane'),
+      },
     );
   }
 
@@ -1055,9 +1087,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ),
                                 );
                               }
-                              return _PetCarousel(
-                                dogs: list,
-                                onAddTap: _openAddPetDialog,
+                              final selectedDogIndex = _validSelectedDogIndex(
+                                list,
+                              );
+                              final selectedDog = list[selectedDogIndex];
+
+                              return Column(
+                                children: [
+                                  _HomeDailyDiaryPanel(
+                                    dog: selectedDog,
+                                    onTap: () =>
+                                        _openDogDiary(context, selectedDog),
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  Expanded(
+                                    child: _PetCarousel(
+                                      dogs: list,
+                                      selectedIndex: selectedDogIndex,
+                                      onSelectedDogChanged: _selectDog,
+                                      onAddTap: _openAddPetDialog,
+                                    ),
+                                  ),
+                                ],
                               );
                             },
                             loading: () => const Center(
@@ -2653,10 +2704,138 @@ class _AppBarWaveClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
+class _HomeDailyDiaryPanel extends ConsumerWidget {
+  const _HomeDailyDiaryPanel({required this.dog, required this.onTap});
+
+  final dynamic dog;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dogId = dog.id as String?;
+    final dogName = dog.name as String? ?? context.l10n.text('Il tuo cane');
+    final diaryState = ref.watch(todayDailyDiaryStateProvider(dogId));
+
+    return Semantics(
+      button: true,
+      label: context.l10n.text('Apri diario di {{dogName}}', {
+        'dogName': dogName,
+      }),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('home-diary-card-${dogId ?? dogName}'),
+          borderRadius: BorderRadius.circular(24),
+          onTap: dogId == null || dogId.isEmpty ? null : onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryBlue.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.ctaApricot.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.edit_note_rounded,
+                    color: AppColors.ctaApricot,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.text('Diario di {{dogName}}', {
+                          'dogName': dogName,
+                        }),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      diaryState.when(
+                        data: (state) => Text(
+                          _diaryStatusText(context, state.status),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.text.withValues(alpha: 0.68),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        loading: () => Text(
+                          context.l10n.text('Caricamento in corso...'),
+                          style: TextStyle(
+                            color: AppColors.text.withValues(alpha: 0.68),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        error: (_, __) => Text(
+                          context.l10n.text('Impossibile caricare il diario.'),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.text),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _diaryStatusText(BuildContext context, DailyDiaryStatus status) {
+    switch (status) {
+      case DailyDiaryStatus.completed:
+        return context.l10n.text('Stato di oggi salvato');
+      case DailyDiaryStatus.inProgress:
+        return context.l10n.text('Continua');
+      case DailyDiaryStatus.notStarted:
+        return context.l10n.text('Salva stato di oggi');
+      case DailyDiaryStatus.unavailable:
+        return context.l10n.text('Cane non disponibile.');
+    }
+  }
+}
+
 class _PetCarousel extends StatefulWidget {
-  const _PetCarousel({required this.dogs, required this.onAddTap});
+  const _PetCarousel({
+    required this.dogs,
+    required this.selectedIndex,
+    required this.onSelectedDogChanged,
+    required this.onAddTap,
+  });
 
   final List<dynamic> dogs;
+  final int selectedIndex;
+  final ValueChanged<int> onSelectedDogChanged;
   final VoidCallback onAddTap;
 
   @override
@@ -2665,13 +2844,28 @@ class _PetCarousel extends StatefulWidget {
 
 class _PetCarouselState extends State<_PetCarousel> {
   late PageController _pageController;
-  int _currentPage = 0;
+  late int _currentPage;
   final double _viewportFraction = 0.8;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: _viewportFraction);
+    _currentPage = widget.selectedIndex;
+    _pageController = PageController(
+      initialPage: widget.selectedIndex,
+      viewportFraction: _viewportFraction,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _PetCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedIndex != oldWidget.selectedIndex &&
+        widget.selectedIndex != _currentPage &&
+        _pageController.hasClients) {
+      _currentPage = widget.selectedIndex;
+      _pageController.jumpToPage(widget.selectedIndex);
+    }
   }
 
   @override
@@ -2686,6 +2880,7 @@ class _PetCarouselState extends State<_PetCarousel> {
     final itemCount = widget.dogs.length + 1;
 
     return PageView.builder(
+      key: const ValueKey('pet-carousel-page-view'),
       controller: _pageController,
       itemCount: itemCount,
       clipBehavior: Clip.none,
@@ -2693,6 +2888,9 @@ class _PetCarouselState extends State<_PetCarousel> {
         setState(() {
           _currentPage = index;
         });
+        if (index < widget.dogs.length) {
+          widget.onSelectedDogChanged(index);
+        }
       },
       itemBuilder: (context, index) {
         return AnimatedBuilder(
