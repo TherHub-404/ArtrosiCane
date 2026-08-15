@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -12,10 +13,6 @@ class DailyQuickCheckNotificationService {
 
   static const int _notificationId = 1600;
   static const String _channelId = 'daily_quick_check_reminders';
-  static const String _channelName = 'Promemoria "Come stai oggi?"';
-  static const String _channelDescription =
-      'Promemoria giornaliero alle 16:00 per rispondere a "Come stai oggi?".';
-
   static bool _initialized = false;
 
   static Future<void> initializeAndScheduleDailyReminder() async {
@@ -73,22 +70,27 @@ class DailyQuickCheckNotificationService {
   }
 
   static Future<void> _scheduleFor16EveryDay() async {
+    final l10n = AppLocalizations.current;
     await _plugin.cancel(_notificationId);
 
     await _plugin.zonedSchedule(
       _notificationId,
-      'Come stai oggi?',
-      'Sono le 16: è il momento di chiedere "come stai oggi?" ai tuoi amici a quattro zampe.',
+      l10n.text('Diario giornaliero'),
+      l10n.text(
+        'Sono le 16: è il momento di compilare il Diario giornaliero del tuo cane.',
+      ),
       _next16(),
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
+          l10n.text('Promemoria Diario giornaliero'),
+          channelDescription: l10n.text(
+            'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.',
+          ),
           importance: Importance.max,
           priority: Priority.high,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(),
       ),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,

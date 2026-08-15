@@ -194,11 +194,11 @@ String dailyRiskFactorLabel(DailyRiskFactor factor) {
     case DailyRiskFactor.scale:
       return l10n.text('Scale');
     case DailyRiskFactor.scivoloso:
-      return l10n.text('Superfici scivolose');
+      return l10n.text('Pavimenti scivolosi');
     case DailyRiskFactor.auto:
-      return l10n.text('Auto frequente');
+      return l10n.text('Tante ore in auto');
     case DailyRiskFactor.acqua:
-      return l10n.text('Acqua');
+      return l10n.text('Acqua/mare');
   }
 }
 
