@@ -108,22 +108,29 @@ class DailyCheckResultScreen extends StatelessWidget {
             _resultCard(
               title: l10n.text('2 micro-azioni'),
               icon: Icons.check_circle_outline_rounded,
-              children: result.recommendation.actions
-                  .map((text) => _bullet(text))
-                  .toList(),
+              children: [
+                _bullet(l10n.text('Oggi vai piano e con calma.')),
+                _bullet(
+                  l10n.text('Meglio due passeggiate corte che una lunga.'),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             _resultCard(
               title: l10n.text('1 cosa da evitare'),
               icon: Icons.remove_circle_outline_rounded,
-              children: [_bullet(result.recommendation.avoid)],
+              children: [
+                _bullet(
+                  l10n.text('Evita corse improvvise o giochi troppo bruschi.'),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             _resultCard(
               title: l10n.text('Video consigliato'),
               icon: Icons.play_circle_outline_rounded,
               children: [
-                _bullet(l10n.text('Video consigliato oggi.')),
+                _bullet(l10n.text('Un video pensato apposta per oggi.')),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () {
@@ -142,10 +149,10 @@ class DailyCheckResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _resultCard(
-              title: l10n.text('Esercizi consigliati per la salute articolare'),
+              title: l10n.text('Esercizi facili per le sue articolazioni'),
               icon: Icons.play_circle_outline_rounded,
               children: [
-                _bullet(result.recommendation.videoLabel),
+                _bullet(l10n.text('Routine di 25 secondi, tutti i giorni')),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () {
@@ -173,7 +180,9 @@ class DailyCheckResultScreen extends StatelessWidget {
                 ),
               ),
               child: Text(
-                l10n.text('Domani bastano 20 secondi per compilare il Diario.'),
+                l10n.text(
+                  'Domani ti bastano 20 secondi per aggiornare il Diario.',
+                ),
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

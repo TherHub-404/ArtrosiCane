@@ -1,5 +1,64 @@
 const Map<String, Map<String, String>> appTranslationCatalog = {
   'en': {
+    'Promemoria Diario giornaliero': 'Daily diary reminder',
+    'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
+        'Daily reminder at 4:00 PM to complete the Daily diary.',
+    'Sono le 16: è il momento di compilare il Diario giornaliero del tuo cane.':
+        'It is 4:00 PM—time to complete your dog’s Daily diary.',
+    'Diario giornaliero': 'Daily diary',
+    'Il tuo cane si muove con meno voglia del solito?':
+        'Is your dog less willing to move than usual?',
+    'No, è come sempre': 'No, just as usual',
+    'Ogni tanto sì': 'Sometimes',
+    'Sì, spesso': 'Yes, often',
+    'Ha ancora voglia di uscire, giocare, muoversi?':
+        'Does your dog still want to go out, play, and move?',
+    'Sì, come sempre': 'Yes, just as usual',
+    'Un po\' meno del solito': 'A little less than usual',
+    'Molto meno, si vede chiaramente': 'Much less, it is easy to notice',
+    'Dopo una passeggiata o le scale, lo vedi leccarsi le zampe, cambiare spesso posizione o evitare di muoversi?':
+        'After a walk or stairs, does your dog lick their paws, change position often, or avoid moving?',
+    'Quasi mai': 'Hardly ever',
+    'Qualche volta, se si è stancato di più':
+        'Sometimes, after getting more tired',
+    'Spesso, anche per cose di tutti i giorni':
+        'Often, even after everyday activities',
+    'In generale, come sta andando il tuo cane in questa settimana?':
+        'Overall, how has your dog been doing this week?',
+    'Bene, sereno': 'Well and relaxed',
+    'Un po\' meno in forma del solito': 'A little less fit than usual',
+    'Visibilmente giù': 'Clearly feeling low',
+    'Oggi si è mosso con difficoltà o ha zoppicato?':
+        'Did your dog have difficulty moving or limp today?',
+    'Un po\'': 'A little',
+    'Sì, parecchio': 'Yes, quite a lot',
+    'Quanto pensi che si muoverà oggi?':
+        'How much do you think your dog will move today?',
+    'Poco (0-10 min)': 'A little (0-10 min)',
+    'Il solito (10-20 min)': 'As usual (10-20 min)',
+    'Tanto (20+ min)': 'A lot (20+ min)',
+    'Oggi c\'è qualcosa di questo in giro? Seleziona tutto quello che c\'è':
+        'Is any of this around today? Select everything that applies',
+    'Tante ore in auto': 'Many hours in the car',
+    'Acqua/mare': 'Water/sea',
+    'Stamattina, rispetto a ieri, come lo hai trovato?':
+        'Compared with yesterday, how did your dog seem this morning?',
+    'Un po\' più rigido': 'A little stiffer',
+    'Molto più rigido': 'Much stiffer',
+    'Oggi vai piano e con calma.': 'Take it slowly and calmly today.',
+    'Meglio due passeggiate corte che una lunga.':
+        'Two short walks are better than one long walk.',
+    'Evita corse improvvise o giochi troppo bruschi.':
+        'Avoid sudden running or overly rough play.',
+    'Un video pensato apposta per oggi.':
+        'A video chosen especially for today.',
+    'Esercizi facili per le sue articolazioni':
+        'Easy exercises for your dog’s joints',
+    'Routine di 25 secondi, tutti i giorni': 'A 25-second routine, every day',
+    'Domani ti bastano 20 secondi per aggiornare il Diario.':
+        'Tomorrow, you only need 20 seconds to update the Diary.',
+    'Compila il Diario giornaliero: qui troverai semafori, score e consigli per ricostruire la sua storia.':
+        'Complete the Daily diary: here you will find traffic lights, scores, and tips to follow your dog’s journey.',
     'ZampaSiCura': 'SafePaws',
     'Bibione ama i suoi amici a quattro zampe e oggi ti stringe la mano per proteggere insieme, con cura, la salute del tuo cane.':
         'Bibione loves its four-legged friends, and today it reaches out to protect your dog\'s health together, with care.',
@@ -890,6 +949,68 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'We couldn\'t update the password. Please try again shortly.',
   },
   'fr': {
+    'Promemoria Diario giornaliero': 'Rappel du Journal quotidien',
+    'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
+        'Rappel quotidien à 16 h pour remplir le Journal quotidien.',
+    'Sono le 16: è il momento di compilare il Diario giornaliero del tuo cane.':
+        'Il est 16 h : c’est le moment de remplir le Journal quotidien de votre chien.',
+    'Diario giornaliero': 'Journal quotidien',
+    'Il tuo cane si muove con meno voglia del solito?':
+        'Votre chien a-t-il moins envie de bouger que d’habitude ?',
+    'No, è come sempre': 'Non, comme toujours',
+    'Ogni tanto sì': 'Oui, parfois',
+    'Sì, spesso': 'Oui, souvent',
+    'Ha ancora voglia di uscire, giocare, muoversi?':
+        'A-t-il toujours envie de sortir, de jouer et de bouger ?',
+    'Sì, come sempre': 'Oui, comme toujours',
+    'Un po\' meno del solito': 'Un peu moins que d’habitude',
+    'Molto meno, si vede chiaramente':
+        'Beaucoup moins, cela se voit clairement',
+    'Dopo una passeggiata o le scale, lo vedi leccarsi le zampe, cambiare spesso posizione o evitare di muoversi?':
+        'Après une promenade ou des escaliers, se lèche-t-il les pattes, change-t-il souvent de position ou évite-t-il de bouger ?',
+    'Quasi mai': 'Presque jamais',
+    'Qualche volta, se si è stancato di più':
+        'Parfois, s’il s’est davantage fatigué',
+    'Spesso, anche per cose di tutti i giorni':
+        'Souvent, même après des activités quotidiennes',
+    'In generale, come sta andando il tuo cane in questa settimana?':
+        'Dans l’ensemble, comment va votre chien cette semaine ?',
+    'Bene, sereno': 'Bien et détendu',
+    'Un po\' meno in forma del solito': 'Un peu moins en forme que d’habitude',
+    'Visibilmente giù': 'Visiblement abattu',
+    'Oggi si è mosso con difficoltà o ha zoppicato?':
+        'Aujourd’hui, a-t-il eu du mal à bouger ou a-t-il boité ?',
+    'Un po\'': 'Un peu',
+    'Sì, parecchio': 'Oui, beaucoup',
+    'Quanto pensi che si muoverà oggi?':
+        'Combien pensez-vous qu’il bougera aujourd’hui ?',
+    'Poco (0-10 min)': 'Peu (0-10 min)',
+    'Il solito (10-20 min)': 'Comme d’habitude (10-20 min)',
+    'Tanto (20+ min)': 'Beaucoup (20+ min)',
+    'Oggi c\'è qualcosa di questo in giro? Seleziona tutto quello che c\'è':
+        'Y a-t-il l’un de ces éléments aujourd’hui ? Sélectionnez tout ce qui s’applique',
+    'Tante ore in auto': 'De nombreuses heures en voiture',
+    'Acqua/mare': 'Eau/mer',
+    'Stamattina, rispetto a ieri, come lo hai trovato?':
+        'Ce matin, comment l’avez-vous trouvé par rapport à hier ?',
+    'Un po\' più rigido': 'Un peu plus raide',
+    'Molto più rigido': 'Beaucoup plus raide',
+    'Oggi vai piano e con calma.':
+        'Aujourd’hui, allez-y doucement et calmement.',
+    'Meglio due passeggiate corte che una lunga.':
+        'Mieux vaut deux courtes promenades qu’une longue.',
+    'Evita corse improvvise o giochi troppo bruschi.':
+        'Évitez les courses soudaines ou les jeux trop brusques.',
+    'Un video pensato apposta per oggi.':
+        'Une vidéo spécialement choisie pour aujourd’hui.',
+    'Esercizi facili per le sue articolazioni':
+        'Des exercices faciles pour ses articulations',
+    'Routine di 25 secondi, tutti i giorni':
+        'Une routine de 25 secondes, tous les jours',
+    'Domani ti bastano 20 secondi per aggiornare il Diario.':
+        'Demain, 20 secondes suffiront pour mettre à jour le Journal.',
+    'Compila il Diario giornaliero: qui troverai semafori, score e consigli per ricostruire la sua storia.':
+        'Remplissez le Journal quotidien : vous y trouverez les feux, les scores et les conseils pour suivre son parcours.',
     'ZampaSiCura': 'PattesSûres',
     'Bibione ama i suoi amici a quattro zampe e oggi ti stringe la mano per proteggere insieme, con cura, la salute del tuo cane.':
         'Bibione aime ses amis à quatre pattes et aujourd\'hui elle vous tend la main pour protéger ensemble, avec soin, la santé de votre chien.',
@@ -1812,6 +1933,67 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'Nous n\'avons pas pu mettre à jour le mot de passe. Réessayez dans un instant.',
   },
   'de': {
+    'Promemoria Diario giornaliero': 'Erinnerung an das tägliche Tagebuch',
+    'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
+        'Tägliche Erinnerung um 16:00 Uhr, das tägliche Tagebuch auszufüllen.',
+    'Sono le 16: è il momento di compilare il Diario giornaliero del tuo cane.':
+        'Es ist 16:00 Uhr – Zeit, das tägliche Tagebuch deines Hundes auszufüllen.',
+    'Diario giornaliero': 'Tägliches Tagebuch',
+    'Il tuo cane si muove con meno voglia del solito?':
+        'Bewegt sich dein Hund weniger gern als sonst?',
+    'No, è come sempre': 'Nein, alles wie immer',
+    'Ogni tanto sì': 'Manchmal',
+    'Sì, spesso': 'Ja, oft',
+    'Ha ancora voglia di uscire, giocare, muoversi?':
+        'Möchte dein Hund noch rausgehen, spielen und sich bewegen?',
+    'Sì, come sempre': 'Ja, wie immer',
+    'Un po\' meno del solito': 'Etwas weniger als sonst',
+    'Molto meno, si vede chiaramente':
+        'Viel weniger, das ist deutlich zu sehen',
+    'Dopo una passeggiata o le scale, lo vedi leccarsi le zampe, cambiare spesso posizione o evitare di muoversi?':
+        'Leckt dein Hund nach einem Spaziergang oder Treppensteigen seine Pfoten, wechselt oft die Position oder vermeidet Bewegung?',
+    'Quasi mai': 'Fast nie',
+    'Qualche volta, se si è stancato di più':
+        'Manchmal, wenn er müder geworden ist',
+    'Spesso, anche per cose di tutti i giorni':
+        'Oft, auch nach alltäglichen Aktivitäten',
+    'In generale, come sta andando il tuo cane in questa settimana?':
+        'Wie geht es deinem Hund insgesamt in dieser Woche?',
+    'Bene, sereno': 'Gut und entspannt',
+    'Un po\' meno in forma del solito': 'Etwas weniger fit als sonst',
+    'Visibilmente giù': 'Sichtlich niedergeschlagen',
+    'Oggi si è mosso con difficoltà o ha zoppicato?':
+        'Hat sich dein Hund heute schwer bewegt oder gehinkt?',
+    'Un po\'': 'Ein wenig',
+    'Sì, parecchio': 'Ja, ziemlich stark',
+    'Quanto pensi che si muoverà oggi?':
+        'Wie viel wird sich dein Hund heute voraussichtlich bewegen?',
+    'Poco (0-10 min)': 'Wenig (0-10 Min.)',
+    'Il solito (10-20 min)': 'Wie gewohnt (10-20 Min.)',
+    'Tanto (20+ min)': 'Viel (20+ Min.)',
+    'Oggi c\'è qualcosa di questo in giro? Seleziona tutto quello che c\'è':
+        'Gibt es heute etwas davon? Wähle alles Zutreffende aus',
+    'Tante ore in auto': 'Viele Stunden im Auto',
+    'Acqua/mare': 'Wasser/Meer',
+    'Stamattina, rispetto a ieri, come lo hai trovato?':
+        'Wie war dein Hund heute Morgen im Vergleich zu gestern?',
+    'Un po\' più rigido': 'Etwas steifer',
+    'Molto più rigido': 'Viel steifer',
+    'Oggi vai piano e con calma.': 'Geht es heute langsam und ruhig an.',
+    'Meglio due passeggiate corte che una lunga.':
+        'Zwei kurze Spaziergänge sind besser als ein langer.',
+    'Evita corse improvvise o giochi troppo bruschi.':
+        'Vermeide plötzliches Rennen oder zu wildes Spielen.',
+    'Un video pensato apposta per oggi.':
+        'Ein Video, das speziell für heute ausgewählt wurde.',
+    'Esercizi facili per le sue articolazioni':
+        'Einfache Übungen für seine Gelenke',
+    'Routine di 25 secondi, tutti i giorni':
+        'Eine 25-Sekunden-Routine, jeden Tag',
+    'Domani ti bastano 20 secondi per aggiornare il Diario.':
+        'Morgen brauchst du nur 20 Sekunden, um das Tagebuch zu aktualisieren.',
+    'Compila il Diario giornaliero: qui troverai semafori, score e consigli per ricostruire la sua storia.':
+        'Fülle das tägliche Tagebuch aus: Hier findest du Ampeln, Werte und Tipps, um den Verlauf nachzuvollziehen.',
     'ZampaSiCura': 'SicherePfoten',
     'Bibione ama i suoi amici a quattro zampe e oggi ti stringe la mano per proteggere insieme, con cura, la salute del tuo cane.':
         'Bibione liebt seine vierbeinigen Freunde und reicht dir heute die Hand, um gemeinsam und mit Sorgfalt die Gesundheit deines Hundes zu schützen.',

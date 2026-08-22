@@ -218,7 +218,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               extra['dogName'] as String? ?? context.l10n.text('Il tuo cane');
           if (result is! DailyCheckResult) {
             return Scaffold(
-              appBar: AppBar(title: Text(context.l10n.text('Come stai oggi?'))),
+              appBar: AppBar(
+                title: Text(context.l10n.text('Diario giornaliero')),
+              ),
               body: Center(
                 child: Text(context.l10n.text('Risultato non disponibile.')),
               ),
