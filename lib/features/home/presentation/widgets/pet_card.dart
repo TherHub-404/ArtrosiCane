@@ -273,8 +273,8 @@ class PetCard extends StatelessWidget {
               ),
               if (onDiaryTap != null)
                 Positioned(
-                  top: 18,
-                  right: 18,
+                  top: 16,
+                  right: 16,
                   child: _DiaryActionChip(petName: name, onTap: onDiaryTap!),
                 ),
             ],
@@ -442,33 +442,48 @@ class _DiaryActionChip extends StatelessWidget {
         'dogName': petName,
       }),
       child: Material(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(999),
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.16),
-        child: InkWell(
-          key: ValueKey('pet-card-diary-$petName'),
-          borderRadius: BorderRadius.circular(999),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.edit_note_rounded,
-                  size: 18,
-                  color: AppColors.ctaApricot,
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        elevation: 12,
+        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.3),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.ctaApricot, Color(0xFFF29162)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: InkWell(
+            key: ValueKey('pet-card-diary-$petName'),
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.edit_note_rounded,
+                      size: 22,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      context.l10n.text('Diario giornaliero'),
+                      style: AppTypography.bodyBold.copyWith(
+                        color: Colors.white,
+                        fontSize: 14,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  context.l10n.text('Diario'),
-                  style: AppTypography.bodyBold.copyWith(
-                    color: AppColors.primaryBlue,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
