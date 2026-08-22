@@ -243,7 +243,7 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
         foregroundColor: AppColors.primaryBlue,
         elevation: 0,
         title: Text(
-          '${l10n.text('Come stai oggi?')} · ${widget.dogName}',
+          '${l10n.text('Diario giornaliero')} · ${widget.dogName}',
           style: const TextStyle(
             color: AppColors.primaryBlue,
             fontWeight: FontWeight.w800,
@@ -274,42 +274,44 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
               children: [
                 _buildSingleChoiceStep<DailySymptomLevel>(
                   stepIndex: 0,
-                  questionTitle: l10n.text('Oggi come e andata?'),
-                  questionSubtitle: l10n.text(
-                    'Hai notato rigidita o zoppia oggi?',
+                  questionTitle: l10n.text(
+                    'Oggi si è mosso con difficoltà o ha zoppicato?',
                   ),
+                  questionSubtitle: '',
                   value: _symptomLevel,
                   options: {
                     DailySymptomLevel.no: l10n.text('No'),
-                    DailySymptomLevel.lieve: l10n.text('Lieve'),
-                    DailySymptomLevel.marcata: l10n.text('Marcata'),
+                    DailySymptomLevel.lieve: l10n.text('Un po\''),
+                    DailySymptomLevel.marcata: l10n.text('Sì, parecchio'),
                   },
                   onChanged: (value) => _setAnswer(() => _symptomLevel = value),
                 ),
                 _buildSingleChoiceStep<PlannedLoad>(
                   stepIndex: 1,
-                  questionTitle: l10n.text('Carico previsto'),
-                  questionSubtitle: l10n.text('Quanto movimento fara oggi?'),
+                  questionTitle: l10n.text('Quanto pensi che si muoverà oggi?'),
+                  questionSubtitle: '',
                   value: _plannedLoad,
                   options: {
-                    PlannedLoad.breve: l10n.text('Breve (0-10 min)'),
-                    PlannedLoad.medio: l10n.text('Medio (10-20 min)'),
-                    PlannedLoad.lungo: l10n.text('Lungo (20+ min)'),
+                    PlannedLoad.breve: l10n.text('Poco (0-10 min)'),
+                    PlannedLoad.medio: l10n.text('Il solito (10-20 min)'),
+                    PlannedLoad.lungo: l10n.text('Tanto (20+ min)'),
                   },
                   onChanged: (value) => _setAnswer(() => _plannedLoad = value),
                 ),
                 _buildRiskFactorStep(),
                 _buildSingleChoiceStep<RecoveryDelta>(
                   stepIndex: 3,
-                  questionTitle: l10n.text('Recupero vs ieri'),
-                  questionSubtitle: l10n.text(
-                    'Stamattina rispetto a ieri com\'era?',
+                  questionTitle: l10n.text(
+                    'Stamattina, rispetto a ieri, come lo hai trovato?',
                   ),
+                  questionSubtitle: '',
                   value: _recoveryDelta,
                   options: {
                     RecoveryDelta.uguale: l10n.text('Uguale'),
-                    RecoveryDelta.pocoPiuRigido: l10n.text('Un po piu rigido'),
-                    RecoveryDelta.moltoPiuRigido: l10n.text('Molto piu rigido'),
+                    RecoveryDelta.pocoPiuRigido: l10n.text(
+                      'Un po\' più rigido',
+                    ),
+                    RecoveryDelta.moltoPiuRigido: l10n.text('Molto più rigido'),
                   },
                   onChanged: (value) =>
                       _setAnswer(() => _recoveryDelta = value),
@@ -430,10 +432,10 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
   Widget _buildRiskFactorStep() {
     return _buildStepContainer(
       stepIndex: 2,
-      questionTitle: context.l10n.text('Fattori vacanza'),
-      questionSubtitle: context.l10n.text(
-        'Seleziona tutti quelli presenti oggi.',
+      questionTitle: context.l10n.text(
+        'Oggi c\'è qualcosa di questo in giro? Seleziona tutto quello che c\'è',
       ),
+      questionSubtitle: '',
       child: Wrap(
         spacing: AppSpacing.sm,
         runSpacing: AppSpacing.sm,
@@ -548,14 +550,16 @@ class _DailyCheckScreenState extends ConsumerState<DailyCheckScreen> {
                     color: AppColors.primaryBlue,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  questionSubtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.text.withValues(alpha: 0.75),
+                if (questionSubtitle.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    questionSubtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.text.withValues(alpha: 0.75),
+                    ),
                   ),
-                ),
+                ],
                 if (stepIndex != 2) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Text(

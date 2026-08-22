@@ -1057,7 +1057,7 @@ class _EmptyView extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Text(
           l10n.text(
-            'Rispondi a "Come stai oggi?" ogni giorno: qui troverai semafori, score e consigli per ricostruire la sua storia.',
+            'Compila il Diario giornaliero: qui troverai semafori, score e consigli per ricostruire la sua storia.',
           ),
           textAlign: TextAlign.center,
           style: TextStyle(

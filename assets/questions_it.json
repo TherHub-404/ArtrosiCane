@@ -1,47 +1,38 @@
 [
   {
     "id": "q1",
-    "text": "Il tuo cane evita il movimento o rallenta nelle attività quotidiane?",
+    "text": "Il tuo cane si muove con meno voglia del solito?",
     "options": [
-      "A. Nessun cambiamento",
-      "B. Qualche episodio occasionale",
-      "C. Rallenta spesso o evita il movimento"
+      "No, è come sempre",
+      "Ogni tanto sì",
+      "Sì, spesso"
     ]
   },
   {
     "id": "q2",
-    "text": "Quando si alza da seduto o sdraiato mostra rigidità o fatica?",
+    "text": "Ha ancora voglia di uscire, giocare, muoversi?",
     "options": [
-      "A. Si alza normalmente",
-      "B. Qualche rigidità al mattino o dopo il riposo",
-      "C. Difficoltà evidenti e costanti nel rialzarsi"
+      "Sì, come sempre",
+      "Un po' meno del solito",
+      "Molto meno, si vede chiaramente"
     ]
   },
   {
     "id": "q3",
-    "text": "Ha cambiato voglia di uscire, muoversi o giocare?",
+    "text": "Dopo una passeggiata o le scale, lo vedi leccarsi le zampe, cambiare spesso posizione o evitare di muoversi?",
     "options": [
-      "A. Comportamento normale",
-      "B. È un po’ meno attivo del solito",
-      "C. Ha ridotto molto attività, gioco e voglia di muoversi"
+      "Quasi mai",
+      "Qualche volta, se si è stancato di più",
+      "Spesso, anche per cose di tutti i giorni"
     ]
   },
   {
     "id": "q4",
-    "text": "Dopo camminate, scale o movimenti noti disagio (leccamento zampe, cambio postura, evitamento)?",
+    "text": "In generale, come sta andando il tuo cane in questa settimana?",
     "options": [
-      "A. Mai o quasi mai",
-      "B. A volte dopo attività intensa",
-      "C. Spesso dopo normali attività"
-    ]
-  },
-  {
-    "id": "q5",
-    "text": "Come valuteresti il benessere generale del tuo cane negli ultimi 7 giorni?",
-    "options": [
-      "A. Buono/Ottimo",
-      "B. Un po’ ridotto rispetto al solito",
-      "C. Nettamente ridotto o compromesso"
+      "Bene, sereno",
+      "Un po' meno in forma del solito",
+      "Visibilmente giù"
     ]
   }
 ]
