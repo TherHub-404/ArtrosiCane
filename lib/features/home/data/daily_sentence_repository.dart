@@ -65,8 +65,8 @@ class DailySentenceRepository {
           .eq('day_num', d)
           .maybeSingle();
       if (response == null) {
-        return _fetchFallback(lang: lang, month: m, day: d);
-      }
+        return await _fetchFallback(lang: lang, month: m, day: d);
+        }
       return DailySentence.fromMap(response);
     } on PostgrestException {
       return null;
