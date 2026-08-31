@@ -9,10 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DailyCheckRepository {
-  DailyCheckRepository(this._prefs, this._client);
+  DailyCheckRepository(this._prefs, this._client, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final SharedPreferences _prefs;
   final SupabaseClient _client;
+  final DateTime Function() _now;
+  final Set<String> _dailySavesInProgress = <String>{};
 
   static const _defaultSensitivity = {
     DailyRiskFactor.caldo: 2,
@@ -44,12 +47,24 @@ class DailyCheckRepository {
     required DailyCheckInput input,
     required DailyCheckResult result,
   }) async {
-    final createdAt = DateTime.now().toUtc();
-    await _saveLocalLog(input, result, createdAt: createdAt);
-    await clearDraft(input.dogId);
-    await _recomputeAndPersistSensitivities(input.dogId);
-    await _enqueueRemoteLog(input, result, createdAt: createdAt);
-    await _flushRemoteQueue();
+    final localNow = _now().toLocal();
+    final saveKey = '${input.dogId ?? 'global'}::${_localDate(localNow)}';
+    if (_dailySavesInProgress.contains(saveKey) ||
+        _localHistory(input.dogId ?? '').any(_isToday)) {
+      return;
+    }
+
+    _dailySavesInProgress.add(saveKey);
+    try {
+      final createdAt = localNow.toUtc();
+      await _saveLocalLog(input, result, createdAt: createdAt);
+      await clearDraft(input.dogId);
+      await _recomputeAndPersistSensitivities(input.dogId);
+      await _enqueueRemoteLog(input, result, createdAt: createdAt);
+      await _flushRemoteQueue();
+    } finally {
+      _dailySavesInProgress.remove(saveKey);
+    }
   }
 
   DailyCheckDraft loadDraft(String? dogId) {
@@ -120,6 +135,13 @@ class DailyCheckRepository {
         latestEntry: localToday.first,
       );
     }
+    final remoteToday = await _fetchRemoteToday(dogId);
+    if (remoteToday != null) {
+      return TodayDailyDiaryState(
+        status: DailyDiaryStatus.completed,
+        latestEntry: remoteToday,
+      );
+    }
     final draft = loadDraft(dogId);
     if (draft.hasAnswers) {
       return TodayDailyDiaryState(
@@ -128,6 +150,35 @@ class DailyCheckRepository {
       );
     }
     return const TodayDailyDiaryState(status: DailyDiaryStatus.notStarted);
+  }
+
+  Future<DailyLogEntry?> _fetchRemoteToday(String dogId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    final localNow = _now().toLocal();
+    final start = DateTime(localNow.year, localNow.month, localNow.day);
+    final end = start.add(const Duration(days: 1));
+    try {
+      final rows = await _client
+          .from('daily_logs')
+          .select(
+            'created_at, semaphore, score, raw_score, actions, avoid, '
+            'video_label, video_url, route_tag, dog_id, owner_id',
+          )
+          .eq('owner_id', userId)
+          .eq('dog_id', dogId)
+          .gte('created_at', start.toUtc().toIso8601String())
+          .lt('created_at', end.toUtc().toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(1);
+      final records = rows as List<dynamic>? ?? const <dynamic>[];
+      if (records.isEmpty) return null;
+      return _entryFromRow(Map<String, dynamic>.from(records.first as Map));
+    } catch (error) {
+      AppLogger.debug('Failed to fetch today daily diary state: $error');
+      return null;
+    }
   }
 
   Future<void> _saveLocalLog(
@@ -244,6 +295,7 @@ class DailyCheckRepository {
       'video_label': result.recommendation.videoLabel,
       'video_url': result.recommendation.videoUrl,
       'created_at': createdAt.toIso8601String(),
+      'diary_date': _localDate(createdAt.toLocal()),
     };
 
     final existingRaw = _prefs.getString(_remoteQueueKey);
@@ -292,7 +344,9 @@ class DailyCheckRepository {
       payload['owner_id'] = userId;
 
       try {
-        await _client.from('daily_logs').insert(payload);
+        await _client
+            .from('daily_logs')
+            .upsert(payload, onConflict: 'owner_id,dog_id,diary_date');
       } catch (error) {
         remaining.add(item);
         AppLogger.debug('Failed to flush daily log queue item: $error');
@@ -414,7 +468,12 @@ class DailyCheckRepository {
   }
 
   bool _isToday(DailyLogEntry entry) =>
-      _isSameLocalDay(entry.createdAt, DateTime.now());
+      _isSameLocalDay(entry.createdAt, _now().toLocal());
+
+  String _localDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 
   bool _isSameLocalDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

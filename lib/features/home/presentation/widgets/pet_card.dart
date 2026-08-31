@@ -475,8 +475,9 @@ class _DiaryAction extends StatelessWidget {
         ? Colors.red.shade200
         : AppColors.ctaApricot.withValues(alpha: 0.45);
 
+    final canOpenDiary = !isCompleted && !isLoading && !isUnavailable;
     return Semantics(
-      button: true,
+      button: canOpenDiary,
       label: context.l10n.text('Apri diario di {{dogName}}', {
         'dogName': petName,
       }),
@@ -491,7 +492,7 @@ class _DiaryAction extends StatelessWidget {
           child: InkWell(
             key: ValueKey('pet-card-diary-$petName'),
             borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
+            onTap: canOpenDiary ? onTap : null,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 64),
               child: Padding(
@@ -562,13 +563,12 @@ class _DiaryAction extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(
-                      isCompleted
-                          ? Icons.visibility_outlined
-                          : Icons.arrow_forward_rounded,
-                      size: 20,
-                      color: foregroundColor,
-                    ),
+                    if (canOpenDiary)
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                        color: foregroundColor,
+                      ),
                   ],
                 ),
               ),
