@@ -22,6 +22,7 @@ void main() {
         breed: 'Labrador',
         age: showDetails ? 7 : null,
         weight: showDetails ? 24.5 : null,
+        arthrosisGrade: showDetails ? 'Medio' : null,
         imagePath: 'assets/first-dog.png',
         backgroundColor: Colors.white,
         onTap: onTap,
@@ -98,6 +99,7 @@ void main() {
     final diaryAction = find.byKey(const ValueKey('pet-card-diary-Luna'));
     expect(diaryAction, findsOneWidget);
     expect(find.text('Diario di oggi'), findsOneWidget);
+    expect(find.text('Non completato'), findsOneWidget);
     expect(find.text('Completa il diario'), findsOneWidget);
     expect(tester.getSize(diaryAction).height, greaterThanOrEqualTo(48));
 
@@ -106,6 +108,22 @@ void main() {
 
     expect(diaryTapped, isTrue);
     expect(cardTapped, isFalse);
+  });
+
+  testWidgets('daily diary appears before secondary health information', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildHarness(onTap: () {}, onDiaryTap: () {}));
+
+    final diaryTop = tester.getTopLeft(
+      find.byKey(const ValueKey('pet-card-diary-Luna')),
+    );
+    final riskTop = tester.getTopLeft(find.text('Rischio artrosi'));
+    final ageTop = tester.getTopLeft(find.text('7 anni'));
+
+    expect(diaryTop.dy, lessThan(riskTop.dy));
+    expect(diaryTop.dy, lessThan(ageTop.dy));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('daily diary action fits a small screen at larger text scale', (
@@ -168,6 +186,23 @@ void main() {
 
     expect(find.text('Heutiges Tagebuch'), findsOneWidget);
     expect(find.text('Heute abgeschlossen'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pending diary status and action follow the selected language', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildHarness(
+        onTap: () {},
+        onDiaryTap: () {},
+        diaryStatus: DailyDiaryStatus.notStarted,
+        locale: const Locale('fr'),
+      ),
+    );
+
+    expect(find.text('Non terminé'), findsOneWidget);
+    expect(find.text('Remplir le journal'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

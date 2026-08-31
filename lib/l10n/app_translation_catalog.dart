@@ -1,5 +1,35 @@
 const Map<String, Map<String, String>> appTranslationCatalog = {
   'en': {
+    'Non completato': 'Not completed',
+    'Apri diario di {{dogName}}': "Open {{dogName}}'s diary",
+    'Cambia foto': 'Change photo',
+    'Caricamento frase di oggi...': "Loading today's message...",
+    'Check di oggi salvato. Puoi rivedere il risultato quando vuoi.':
+        "Today's diary has been saved. You can review the result at any time.",
+    'Connessione assente: il check resta salvato sul dispositivo e verra inviato appena possibile.':
+        'No connection: the diary remains saved on this device and will be sent as soon as possible.',
+    'Contenuto del giorno in aggiornamento.':
+        "Today's content is being updated.",
+    'Errore nel caricamento.': 'Unable to load.',
+    'Errore: {{error}}': 'Error: {{error}}',
+    'Facoltativo: puoi continuare anche senza scegliere fattori.':
+        'Optional: you can continue without selecting any factors.',
+    'Fotocamera': 'Camera',
+    'Frase di oggi in aggiornamento.': "Today's message is being updated.",
+    'Galleria': 'Gallery',
+    'Impossibile aprire la galleria.': 'Unable to open the gallery.',
+    'Modifica Profilo': 'Edit profile',
+    'Obbligatorio': 'Required',
+    'Salva Modifiche': 'Save changes',
+    'Scegli com era il recupero rispetto a ieri.':
+        'Choose how recovery was compared with yesterday.',
+    'Scegli quanto movimento fara oggi.':
+        'Choose how much exercise your dog will get today.',
+    'Scegli se oggi hai notato rigidita o zoppia.':
+        'Choose whether you noticed stiffness or limping today.',
+    'Serve il permesso per accedere alle foto.':
+        'Photo access permission is required.',
+    'Video non disponibile': 'Video unavailable',
     'Diario di oggi': "Today's diary",
     'Caricamento stato diario...': 'Loading diary status...',
     'Stato diario non disponibile': 'Diary status unavailable',
@@ -955,6 +985,37 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'We couldn\'t update the password. Please try again shortly.',
   },
   'fr': {
+    'Non completato': 'Non terminé',
+    'Apri diario di {{dogName}}': 'Ouvrir le journal de {{dogName}}',
+    'Cambia foto': 'Changer la photo',
+    'Caricamento frase di oggi...': 'Chargement du message du jour…',
+    'Check di oggi salvato. Puoi rivedere il risultato quando vuoi.':
+        'Le journal du jour a été enregistré. Vous pouvez consulter le résultat à tout moment.',
+    'Connessione assente: il check resta salvato sul dispositivo e verra inviato appena possibile.':
+        'Aucune connexion : le journal reste enregistré sur cet appareil et sera envoyé dès que possible.',
+    'Contenuto del giorno in aggiornamento.':
+        'Le contenu du jour est en cours de mise à jour.',
+    'Errore nel caricamento.': 'Impossible de charger.',
+    'Errore: {{error}}': 'Erreur : {{error}}',
+    'Facoltativo: puoi continuare anche senza scegliere fattori.':
+        'Facultatif : vous pouvez continuer sans sélectionner de facteurs.',
+    'Fotocamera': 'Appareil photo',
+    'Frase di oggi in aggiornamento.':
+        'Le message du jour est en cours de mise à jour.',
+    'Galleria': 'Galerie',
+    'Impossibile aprire la galleria.': 'Impossible d’ouvrir la galerie.',
+    'Modifica Profilo': 'Modifier le profil',
+    'Obbligatorio': 'Obligatoire',
+    'Salva Modifiche': 'Enregistrer les modifications',
+    'Scegli com era il recupero rispetto a ieri.':
+        'Indiquez comment était la récupération par rapport à hier.',
+    'Scegli quanto movimento fara oggi.':
+        'Indiquez combien d’exercice votre chien fera aujourd’hui.',
+    'Scegli se oggi hai notato rigidita o zoppia.':
+        'Indiquez si vous avez remarqué une raideur ou une boiterie aujourd’hui.',
+    'Serve il permesso per accedere alle foto.':
+        'L’autorisation d’accéder aux photos est requise.',
+    'Video non disponibile': 'Vidéo indisponible',
     'Diario di oggi': 'Journal du jour',
     'Caricamento stato diario...': 'Chargement de l’état du journal…',
     'Stato diario non disponibile': 'État du journal indisponible',
@@ -1945,6 +2006,38 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'Nous n\'avons pas pu mettre à jour le mot de passe. Réessayez dans un instant.',
   },
   'de': {
+    'Non completato': 'Nicht abgeschlossen',
+    'Apri diario di {{dogName}}': 'Tagebuch von {{dogName}} öffnen',
+    'Cambia foto': 'Foto ändern',
+    'Caricamento frase di oggi...': 'Heutige Nachricht wird geladen…',
+    'Check di oggi salvato. Puoi rivedere il risultato quando vuoi.':
+        'Das heutige Tagebuch wurde gespeichert. Du kannst das Ergebnis jederzeit ansehen.',
+    'Connessione assente: il check resta salvato sul dispositivo e verra inviato appena possibile.':
+        'Keine Verbindung: Das Tagebuch bleibt auf diesem Gerät gespeichert und wird baldmöglichst gesendet.',
+    'Contenuto del giorno in aggiornamento.':
+        'Der heutige Inhalt wird aktualisiert.',
+    'Errore nel caricamento.': 'Laden nicht möglich.',
+    'Errore: {{error}}': 'Fehler: {{error}}',
+    'Facoltativo: puoi continuare anche senza scegliere fattori.':
+        'Optional: Du kannst fortfahren, ohne Faktoren auszuwählen.',
+    'Fotocamera': 'Kamera',
+    'Frase di oggi in aggiornamento.':
+        'Die heutige Nachricht wird aktualisiert.',
+    'Galleria': 'Galerie',
+    'Impossibile aprire la galleria.':
+        'Die Galerie kann nicht geöffnet werden.',
+    'Modifica Profilo': 'Profil bearbeiten',
+    'Obbligatorio': 'Erforderlich',
+    'Salva Modifiche': 'Änderungen speichern',
+    'Scegli com era il recupero rispetto a ieri.':
+        'Wähle aus, wie die Erholung im Vergleich zu gestern war.',
+    'Scegli quanto movimento fara oggi.':
+        'Wähle aus, wie viel Bewegung dein Hund heute bekommen wird.',
+    'Scegli se oggi hai notato rigidita o zoppia.':
+        'Wähle aus, ob du heute Steifheit oder Hinken bemerkt hast.',
+    'Serve il permesso per accedere alle foto.':
+        'Die Berechtigung für den Fotozugriff ist erforderlich.',
+    'Video non disponibile': 'Video nicht verfügbar',
     'Diario di oggi': 'Heutiges Tagebuch',
     'Caricamento stato diario...': 'Tagebuchstatus wird geladen…',
     'Stato diario non disponibile': 'Tagebuchstatus nicht verfügbar',

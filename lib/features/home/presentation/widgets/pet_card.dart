@@ -163,6 +163,16 @@ class PetCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (onDiaryTap != null) ...[
+                          const SizedBox(height: 12),
+                          _DiaryAction(
+                            petName: name,
+                            status: diaryStatus,
+                            isLoading: isDiaryStatusLoading,
+                            hasError: hasDiaryStatusError,
+                            onTap: onDiaryTap!,
+                          ),
+                        ],
                         if (arthrosisGrade != null) ...[
                           const SizedBox(height: 12),
                           Container(
@@ -273,16 +283,6 @@ class PetCard extends StatelessWidget {
                             ],
                           ],
                         ),
-                        if (onDiaryTap != null) ...[
-                          const Spacer(),
-                          _DiaryAction(
-                            petName: name,
-                            status: diaryStatus,
-                            isLoading: isDiaryStatusLoading,
-                            hasError: hasDiaryStatusError,
-                            onTap: onDiaryTap!,
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -457,6 +457,7 @@ class _DiaryAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = status == DailyDiaryStatus.completed;
+    final isPending = status == null || status == DailyDiaryStatus.notStarted;
     final isUnavailable = hasError || status == DailyDiaryStatus.unavailable;
     final foregroundColor = isCompleted
         ? Colors.green.shade700
@@ -544,6 +545,19 @@ class _DiaryAction extends StatelessWidget {
                               fontSize: 14,
                             ),
                           ),
+                          if (isPending) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              context.l10n.text('Completa il diario'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodyBold.copyWith(
+                                color: foregroundColor,
+                                fontSize: 12,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -577,7 +591,7 @@ class _DiaryAction extends StatelessWidget {
         return context.l10n.text('Continua il diario');
       case DailyDiaryStatus.notStarted:
       case null:
-        return context.l10n.text('Completa il diario');
+        return context.l10n.text('Non completato');
       case DailyDiaryStatus.unavailable:
         return context.l10n.text('Stato diario non disponibile');
     }
