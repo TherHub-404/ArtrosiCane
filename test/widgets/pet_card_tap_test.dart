@@ -1,3 +1,4 @@
+import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
 import 'package:artrosi_cane/features/home/presentation/widgets/pet_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,10 @@ void main() {
     bool insidePageView = false,
     double textScaleFactor = 1,
     bool showDetails = true,
+    DailyDiaryStatus? diaryStatus,
+    bool isDiaryStatusLoading = false,
+    bool hasDiaryStatusError = false,
+    Locale locale = const Locale('it'),
   }) {
     final card = Center(
       child: PetCard(
@@ -21,17 +26,25 @@ void main() {
         backgroundColor: Colors.white,
         onTap: onTap,
         onDiaryTap: onDiaryTap,
+        diaryStatus: diaryStatus,
+        isDiaryStatusLoading: isDiaryStatusLoading,
+        hasDiaryStatusError: hasDiaryStatusError,
       ),
     );
 
     return MaterialApp(
-      locale: const Locale('it'),
+      locale: locale,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [Locale('it')],
+      supportedLocales: const [
+        Locale('it'),
+        Locale('en'),
+        Locale('fr'),
+        Locale('de'),
+      ],
       home: MediaQuery(
         data: MediaQueryData(
           size: const Size(320, 568),
@@ -39,7 +52,7 @@ void main() {
         ),
         child: Scaffold(
           body: SizedBox(
-            height: 420,
+            height: PetCard.cardHeight,
             child: insidePageView ? PageView(children: [card]) : card,
           ),
         ),
@@ -84,7 +97,8 @@ void main() {
 
     final diaryAction = find.byKey(const ValueKey('pet-card-diary-Luna'));
     expect(diaryAction, findsOneWidget);
-    expect(find.text('Diario giornaliero'), findsOneWidget);
+    expect(find.text('Diario di oggi'), findsOneWidget);
+    expect(find.text('Completa il diario'), findsOneWidget);
     expect(tester.getSize(diaryAction).height, greaterThanOrEqualTo(48));
 
     await tester.tap(diaryAction);
@@ -106,7 +120,54 @@ void main() {
       ),
     );
 
-    expect(find.text('Diario giornaliero'), findsOneWidget);
+    expect(find.text('Diario di oggi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('daily diary shows completed status with text and icon', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildHarness(
+        onTap: () {},
+        onDiaryTap: () {},
+        diaryStatus: DailyDiaryStatus.completed,
+      ),
+    );
+
+    expect(find.text('Completato oggi'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+  });
+
+  testWidgets('daily diary exposes loading and unavailable states', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildHarness(onTap: () {}, onDiaryTap: () {}, isDiaryStatusLoading: true),
+    );
+    expect(find.text('Caricamento stato diario...'), findsOneWidget);
+
+    await tester.pumpWidget(
+      buildHarness(onTap: () {}, onDiaryTap: () {}, hasDiaryStatusError: true),
+    );
+    expect(find.text('Stato diario non disponibile'), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+  });
+
+  testWidgets('daily diary updates when the application language changes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildHarness(
+        onTap: () {},
+        onDiaryTap: () {},
+        diaryStatus: DailyDiaryStatus.completed,
+        locale: const Locale('de'),
+      ),
+    );
+
+    expect(find.text('Heutiges Tagebuch'), findsOneWidget);
+    expect(find.text('Heute abgeschlossen'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
