@@ -1,5 +1,11 @@
 const Map<String, Map<String, String>> appTranslationCatalog = {
   'en': {
+    'Diario di oggi': "Today's diary",
+    'Caricamento stato diario...': 'Loading diary status...',
+    'Stato diario non disponibile': 'Diary status unavailable',
+    'Completato oggi': 'Completed today',
+    'Continua il diario': 'Continue diary',
+    'Completa il diario': 'Complete diary',
     'Promemoria Diario giornaliero': 'Daily diary reminder',
     'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
         'Daily reminder at 4:00 PM to complete the Daily diary.',
@@ -949,6 +955,12 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'We couldn\'t update the password. Please try again shortly.',
   },
   'fr': {
+    'Diario di oggi': 'Journal du jour',
+    'Caricamento stato diario...': 'Chargement de l’état du journal…',
+    'Stato diario non disponibile': 'État du journal indisponible',
+    'Completato oggi': 'Terminé aujourd’hui',
+    'Continua il diario': 'Continuer le journal',
+    'Completa il diario': 'Remplir le journal',
     'Promemoria Diario giornaliero': 'Rappel du Journal quotidien',
     'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
         'Rappel quotidien à 16 h pour remplir le Journal quotidien.',
@@ -1933,6 +1945,12 @@ const Map<String, Map<String, String>> appTranslationCatalog = {
         'Nous n\'avons pas pu mettre à jour le mot de passe. Réessayez dans un instant.',
   },
   'de': {
+    'Diario di oggi': 'Heutiges Tagebuch',
+    'Caricamento stato diario...': 'Tagebuchstatus wird geladen…',
+    'Stato diario non disponibile': 'Tagebuchstatus nicht verfügbar',
+    'Completato oggi': 'Heute abgeschlossen',
+    'Continua il diario': 'Tagebuch fortsetzen',
+    'Completa il diario': 'Tagebuch ausfüllen',
     'Promemoria Diario giornaliero': 'Erinnerung an das tägliche Tagebuch',
     'Promemoria giornaliero alle 16:00 per compilare il Diario giornaliero.':
         'Tägliche Erinnerung um 16:00 Uhr, das tägliche Tagebuch auszufüllen.',

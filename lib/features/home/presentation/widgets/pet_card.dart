@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:artrosi_cane/features/daily_check/domain/entities/daily_check_models.dart';
 import 'package:artrosi_cane/l10n/app_localizations.dart';
 import 'package:artrosi_cane/theme/app_colors.dart';
 import 'package:artrosi_cane/theme/app_spacing.dart';
@@ -20,9 +21,12 @@ class PetCard extends StatelessWidget {
     required this.backgroundColor,
     this.onTap,
     this.onDiaryTap,
+    this.diaryStatus,
+    this.isDiaryStatusLoading = false,
+    this.hasDiaryStatusError = false,
   });
 
-  static const double cardHeight = 392;
+  static const double cardHeight = 500;
 
   final String name;
   final String breed;
@@ -35,6 +39,9 @@ class PetCard extends StatelessWidget {
   final Color backgroundColor;
   final VoidCallback? onTap;
   final VoidCallback? onDiaryTap;
+  final DailyDiaryStatus? diaryStatus;
+  final bool isDiaryStatusLoading;
+  final bool hasDiaryStatusError;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +94,7 @@ class PetCard extends StatelessWidget {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 236,
+                height: 210,
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(28),
@@ -97,7 +104,7 @@ class PetCard extends StatelessWidget {
               ),
               // Wave-shaped white border overlay
               Positioned(
-                top: 200,
+                top: 174,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -266,17 +273,21 @@ class PetCard extends StatelessWidget {
                             ],
                           ],
                         ),
+                        if (onDiaryTap != null) ...[
+                          const Spacer(),
+                          _DiaryAction(
+                            petName: name,
+                            status: diaryStatus,
+                            isLoading: isDiaryStatusLoading,
+                            hasError: hasDiaryStatusError,
+                            onTap: onDiaryTap!,
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
               ),
-              if (onDiaryTap != null)
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: _DiaryActionChip(petName: name, onTap: onDiaryTap!),
-                ),
             ],
           ),
         ),
@@ -428,58 +439,121 @@ class _PetImage extends StatelessWidget {
   }
 }
 
-class _DiaryActionChip extends StatelessWidget {
-  const _DiaryActionChip({required this.petName, required this.onTap});
+class _DiaryAction extends StatelessWidget {
+  const _DiaryAction({
+    required this.petName,
+    required this.status,
+    required this.isLoading,
+    required this.hasError,
+    required this.onTap,
+  });
 
   final String petName;
+  final DailyDiaryStatus? status;
+  final bool isLoading;
+  final bool hasError;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = status == DailyDiaryStatus.completed;
+    final isUnavailable = hasError || status == DailyDiaryStatus.unavailable;
+    final foregroundColor = isCompleted
+        ? Colors.green.shade700
+        : isUnavailable
+        ? Colors.red.shade700
+        : AppColors.primaryBlue;
+    final backgroundColor = isCompleted
+        ? Colors.green.shade50
+        : isUnavailable
+        ? Colors.red.shade50
+        : AppColors.ctaApricot.withValues(alpha: 0.12);
+    final borderColor = isCompleted
+        ? Colors.green.shade200
+        : isUnavailable
+        ? Colors.red.shade200
+        : AppColors.ctaApricot.withValues(alpha: 0.45);
+
     return Semantics(
       button: true,
       label: context.l10n.text('Apri diario di {{dogName}}', {
         'dogName': petName,
       }),
       child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        elevation: 12,
-        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.3),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.ctaApricot, Color(0xFFF29162)],
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white, width: 2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
           ),
           child: InkWell(
             key: ValueKey('pet-card-diary-$petName'),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             onTap: onTap,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
+              constraints: const BoxConstraints(minHeight: 64),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.edit_note_rounded,
-                      size: 22,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      context.l10n.text('Diario giornaliero'),
-                      style: AppTypography.bodyBold.copyWith(
-                        color: Colors.white,
-                        fontSize: 14,
-                        height: 1.1,
+                    if (isLoading)
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: foregroundColor,
+                        ),
+                      )
+                    else
+                      Icon(
+                        isCompleted
+                            ? Icons.check_circle_rounded
+                            : isUnavailable
+                            ? Icons.error_outline_rounded
+                            : Icons.edit_note_rounded,
+                        size: 24,
+                        color: foregroundColor,
                       ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.text('Diario di oggi'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.bodyBold.copyWith(
+                              color: AppColors.primaryBlue,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _statusText(context),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.bodyBold.copyWith(
+                              color: foregroundColor,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      isCompleted
+                          ? Icons.visibility_outlined
+                          : Icons.arrow_forward_rounded,
+                      size: 20,
+                      color: foregroundColor,
                     ),
                   ],
                 ),
@@ -489,5 +563,23 @@ class _DiaryActionChip extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _statusText(BuildContext context) {
+    if (isLoading) return context.l10n.text('Caricamento stato diario...');
+    if (hasError || status == DailyDiaryStatus.unavailable) {
+      return context.l10n.text('Stato diario non disponibile');
+    }
+    switch (status) {
+      case DailyDiaryStatus.completed:
+        return context.l10n.text('Completato oggi');
+      case DailyDiaryStatus.inProgress:
+        return context.l10n.text('Continua il diario');
+      case DailyDiaryStatus.notStarted:
+      case null:
+        return context.l10n.text('Completa il diario');
+      case DailyDiaryStatus.unavailable:
+        return context.l10n.text('Stato diario non disponibile');
+    }
   }
 }
