@@ -145,16 +145,22 @@ void main() {
   testWidgets('daily diary shows completed status with text and icon', (
     tester,
   ) async {
+    var diaryTapped = false;
     await tester.pumpWidget(
       buildHarness(
         onTap: () {},
-        onDiaryTap: () {},
+        onDiaryTap: () => diaryTapped = true,
         diaryStatus: DailyDiaryStatus.completed,
       ),
     );
 
     expect(find.text('Completato oggi'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('pet-card-diary-Luna')));
+    await tester.pump();
+    expect(diaryTapped, isFalse);
   });
 
   testWidgets('daily diary exposes loading and unavailable states', (
